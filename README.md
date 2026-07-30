@@ -38,7 +38,8 @@ A transferência assistida mantém a chamada original em espera enquanto o
 usuário consulta o segundo destino. É possível cancelar a consulta e retomar a
 chamada original ou concluir a transferência, conectando os dois ramais e
 retirando o Android da sessão. Os dois caminhos foram homologados entre os
-ramais 104 e 105.
+ramais 104 e 105. Quando o destino não atende, a chamada original é retomada,
+uma confirmação visual breve é exibida e o modal fecha automaticamente.
 Adicionar chamada mantém o primeiro participante em espera, consulta o segundo
 destino e somente libera a formação da conferência depois do atendimento real.
 Destinos internos sem atendimento não seguem para caixa postal nesse fluxo; a

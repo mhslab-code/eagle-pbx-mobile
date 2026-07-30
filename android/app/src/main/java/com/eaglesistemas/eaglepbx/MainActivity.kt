@@ -1576,12 +1576,27 @@ private fun TransferDialog(
 ) {
     var destination by rememberSaveable { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }
+    var consultationWasStarted by remember { mutableStateOf(false) }
     val keys = listOf(
         DialKey("1"), DialKey("2", "ABC"), DialKey("3", "DEF"),
         DialKey("4", "GHI"), DialKey("5", "JKL"), DialKey("6", "MNO"),
         DialKey("7", "PQRS"), DialKey("8", "TUV"), DialKey("9", "WXYZ"),
         DialKey("*"), DialKey("0", "+"), DialKey("#")
     )
+    LaunchedEffect(status) {
+        if (status == AttendedTransferStatus.CALLING) {
+            consultationWasStarted = true
+        } else if (
+            status == AttendedTransferStatus.FAILED && consultationWasStarted
+        ) {
+            delay(1800)
+            onDismiss()
+        } else if (
+            status == AttendedTransferStatus.IDLE && consultationWasStarted
+        ) {
+            onDismiss()
+        }
+    }
     AlertDialog(
         onDismissRequest = {
             if (status == AttendedTransferStatus.IDLE ||
@@ -1678,15 +1693,21 @@ private fun TransferDialog(
                         }
                     }
                 }
-                val visibleError = error ?: if (status == AttendedTransferStatus.FAILED) {
-                    "A consulta não foi completada. A chamada original foi retomada."
+                val visibleError = error ?: if (
+                    status == AttendedTransferStatus.FAILED &&
+                    consultationWasStarted
+                ) {
+                    "$destination não atendeu. A chamada original foi retomada."
                 } else {
                     null
                 }
                 if (!visibleError.isNullOrBlank()) {
                     Text(
                         text = visibleError,
-                        color = EagleDanger,
+                        color = if (
+                            status == AttendedTransferStatus.FAILED &&
+                            error == null
+                        ) EagleSuccess else EagleDanger,
                         fontSize = 12.sp
                     )
                 }

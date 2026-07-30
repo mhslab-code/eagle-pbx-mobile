@@ -126,3 +126,7 @@ fechar o código.
 - Cliques repetidos são bloqueados assim que a formação começa.
 - A conferência 101 + 104 + 105 e o encerramento simultâneo dos dois
   participantes pelo Android foram homologados.
+- A transferência assistida sem atendimento retoma a chamada original, mostra
+  uma confirmação visual neutra e fecha o modal automaticamente.
+- O estado de falha anterior não reaparece quando o modal de transferência é
+  aberto novamente.
