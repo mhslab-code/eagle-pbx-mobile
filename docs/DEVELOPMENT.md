@@ -45,6 +45,16 @@ definitiva de assinatura e suas senhas não pertencem ao repositório.
 
 ## Marcos validados
 
+### 0.1.6
+
+- identidade aleatória e persistente criada por instalação;
+- identidade mantida separada da sessão e excluída do backup do Android;
+- registro autenticado e idempotente na API do Eagle PBX;
+- servidor armazena somente o hash do identificador da instalação;
+- estado `Dispositivo registrado · SIP pendente` integrado ao Discador;
+- nenhuma credencial SIP criada, transmitida ou persistida nesta etapa;
+- testes unitários, compilação, instalação e registro no emulador aprovados.
+
 ### 0.1.5
 
 - Liblinphone `5.5.13` integrado a partir do repositório Maven oficial;

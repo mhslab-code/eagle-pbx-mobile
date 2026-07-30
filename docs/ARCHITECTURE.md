@@ -38,7 +38,7 @@ credenciais técnicas. Todos os dados passam pelas APIs autorizadas.
 
 Cada instalação deve possuir:
 
-- identificador revogável;
+- identificador aleatório persistente e revogável;
 - endpoint SIP próprio;
 - credencial diferente dos demais aparelhos;
 - token de push associado;
@@ -46,6 +46,11 @@ Cada instalação deve possuir:
 
 Um ramal pode possuir múltiplos dispositivos, mas uma credencial não deve ser
 compartilhada entre eles.
+
+Na versão 0.1.6, o identificador é criado localmente e mantido em armazenamento
+privado separado da sessão. A API recebe esse valor por HTTPS, armazena somente
+seu hash e cria um registro idempotente com estado `pending`. Nenhuma credencial
+SIP é criada ou devolvida nessa etapa.
 
 O estado de presença já utiliza a API existente do Eagle PBX. Temporariamente,
 o DND continua sendo aplicado ao ramal inteiro no Asterisk. A separação do DND
@@ -70,7 +75,8 @@ operação.
 - perfil e DND;
 - contatos e fotografias;
 - histórico e gravações autorizadas;
-- cadastro e revogação do dispositivo.
+- cadastro do dispositivo concluído;
+- revogação e provisionamento SIP do dispositivo pendentes.
 
 ### 3. Telefonia em primeiro plano
 

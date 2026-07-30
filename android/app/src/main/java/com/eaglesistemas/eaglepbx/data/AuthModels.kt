@@ -13,6 +13,11 @@ data class AuthenticatedUser(
     val mustChangePassword: Boolean
 )
 
+data class MobileDeviceRegistration(
+    val status: String,
+    val reason: String
+)
+
 class ApiException(
     message: String,
     val statusCode: Int

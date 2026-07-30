@@ -10,7 +10,8 @@ import java.io.File
 import javax.net.ssl.HttpsURLConnection
 
 class EagleApiClient(
-    private val sessionStore: SecureSessionStore
+    private val sessionStore: SecureSessionStore,
+    private val deviceIdentityStore: DeviceIdentityStore
 ) {
     fun restoreSession(): AuthenticatedUser? {
         if (sessionStore.read().isNullOrBlank()) return null
@@ -65,6 +66,28 @@ class EagleApiClient(
         val cookie = sessionStore.read()
         if (!cookie.isNullOrBlank()) bestEffortLogout(cookie)
         sessionStore.clear()
+    }
+
+    fun registerMobileDevice(deviceName: String): MobileDeviceRegistration {
+        val payload = JSONObject()
+            .put("installationId", deviceIdentityStore.installationId())
+            .put("platform", "android")
+            .put("deviceName", deviceName.take(80))
+            .put("appVersion", BuildConfig.VERSION_NAME)
+            .toString()
+        val response = readResponse(
+            connection("/api/mobile/devices/register", "POST").apply {
+                sessionStore.read()?.let { setRequestProperty("Cookie", it) }
+                setRequestProperty("Content-Type", "application/json; charset=UTF-8")
+                doOutput = true
+                outputStream.use { it.write(payload.toByteArray(Charsets.UTF_8)) }
+            }
+        )
+        val device = JSONObject(response.body).getJSONObject("device")
+        return MobileDeviceRegistration(
+            status = device.optString("status", "pending"),
+            reason = device.optString("reason")
+        )
     }
 
     fun updatePresence(presence: String): AuthenticatedUser {

@@ -9,12 +9,13 @@ com homologação operacional nos Samsung Galaxy A25 5G e validação complement
 no Samsung Galaxy S25 Ultra. O iOS será desenvolvido depois da homologação do
 fluxo Android.
 
-Versão de desenvolvimento atual: `0.1.5`. A identidade visual, o login nativo,
+Versão de desenvolvimento atual: `0.1.6`. A identidade visual, o login nativo,
 a restauração segura da sessão, o logoff, a navegação principal e a integração
 inicial de presença foram validados no emulador equivalente ao Galaxy A25 5G.
 A agenda corporativa, o histórico e o player autenticado de gravações também
-estão integrados. O motor SIP Liblinphone inicializa no aplicativo, mas ainda
-não recebe credenciais nem registra um endpoint.
+estão integrados. O motor SIP Liblinphone inicializa no aplicativo e cada
+instalação registra uma identidade individual na API. O endpoint e a credencial
+SIP ainda não são provisionados.
 
 ## Decisões aprovadas
 

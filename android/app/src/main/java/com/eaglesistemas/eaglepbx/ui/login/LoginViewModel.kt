@@ -2,6 +2,7 @@ package com.eaglesistemas.eaglepbx.ui.login
 
 import android.app.Application
 import android.media.MediaPlayer
+import android.os.Build
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.eaglesistemas.eaglepbx.data.ApiException
@@ -9,6 +10,8 @@ import com.eaglesistemas.eaglepbx.data.AuthenticatedUser
 import com.eaglesistemas.eaglepbx.data.EagleApiClient
 import com.eaglesistemas.eaglepbx.data.EagleContact
 import com.eaglesistemas.eaglepbx.data.HistoryCall
+import com.eaglesistemas.eaglepbx.data.DeviceIdentityStore
+import com.eaglesistemas.eaglepbx.data.MobileDeviceRegistration
 import com.eaglesistemas.eaglepbx.data.SecureSessionStore
 import com.eaglesistemas.eaglepbx.telephony.LinphoneEngine
 import com.eaglesistemas.eaglepbx.telephony.SipEngineStatus
@@ -39,6 +42,9 @@ data class LoginUiState(
     val recordingPosition: Int = 0,
     val recordingDuration: Int = 0,
     val sipEngineStatus: SipEngineStatus = SipEngineStatus.INITIALIZING,
+    val registeringMobileDevice: Boolean = false,
+    val mobileDevice: MobileDeviceRegistration? = null,
+    val mobileDeviceError: String? = null,
     val user: AuthenticatedUser? = null,
     val error: String? = null,
     val presenceError: String? = null,
@@ -48,7 +54,10 @@ data class LoginUiState(
 )
 
 class LoginViewModel(application: Application) : AndroidViewModel(application) {
-    private val api = EagleApiClient(SecureSessionStore(application))
+    private val api = EagleApiClient(
+        SecureSessionStore(application),
+        DeviceIdentityStore(application)
+    )
     private var linphoneEngine: LinphoneEngine? = null
     private var mediaPlayer: MediaPlayer? = null
     private var playbackJob: Job? = null
@@ -66,6 +75,32 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
                 sipEngineStatus = mutableState.value.sipEngineStatus,
                 user = result.getOrNull(),
                 error = result.exceptionOrNull()?.toFriendlyMessage()
+            )
+            if (result.getOrNull() != null) registerMobileDevice()
+        }
+    }
+
+    private fun registerMobileDevice() {
+        if (
+            mutableState.value.user == null ||
+            mutableState.value.registeringMobileDevice
+        ) return
+        mutableState.value = mutableState.value.copy(
+            registeringMobileDevice = true,
+            mobileDeviceError = null
+        )
+        viewModelScope.launch {
+            val result = runCatching {
+                withContext(Dispatchers.IO) {
+                    api.registerMobileDevice(
+                        Build.MODEL.trim().ifBlank { "Dispositivo Android" }
+                    )
+                }
+            }
+            mutableState.value = mutableState.value.copy(
+                registeringMobileDevice = false,
+                mobileDevice = result.getOrNull(),
+                mobileDeviceError = result.exceptionOrNull()?.toFriendlyMessage()
             )
         }
     }
@@ -99,6 +134,7 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
                 user = result.getOrNull(),
                 error = result.exceptionOrNull()?.toFriendlyMessage()
             )
+            if (result.getOrNull() != null) registerMobileDevice()
         }
     }
 

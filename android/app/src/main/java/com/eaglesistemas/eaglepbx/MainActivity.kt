@@ -123,6 +123,9 @@ fun EaglePBXApp(viewModel: LoginViewModel = viewModel()) {
             recordingDuration = state.recordingDuration,
             recordingError = state.recordingError,
             sipEngineStatus = state.sipEngineStatus,
+            registeringMobileDevice = state.registeringMobileDevice,
+            mobileDeviceStatus = state.mobileDevice?.status,
+            mobileDeviceError = state.mobileDeviceError,
             onToggleRecording = viewModel::toggleRecording,
             onSeekRecording = viewModel::seekRecording,
             onPresenceChange = viewModel::updatePresence,
@@ -342,6 +345,9 @@ fun AuthenticatedScreen(
     recordingDuration: Int,
     recordingError: String?,
     sipEngineStatus: SipEngineStatus,
+    registeringMobileDevice: Boolean,
+    mobileDeviceStatus: String?,
+    mobileDeviceError: String?,
     onToggleRecording: (HistoryCall) -> Unit,
     onSeekRecording: (Int) -> Unit,
     onPresenceChange: (String) -> Unit,
@@ -478,7 +484,12 @@ fun AuthenticatedScreen(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 when (selectedSection) {
-                    MainSection.DIALER -> DialerContent(sipEngineStatus)
+                    MainSection.DIALER -> DialerContent(
+                        sipEngineStatus = sipEngineStatus,
+                        registeringMobileDevice = registeringMobileDevice,
+                        mobileDeviceStatus = mobileDeviceStatus,
+                        mobileDeviceError = mobileDeviceError
+                    )
                     MainSection.CONTACTS -> ContactsContent(
                         contacts = contacts,
                         loading = loadingContacts,
@@ -1174,7 +1185,12 @@ private fun formatHistoryDate(value: String): String {
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun DialerContent(sipEngineStatus: SipEngineStatus) {
+private fun DialerContent(
+    sipEngineStatus: SipEngineStatus,
+    registeringMobileDevice: Boolean,
+    mobileDeviceStatus: String?,
+    mobileDeviceError: String?
+) {
     var number by rememberSaveable { mutableStateOf("") }
     val keys = listOf(
         DialKey("1"), DialKey("2", "ABC"), DialKey("3", "DEF"),
@@ -1287,6 +1303,22 @@ private fun DialerContent(sipEngineStatus: SipEngineStatus) {
             EagleSuccess
         } else {
             EagleTextMuted
+        },
+        fontSize = 11.sp
+    )
+    Spacer(Modifier.height(3.dp))
+    Text(
+        text = when {
+            registeringMobileDevice -> "Registrando dispositivo..."
+            mobileDeviceStatus == "ready" -> "Dispositivo SIP provisionado"
+            mobileDeviceStatus == "pending" -> "Dispositivo registrado · SIP pendente"
+            !mobileDeviceError.isNullOrBlank() -> "Falha ao registrar dispositivo"
+            else -> "Identidade do dispositivo pendente"
+        },
+        color = when {
+            mobileDeviceStatus == "ready" -> EagleSuccess
+            !mobileDeviceError.isNullOrBlank() -> EagleDanger
+            else -> EagleTextMuted
         },
         fontSize = 11.sp
     )
