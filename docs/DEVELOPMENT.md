@@ -53,6 +53,9 @@ definitiva de assinatura e suas senhas não pertencem ao repositório.
 - alteração de presença integrada à API existente;
 - DND global ao ramal documentado como comportamento temporário;
 - DND independente por dispositivo planejado para a revisão 1.0.4.
+- Discador nativo homologado visualmente no emulador;
+- teclado, backspace, limpeza prolongada e inserção prolongada de `+` validados;
+- retorno sonoro das teclas pendente de validação em aparelho físico.
 
 ### 0.1.1
 

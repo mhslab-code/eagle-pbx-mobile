@@ -1,6 +1,7 @@
 package com.eaglesistemas.eaglepbx
 
 import android.os.Bundle
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -8,6 +9,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,6 +23,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
@@ -41,6 +44,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -414,29 +418,16 @@ fun AuthenticatedScreen(
                     .clip(RoundedCornerShape(22.dp))
                     .background(EagleNavyLight)
                     .border(1.dp, EagleBorder, RoundedCornerShape(22.dp))
-                    .padding(22.dp),
+                    .padding(
+                        horizontal = if (selectedSection == MainSection.DIALER) 14.dp else 22.dp,
+                        vertical = if (selectedSection == MainSection.DIALER) 14.dp else 22.dp
+                    ),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text(
-                    text = selectedSection.title,
-                    color = EagleText,
-                    fontSize = 26.sp,
-                    fontWeight = FontWeight.Bold
-                )
-                Spacer(Modifier.height(12.dp))
-                Text(
-                    text = selectedSection.description,
-                    color = EagleTextMuted,
-                    fontSize = 15.sp,
-                    textAlign = TextAlign.Center
-                )
-                Spacer(Modifier.height(22.dp))
-                Text(
-                    text = "Estrutura preparada",
-                    color = EagleSuccess,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold
-                )
+                when (selectedSection) {
+                    MainSection.DIALER -> DialerContent()
+                    else -> PreparedSection(selectedSection)
+                }
             }
             Spacer(Modifier.height(12.dp))
             Row(
@@ -480,6 +471,213 @@ fun AuthenticatedScreen(
                 onLogout()
             }
         )
+    }
+}
+
+@Composable
+private fun PreparedSection(section: MainSection) {
+    Text(
+        text = section.title,
+        color = EagleText,
+        fontSize = 26.sp,
+        fontWeight = FontWeight.Bold
+    )
+    Spacer(Modifier.height(12.dp))
+    Text(
+        text = section.description,
+        color = EagleTextMuted,
+        fontSize = 15.sp,
+        textAlign = TextAlign.Center
+    )
+    Spacer(Modifier.height(22.dp))
+    Text(
+        text = "Estrutura preparada",
+        color = EagleSuccess,
+        fontSize = 13.sp,
+        fontWeight = FontWeight.Bold
+    )
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun DialerContent() {
+    var number by rememberSaveable { mutableStateOf("") }
+    val keys = listOf(
+        DialKey("1"), DialKey("2", "ABC"), DialKey("3", "DEF"),
+        DialKey("4", "GHI"), DialKey("5", "JKL"), DialKey("6", "MNO"),
+        DialKey("7", "PQRS"), DialKey("8", "TUV"), DialKey("9", "WXYZ"),
+        DialKey("*"), DialKey("0", "+"), DialKey("#")
+    )
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(72.dp)
+            .clip(RoundedCornerShape(18.dp))
+            .border(1.dp, EagleBorder, RoundedCornerShape(18.dp))
+            .padding(horizontal = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = number.ifBlank { "Digite o ramal ou telefone" },
+            modifier = Modifier.weight(1f),
+            color = if (number.isBlank()) EagleTextMuted else EagleText,
+            fontSize = when {
+                number.length > 22 -> 19.sp
+                number.length > 15 -> 24.sp
+                else -> 31.sp
+            },
+            fontWeight = if (number.isBlank()) FontWeight.SemiBold else FontWeight.Normal,
+            textAlign = TextAlign.Center,
+            maxLines = 1
+        )
+        Box(
+            modifier = Modifier
+                .size(48.dp)
+                .clip(RoundedCornerShape(13.dp))
+                .border(1.dp, EagleBorder, RoundedCornerShape(13.dp))
+                .combinedClickable(
+                    enabled = number.isNotEmpty(),
+                    onClick = { number = number.dropLast(1) },
+                    onLongClick = { number = "" }
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = "⌫",
+                color = if (number.isEmpty()) EagleTextMuted else EagleText,
+                fontSize = 24.sp
+            )
+        }
+    }
+    Spacer(Modifier.height(8.dp))
+    keys.chunked(3).forEach { row ->
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(7.dp)
+        ) {
+            row.forEach { key ->
+                DialKeyButton(
+                    key = key,
+                    modifier = Modifier.weight(1f),
+                    onClick = { number += key.digit },
+                    onLongClick = {
+                        if (key.digit == "0") {
+                            number += "+"
+                        }
+                    }
+                )
+            }
+        }
+        Spacer(Modifier.height(7.dp))
+    }
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(7.dp)
+    ) {
+        DialActionButton(
+            symbol = "♩",
+            label = "Microfone",
+            modifier = Modifier.weight(1f)
+        )
+        DialActionButton(
+            symbol = "☎",
+            label = "",
+            primary = true,
+            enabled = false,
+            modifier = Modifier.weight(1f)
+        )
+        DialActionButton(
+            symbol = "◖))",
+            label = "Áudio",
+            modifier = Modifier.weight(1f)
+        )
+    }
+    Spacer(Modifier.height(7.dp))
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(7.dp)
+    ) {
+        DialActionButton("↦", "Transferir", enabled = false, modifier = Modifier.weight(1f))
+        DialActionButton("Ⅱ", "Espera", enabled = false, modifier = Modifier.weight(1f))
+        DialActionButton("☎+", "Adicionar", enabled = false, modifier = Modifier.weight(1f))
+    }
+    Spacer(Modifier.height(8.dp))
+    Text(
+        text = "Telefonia SIP em preparação",
+        color = EagleTextMuted,
+        fontSize = 11.sp
+    )
+}
+
+private data class DialKey(val digit: String, val letters: String = "")
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun DialKeyButton(
+    key: DialKey,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+    onLongClick: () -> Unit
+) {
+    Column(
+        modifier = modifier
+            .height(52.dp)
+            .clip(RoundedCornerShape(15.dp))
+            .border(1.dp, EagleBorder, RoundedCornerShape(15.dp))
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text(
+            text = key.digit,
+            color = EagleText,
+            fontSize = 25.sp,
+            lineHeight = 25.sp
+        )
+        if (key.letters.isNotEmpty()) {
+            Text(
+                text = key.letters,
+                color = EagleText,
+                fontSize = 9.sp,
+                lineHeight = 9.sp
+            )
+        }
+    }
+}
+
+@Composable
+private fun DialActionButton(
+    symbol: String,
+    label: String,
+    modifier: Modifier = Modifier,
+    primary: Boolean = false,
+    enabled: Boolean = true
+) {
+    Row(
+        modifier = modifier
+            .height(52.dp)
+            .clip(RoundedCornerShape(15.dp))
+            .background(if (primary) EagleBlueDark else EagleNavyLight)
+            .border(1.dp, if (primary) EagleBlue else EagleBorder, RoundedCornerShape(15.dp)),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = symbol,
+            color = if (enabled || primary) EagleBlue else EagleBorder,
+            fontSize = if (primary) 25.sp else 19.sp,
+            fontWeight = FontWeight.Bold
+        )
+        if (label.isNotEmpty()) {
+            Spacer(Modifier.width(6.dp))
+            Text(
+                text = label,
+                color = if (enabled) EagleText else EagleTextMuted,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
     }
 }
 
