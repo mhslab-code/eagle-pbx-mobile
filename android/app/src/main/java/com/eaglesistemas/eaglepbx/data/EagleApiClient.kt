@@ -6,6 +6,7 @@ import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URI
 import java.net.URLEncoder
+import java.io.File
 import javax.net.ssl.HttpsURLConnection
 
 class EagleApiClient(
@@ -115,6 +116,64 @@ class EagleApiClient(
             )
         }
         return contacts.values.sortedBy { it.name.lowercase() }
+    }
+
+    fun history(): List<HistoryCall> {
+        val response = readResponse(
+            connection("/api/history", "GET").apply {
+                sessionStore.read()?.let { setRequestProperty("Cookie", it) }
+            }
+        )
+        val items = JSONObject(response.body).optJSONArray("items") ?: JSONArray()
+        return buildList {
+            for (index in 0 until items.length()) {
+                val item = items.optJSONObject(index) ?: continue
+                add(
+                    HistoryCall(
+                        id = item.optString("id"),
+                        direction = item.optString("direction"),
+                        remoteNumber = item.optString("remote_number"),
+                        remoteName = item.optString("remote_name"),
+                        remoteAvatar = item.optString("remote_avatar")
+                            .takeUnless { it.isBlank() || it == "null" },
+                        startedAt = item.optString("started_at"),
+                        durationSeconds = item.optInt("duration_seconds"),
+                        result = item.optString("result"),
+                        recording = item.optBoolean("recording")
+                    )
+                )
+            }
+        }
+    }
+
+    fun downloadRecording(callId: String, target: File): File {
+        require(callId.matches(Regex("[0-9.]+"))) { "Identificador de chamada inválido." }
+        val connection = connection("/api/history/$callId/recording", "GET").apply {
+            sessionStore.read()?.let { setRequestProperty("Cookie", it) }
+            setRequestProperty("Accept", "audio/*")
+            readTimeout = 60_000
+        }
+        try {
+            val status = connection.responseCode
+            if (status !in 200..299) {
+                val body = connection.errorStream
+                    ?.bufferedReader(Charsets.UTF_8)
+                    ?.use { it.readText() }
+                    .orEmpty()
+                val message = runCatching { JSONObject(body).optString("detail") }
+                    .getOrNull()
+                    .takeUnless { it.isNullOrBlank() }
+                    ?: "Não foi possível carregar a gravação."
+                throw ApiException(message, status)
+            }
+            target.parentFile?.mkdirs()
+            connection.inputStream.use { input ->
+                target.outputStream().use(input::copyTo)
+            }
+            return target
+        } finally {
+            connection.disconnect()
+        }
     }
 
     private fun requestUser(path: String): AuthenticatedUser {

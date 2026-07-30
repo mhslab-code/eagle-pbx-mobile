@@ -41,6 +41,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TextButton
@@ -69,6 +70,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.eaglesistemas.eaglepbx.data.AuthenticatedUser
 import com.eaglesistemas.eaglepbx.data.EagleContact
+import com.eaglesistemas.eaglepbx.data.HistoryCall
 import com.eaglesistemas.eaglepbx.ui.theme.EagleBlue
 import com.eaglesistemas.eaglepbx.ui.theme.EagleBlueDark
 import com.eaglesistemas.eaglepbx.ui.theme.EagleBorder
@@ -80,6 +82,9 @@ import com.eaglesistemas.eaglepbx.ui.theme.EagleText
 import com.eaglesistemas.eaglepbx.ui.theme.EagleTextMuted
 import com.eaglesistemas.eaglepbx.ui.theme.EaglePBXTheme
 import com.eaglesistemas.eaglepbx.ui.login.LoginViewModel
+import java.time.OffsetDateTime
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -106,6 +111,18 @@ fun EaglePBXApp(viewModel: LoginViewModel = viewModel()) {
             loadingContacts = state.loadingContacts,
             contactsError = state.contactsError,
             onLoadContacts = viewModel::loadContacts,
+            history = state.history,
+            loadingHistory = state.loadingHistory,
+            historyError = state.historyError,
+            onLoadHistory = viewModel::loadHistory,
+            loadingRecordingId = state.loadingRecordingId,
+            activeRecordingId = state.activeRecordingId,
+            recordingPlaying = state.recordingPlaying,
+            recordingPosition = state.recordingPosition,
+            recordingDuration = state.recordingDuration,
+            recordingError = state.recordingError,
+            onToggleRecording = viewModel::toggleRecording,
+            onSeekRecording = viewModel::seekRecording,
             onPresenceChange = viewModel::updatePresence,
             onLogout = viewModel::logout
         )
@@ -312,6 +329,18 @@ fun AuthenticatedScreen(
     loadingContacts: Boolean,
     contactsError: String?,
     onLoadContacts: (Boolean) -> Unit,
+    history: List<HistoryCall>,
+    loadingHistory: Boolean,
+    historyError: String?,
+    onLoadHistory: (Boolean) -> Unit,
+    loadingRecordingId: String?,
+    activeRecordingId: String?,
+    recordingPlaying: Boolean,
+    recordingPosition: Int,
+    recordingDuration: Int,
+    recordingError: String?,
+    onToggleRecording: (HistoryCall) -> Unit,
+    onSeekRecording: (Int) -> Unit,
     onPresenceChange: (String) -> Unit,
     onLogout: () -> Unit
 ) {
@@ -331,6 +360,7 @@ fun AuthenticatedScreen(
 
     LaunchedEffect(selectedSection) {
         if (selectedSection == MainSection.CONTACTS) onLoadContacts(false)
+        if (selectedSection == MainSection.HISTORY) onLoadHistory(false)
     }
 
     Box(
@@ -452,7 +482,20 @@ fun AuthenticatedScreen(
                         error = contactsError,
                         onRefresh = { onLoadContacts(true) }
                     )
-                    MainSection.HISTORY -> PreparedSection(selectedSection)
+                    MainSection.HISTORY -> HistoryContent(
+                        calls = history,
+                        loading = loadingHistory,
+                        error = historyError,
+                        onRefresh = { onLoadHistory(true) },
+                        loadingRecordingId = loadingRecordingId,
+                        activeRecordingId = activeRecordingId,
+                        recordingPlaying = recordingPlaying,
+                        recordingPosition = recordingPosition,
+                        recordingDuration = recordingDuration,
+                        recordingError = recordingError,
+                        onToggleRecording = onToggleRecording,
+                        onSeekRecording = onSeekRecording
+                    )
                 }
             }
             Spacer(Modifier.height(12.dp))
@@ -800,6 +843,330 @@ private fun ContactNumbersDialog(
         textContentColor = EagleText,
         titleContentColor = EagleText
     )
+}
+
+@Composable
+private fun HistoryContent(
+    calls: List<HistoryCall>,
+    loading: Boolean,
+    error: String?,
+    onRefresh: () -> Unit,
+    loadingRecordingId: String?,
+    activeRecordingId: String?,
+    recordingPlaying: Boolean,
+    recordingPosition: Int,
+    recordingDuration: Int,
+    recordingError: String?,
+    onToggleRecording: (HistoryCall) -> Unit,
+    onSeekRecording: (Int) -> Unit
+) {
+    var missedOnly by rememberSaveable { mutableStateOf(false) }
+    val filtered = remember(calls, missedOnly) {
+        if (missedOnly) calls.filter(HistoryCall::missed) else calls
+    }
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = "Histórico",
+                color = EagleText,
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = "Acompanhe suas chamadas recentes.",
+                color = EagleTextMuted,
+                fontSize = 12.sp
+            )
+        }
+        Button(
+            onClick = onRefresh,
+            enabled = !loading,
+            shape = RoundedCornerShape(12.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = EagleNavy,
+                contentColor = EagleBlue
+            )
+        ) {
+            if (loading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(18.dp),
+                    color = EagleBlue,
+                    strokeWidth = 2.dp
+                )
+            } else {
+                Text("Atualizar", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            }
+        }
+    }
+    Spacer(Modifier.height(10.dp))
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(46.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(EagleNavy)
+            .border(1.dp, EagleBorder, RoundedCornerShape(14.dp))
+            .padding(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        HistoryFilter(
+            label = "Todas",
+            selected = !missedOnly,
+            modifier = Modifier.weight(1f),
+            onClick = { missedOnly = false }
+        )
+        HistoryFilter(
+            label = "Perdidas",
+            selected = missedOnly,
+            modifier = Modifier.weight(1f),
+            onClick = { missedOnly = true }
+        )
+    }
+    Spacer(Modifier.height(10.dp))
+    if (!recordingError.isNullOrBlank()) {
+        Text(
+            text = recordingError,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 8.dp),
+            color = EagleDanger,
+            fontSize = 11.sp,
+            textAlign = TextAlign.Center
+        )
+    }
+    when {
+        loading && calls.isEmpty() -> Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            CircularProgressIndicator(color = EagleBlue)
+        }
+        !error.isNullOrBlank() && calls.isEmpty() -> Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(error, color = EagleDanger, textAlign = TextAlign.Center)
+        }
+        filtered.isEmpty() -> Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = if (missedOnly) {
+                    "Nenhuma chamada perdida."
+                } else {
+                    "Nenhuma ligação registrada neste aplicativo."
+                },
+                color = EagleTextMuted,
+                textAlign = TextAlign.Center
+            )
+        }
+        else -> LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            items(filtered, key = { it.id }) { call ->
+                HistoryCard(
+                    call = call,
+                    loading = loadingRecordingId == call.id,
+                    active = activeRecordingId == call.id,
+                    playing = activeRecordingId == call.id && recordingPlaying,
+                    position = if (activeRecordingId == call.id) recordingPosition else 0,
+                    playerDuration = if (activeRecordingId == call.id) recordingDuration else 0,
+                    onToggle = { onToggleRecording(call) },
+                    onSeek = onSeekRecording
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun HistoryFilter(
+    label: String,
+    selected: Boolean,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .clip(RoundedCornerShape(10.dp))
+            .background(if (selected) EagleBlueDark else EagleNavy)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = label,
+            color = if (selected) EagleText else EagleTextMuted,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Bold
+        )
+    }
+}
+
+@Composable
+private fun HistoryCard(
+    call: HistoryCall,
+    loading: Boolean,
+    active: Boolean,
+    playing: Boolean,
+    position: Int,
+    playerDuration: Int,
+    onToggle: () -> Unit,
+    onSeek: (Int) -> Unit
+) {
+    val displayName = call.remoteName.ifBlank {
+        call.remoteNumber.ifBlank { "Número desconhecido" }
+    }
+    val directionLabel = when {
+        call.missed -> "Perdida"
+        call.direction == "in" -> "Recebida"
+        else -> "Efetuada"
+    }
+    val directionSymbol = if (call.direction == "in") "↙" else "↗"
+    val directionColor = when {
+        call.missed -> EagleDanger
+        call.direction == "in" -> EagleSuccess
+        else -> EagleBlue
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(EagleNavy)
+            .border(1.dp, EagleBorder, RoundedCornerShape(16.dp))
+            .padding(12.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            ContactAvatar(
+                EagleContact(
+                    name = displayName,
+                    numbers = emptyList(),
+                    photo = call.remoteAvatar
+                )
+            )
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(horizontal = 10.dp)
+            ) {
+                Text(
+                    text = "$directionSymbol $displayName",
+                    color = directionColor,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = "$directionLabel · ${formatHistoryDate(call.startedAt)}",
+                    color = EagleTextMuted,
+                    fontSize = 11.sp
+                )
+            }
+            Column(horizontalAlignment = Alignment.End) {
+                Text(
+                    text = "DURAÇÃO",
+                    color = EagleTextMuted,
+                    fontSize = 8.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = formatDuration(call.durationSeconds),
+                    color = EagleText,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+        Spacer(Modifier.height(10.dp))
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(1.dp)
+                .background(EagleBorder)
+        )
+        Spacer(Modifier.height(9.dp))
+        if (call.recording) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(34.dp)
+                        .clip(CircleShape)
+                        .border(1.dp, EagleBlue, CircleShape)
+                        .clickable(enabled = !loading, onClick = onToggle),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (loading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(17.dp),
+                            color = EagleBlue,
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Text(
+                            text = if (playing) "Ⅱ" else "▶",
+                            color = EagleBlue,
+                            fontSize = 13.sp
+                        )
+                    }
+                }
+                Slider(
+                    value = position.toFloat(),
+                    onValueChange = { onSeek(it.toInt()) },
+                    enabled = active && playerDuration > 0,
+                    valueRange = 0f..playerDuration.coerceAtLeast(1).toFloat(),
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(horizontal = 7.dp)
+                )
+                Text(
+                    text = if (active) {
+                        "${formatMilliseconds(position)} / ${formatMilliseconds(playerDuration)}"
+                    } else {
+                        "0:00 / --:--"
+                    },
+                    color = EagleTextMuted,
+                    fontSize = 9.sp
+                )
+            }
+        } else {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(text = "⌁", color = EagleTextMuted, fontSize = 15.sp)
+                Spacer(Modifier.width(9.dp))
+                Text(
+                    text = "Gravação indisponível",
+                    color = EagleTextMuted,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+        }
+    }
+}
+
+private fun formatDuration(totalSeconds: Int): String {
+    val seconds = totalSeconds.coerceAtLeast(0)
+    return "%d:%02d".format(seconds / 60, seconds % 60)
+}
+
+private fun formatMilliseconds(milliseconds: Int): String =
+    formatDuration(milliseconds.coerceAtLeast(0) / 1000)
+
+private fun formatHistoryDate(value: String): String {
+    if (value.isBlank()) return ""
+    return runCatching {
+        OffsetDateTime.parse(value).format(
+            DateTimeFormatter.ofPattern(
+                "dd/MM/yyyy, HH:mm:ss",
+                Locale.forLanguageTag("pt-BR")
+            )
+        )
+    }.getOrDefault(value)
 }
 
 @OptIn(ExperimentalFoundationApi::class)

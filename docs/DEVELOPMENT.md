@@ -45,6 +45,17 @@ definitiva de assinatura e suas senhas não pertencem ao repositório.
 
 ## Marcos validados
 
+### 0.1.4
+
+- histórico pessoal carregado pela API autenticada;
+- fotos, nomes, direção, resultado, data, horário e duração validados;
+- filtros Todas e Perdidas;
+- indicação de gravação disponível ou indisponível;
+- player autenticado com reprodução, pausa, avanço e contador;
+- arquivo autorizado mantido somente no cache temporário;
+- continuidade e retomada do áudio pendentes de confirmação em aparelho físico,
+  pois o encaminhamento de áudio por RDP apresentou estalos.
+
 ### 0.1.3
 
 - agenda corporativa carregada pela API autenticada;

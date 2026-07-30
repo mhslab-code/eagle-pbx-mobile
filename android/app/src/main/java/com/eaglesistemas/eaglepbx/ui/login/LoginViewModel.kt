@@ -1,19 +1,24 @@
 package com.eaglesistemas.eaglepbx.ui.login
 
 import android.app.Application
+import android.media.MediaPlayer
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.eaglesistemas.eaglepbx.data.ApiException
 import com.eaglesistemas.eaglepbx.data.AuthenticatedUser
 import com.eaglesistemas.eaglepbx.data.EagleApiClient
 import com.eaglesistemas.eaglepbx.data.EagleContact
+import com.eaglesistemas.eaglepbx.data.HistoryCall
 import com.eaglesistemas.eaglepbx.data.SecureSessionStore
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.File
 import java.io.IOException
 
 data class LoginUiState(
@@ -23,14 +28,26 @@ data class LoginUiState(
     val loadingContacts: Boolean = false,
     val contactsLoaded: Boolean = false,
     val contacts: List<EagleContact> = emptyList(),
+    val loadingHistory: Boolean = false,
+    val historyLoaded: Boolean = false,
+    val history: List<HistoryCall> = emptyList(),
+    val loadingRecordingId: String? = null,
+    val activeRecordingId: String? = null,
+    val recordingPlaying: Boolean = false,
+    val recordingPosition: Int = 0,
+    val recordingDuration: Int = 0,
     val user: AuthenticatedUser? = null,
     val error: String? = null,
     val presenceError: String? = null,
-    val contactsError: String? = null
+    val contactsError: String? = null,
+    val historyError: String? = null,
+    val recordingError: String? = null
 )
 
 class LoginViewModel(application: Application) : AndroidViewModel(application) {
     private val api = EagleApiClient(SecureSessionStore(application))
+    private var mediaPlayer: MediaPlayer? = null
+    private var playbackJob: Job? = null
     private val mutableState = MutableStateFlow(LoginUiState())
     val state: StateFlow<LoginUiState> = mutableState.asStateFlow()
 
@@ -125,6 +142,148 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
                 )
             }
         }
+    }
+
+    fun loadHistory(force: Boolean = false) {
+        val current = mutableState.value
+        if (current.loadingHistory || current.user == null ||
+            (!force && current.historyLoaded)
+        ) return
+        mutableState.value = current.copy(
+            loadingHistory = true,
+            historyError = null
+        )
+        viewModelScope.launch {
+            val result = runCatching {
+                withContext(Dispatchers.IO) { api.history() }
+            }
+            val error = result.exceptionOrNull()
+            mutableState.value = mutableState.value.copy(
+                loadingHistory = false,
+                historyLoaded = result.isSuccess,
+                history = result.getOrNull() ?: mutableState.value.history,
+                historyError = error?.toFriendlyMessage()
+            )
+            if (error is ApiException && error.statusCode in listOf(401, 403)) {
+                withContext(Dispatchers.IO) { api.logout() }
+                mutableState.value = LoginUiState(
+                    restoringSession = false,
+                    error = error.toFriendlyMessage()
+                )
+            }
+        }
+    }
+
+    fun toggleRecording(call: HistoryCall) {
+        if (!call.recording || call.id.isBlank() ||
+            mutableState.value.loadingRecordingId != null
+        ) return
+        if (mutableState.value.activeRecordingId == call.id && mediaPlayer != null) {
+            val player = requireNotNull(mediaPlayer)
+            if (player.isPlaying) player.pause() else player.start()
+            mutableState.value = mutableState.value.copy(
+                recordingPlaying = player.isPlaying,
+                recordingError = null
+            )
+            if (player.isPlaying) monitorPlayback(call.id)
+            return
+        }
+
+        releasePlayer()
+        mutableState.value = mutableState.value.copy(
+            loadingRecordingId = call.id,
+            activeRecordingId = null,
+            recordingPlaying = false,
+            recordingPosition = 0,
+            recordingDuration = 0,
+            recordingError = null
+        )
+        viewModelScope.launch {
+            val result = runCatching {
+                withContext(Dispatchers.IO) {
+                    val directory = getApplication<Application>().cacheDir
+                        .resolve("recordings")
+                    directory.listFiles()?.forEach(File::delete)
+                    api.downloadRecording(
+                        call.id,
+                        directory.resolve("authorized-recording")
+                    )
+                }
+            }
+            val file = result.getOrNull()
+            if (file == null) {
+                mutableState.value = mutableState.value.copy(
+                    loadingRecordingId = null,
+                    recordingError = result.exceptionOrNull()?.toFriendlyMessage()
+                )
+                return@launch
+            }
+            runCatching {
+                MediaPlayer().also { player ->
+                    player.setDataSource(file.absolutePath)
+                    player.prepare()
+                    player.setOnCompletionListener {
+                        mutableState.value = mutableState.value.copy(
+                            recordingPlaying = false,
+                            recordingPosition = mutableState.value.recordingDuration
+                        )
+                    }
+                    player.start()
+                    mediaPlayer = player
+                }
+            }.onSuccess {
+                val player = requireNotNull(mediaPlayer)
+                mutableState.value = mutableState.value.copy(
+                    loadingRecordingId = null,
+                    activeRecordingId = call.id,
+                    recordingPlaying = true,
+                    recordingDuration = player.duration.coerceAtLeast(0),
+                    recordingPosition = 0
+                )
+                monitorPlayback(call.id)
+            }.onFailure {
+                releasePlayer()
+                mutableState.value = mutableState.value.copy(
+                    loadingRecordingId = null,
+                    recordingError = "Não foi possível reproduzir esta gravação."
+                )
+            }
+        }
+    }
+
+    fun seekRecording(position: Int) {
+        val player = mediaPlayer ?: return
+        val target = position.coerceIn(0, player.duration.coerceAtLeast(0))
+        player.seekTo(target)
+        mutableState.value = mutableState.value.copy(recordingPosition = target)
+    }
+
+    private fun monitorPlayback(callId: String) {
+        playbackJob?.cancel()
+        playbackJob = viewModelScope.launch {
+            while (mutableState.value.activeRecordingId == callId) {
+                val player = mediaPlayer ?: break
+                mutableState.value = mutableState.value.copy(
+                    recordingPlaying = player.isPlaying,
+                    recordingPosition = player.currentPosition.coerceAtLeast(0),
+                    recordingDuration = player.duration.coerceAtLeast(0)
+                )
+                if (!player.isPlaying) break
+                delay(400)
+            }
+        }
+    }
+
+    private fun releasePlayer() {
+        playbackJob?.cancel()
+        playbackJob = null
+        mediaPlayer?.release()
+        mediaPlayer = null
+    }
+
+    override fun onCleared() {
+        releasePlayer()
+        super.onCleared()
     }
 
     private fun Throwable.toFriendlyMessage(): String = when (this) {
