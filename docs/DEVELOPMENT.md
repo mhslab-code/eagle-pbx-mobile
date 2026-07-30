@@ -45,6 +45,17 @@ definitiva de assinatura e suas senhas não pertencem ao repositório.
 
 ## Marcos validados
 
+### 0.1.9
+
+- chamada interna recebida em primeiro plano;
+- modal com nome, ramal e fotografia da agenda autorizada;
+- recusa integrada à API homologada do Eagle PBX, encerrando a chamada em todos
+  os dispositivos;
+- atendimento pelo Android interrompendo o toque no Groundwire;
+- encerramento pelo Android refletido imediatamente na origem;
+- testes unitários, compilação e instalação no emulador aprovados;
+- áudio bidirecional permanece pendente de aparelho físico.
+
 ### 0.1.8
 
 - botão de chamada habilitado somente com registro SIP e destino preenchido;

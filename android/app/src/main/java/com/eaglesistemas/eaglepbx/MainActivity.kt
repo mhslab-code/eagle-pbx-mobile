@@ -84,6 +84,7 @@ import com.eaglesistemas.eaglepbx.ui.theme.EaglePBXTheme
 import com.eaglesistemas.eaglepbx.ui.login.LoginViewModel
 import com.eaglesistemas.eaglepbx.telephony.SipCallStatus
 import com.eaglesistemas.eaglepbx.telephony.SipEngineStatus
+import com.eaglesistemas.eaglepbx.telephony.IncomingSipCall
 import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -125,6 +126,7 @@ fun EaglePBXApp(viewModel: LoginViewModel = viewModel()) {
             recordingError = state.recordingError,
             sipEngineStatus = state.sipEngineStatus,
             sipCallStatus = state.sipCallStatus,
+            incomingSipCall = state.incomingSipCall,
             registeringMobileDevice = state.registeringMobileDevice,
             mobileDeviceStatus = state.mobileDevice?.status,
             mobileDeviceError = state.mobileDeviceError,
@@ -132,6 +134,8 @@ fun EaglePBXApp(viewModel: LoginViewModel = viewModel()) {
             onSeekRecording = viewModel::seekRecording,
             onPlaceCall = viewModel::placeCall,
             onHangupCall = viewModel::hangupCall,
+            onAcceptIncomingCall = viewModel::acceptIncomingCall,
+            onRejectIncomingCall = viewModel::rejectIncomingCall,
             onPresenceChange = viewModel::updatePresence,
             onLogout = viewModel::logout
         )
@@ -350,6 +354,7 @@ fun AuthenticatedScreen(
     recordingError: String?,
     sipEngineStatus: SipEngineStatus,
     sipCallStatus: SipCallStatus,
+    incomingSipCall: IncomingSipCall?,
     registeringMobileDevice: Boolean,
     mobileDeviceStatus: String?,
     mobileDeviceError: String?,
@@ -357,6 +362,8 @@ fun AuthenticatedScreen(
     onSeekRecording: (Int) -> Unit,
     onPlaceCall: (String) -> Unit,
     onHangupCall: () -> Unit,
+    onAcceptIncomingCall: () -> Unit,
+    onRejectIncomingCall: () -> Unit,
     onPresenceChange: (String) -> Unit,
     onLogout: () -> Unit
 ) {
@@ -563,6 +570,14 @@ fun AuthenticatedScreen(
                 accountDialogOpen = false
                 onLogout()
             }
+        )
+    }
+    if (sipCallStatus == SipCallStatus.INCOMING && incomingSipCall != null) {
+        IncomingCallDialog(
+            call = incomingSipCall,
+            contacts = contacts,
+            onAccept = onAcceptIncomingCall,
+            onReject = onRejectIncomingCall
         )
     }
 }
@@ -1206,6 +1221,7 @@ private fun DialerContent(
 ) {
     var number by rememberSaveable { mutableStateOf("") }
     val callActive = sipCallStatus in setOf(
+        SipCallStatus.INCOMING,
         SipCallStatus.OUTGOING,
         SipCallStatus.RINGING,
         SipCallStatus.CONNECTED,
@@ -1330,6 +1346,7 @@ private fun DialerContent(
         Text(
             text = when (sipCallStatus) {
                 SipCallStatus.OUTGOING -> "Iniciando chamada..."
+                SipCallStatus.INCOMING -> "Chamada recebida"
                 SipCallStatus.RINGING -> "Chamando..."
                 SipCallStatus.CONNECTED -> "Em chamada"
                 SipCallStatus.ENDING -> "Encerrando chamada..."
@@ -1381,6 +1398,91 @@ private fun DialerContent(
             else -> EagleTextMuted
         },
         fontSize = 11.sp
+    )
+}
+
+@Composable
+private fun IncomingCallDialog(
+    call: IncomingSipCall,
+    contacts: List<EagleContact>,
+    onAccept: () -> Unit,
+    onReject: () -> Unit
+) {
+    val digits = call.number.filter(Char::isDigit)
+    val contact = contacts.firstOrNull { item ->
+        item.numbers.any { number ->
+            val candidate = number.number.filter(Char::isDigit)
+            candidate == digits ||
+                (digits.isNotBlank() && candidate.endsWith(digits)) ||
+                (candidate.isNotBlank() && digits.endsWith(candidate))
+        }
+    }
+    val name = contact?.name
+        ?: call.displayName?.takeUnless { it == call.number }
+        ?: "Chamada recebida"
+
+    AlertDialog(
+        onDismissRequest = {},
+        containerColor = EagleNavyLight,
+        titleContentColor = EagleText,
+        textContentColor = EagleTextMuted,
+        title = {
+            Text(
+                text = "Chamada recebida",
+                modifier = Modifier.fillMaxWidth(),
+                textAlign = TextAlign.Center,
+                fontWeight = FontWeight.Bold
+            )
+        },
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                ContactAvatar(
+                    contact ?: EagleContact(
+                        name = name,
+                        numbers = emptyList(),
+                        photo = null
+                    )
+                )
+                Spacer(Modifier.height(12.dp))
+                Text(
+                    text = name,
+                    color = EagleText,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center
+                )
+                Text(
+                    text = call.number,
+                    color = EagleTextMuted,
+                    fontSize = 16.sp
+                )
+            }
+        },
+        dismissButton = {
+            Button(
+                onClick = onReject,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = EagleDanger,
+                    contentColor = EagleText
+                )
+            ) {
+                Text("Recusar", fontWeight = FontWeight.Bold)
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = onAccept,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = EagleSuccess,
+                    contentColor = EagleNavy
+                )
+            ) {
+                Text("Atender", fontWeight = FontWeight.Bold)
+            }
+        }
     )
 }
 

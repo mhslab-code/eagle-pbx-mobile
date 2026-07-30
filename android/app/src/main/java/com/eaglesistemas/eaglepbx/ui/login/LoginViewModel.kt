@@ -14,6 +14,7 @@ import com.eaglesistemas.eaglepbx.data.DeviceIdentityStore
 import com.eaglesistemas.eaglepbx.data.MobileDeviceRegistration
 import com.eaglesistemas.eaglepbx.data.SecureSessionStore
 import com.eaglesistemas.eaglepbx.telephony.LinphoneEngine
+import com.eaglesistemas.eaglepbx.telephony.IncomingSipCall
 import com.eaglesistemas.eaglepbx.telephony.SipCallStatus
 import com.eaglesistemas.eaglepbx.telephony.SipEngineStatus
 import kotlinx.coroutines.Dispatchers
@@ -44,6 +45,8 @@ data class LoginUiState(
     val recordingDuration: Int = 0,
     val sipEngineStatus: SipEngineStatus = SipEngineStatus.INITIALIZING,
     val sipCallStatus: SipCallStatus = SipCallStatus.IDLE,
+    val incomingSipCall: IncomingSipCall? = null,
+    val sipCallError: String? = null,
     val registeringMobileDevice: Boolean = false,
     val mobileDevice: MobileDeviceRegistration? = null,
     val mobileDeviceError: String? = null,
@@ -143,6 +146,14 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
                     mutableState.value = mutableState.value.copy(
                         sipCallStatus = status
                     )
+                },
+                onIncomingCallChanged = { call ->
+                    mutableState.value = mutableState.value.copy(
+                        incomingSipCall = call
+                    )
+                    if (call != null && !mutableState.value.contactsLoaded) {
+                        loadContacts(false)
+                    }
                 }
             ).also {
                 it.start()
@@ -189,6 +200,37 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
 
     fun hangupCall() {
         linphoneEngine?.hangupCall()
+    }
+
+    fun acceptIncomingCall() {
+        if (mutableState.value.sipCallStatus != SipCallStatus.INCOMING) return
+        if (linphoneEngine?.acceptIncomingCall() != true) {
+            mutableState.value = mutableState.value.copy(
+                sipCallStatus = SipCallStatus.FAILED,
+                incomingSipCall = null
+            )
+        }
+    }
+
+    fun rejectIncomingCall() {
+        if (mutableState.value.sipCallStatus != SipCallStatus.INCOMING) return
+        linphoneEngine?.rejectIncomingCall()
+        mutableState.value = mutableState.value.copy(
+            sipCallStatus = SipCallStatus.ENDING,
+            incomingSipCall = null,
+            sipCallError = null
+        )
+        viewModelScope.launch {
+            val result = runCatching {
+                withContext(Dispatchers.IO) { api.declineIncomingCall() }
+            }
+            if (result.isFailure) {
+                mutableState.value = mutableState.value.copy(
+                    sipCallStatus = SipCallStatus.FAILED,
+                    sipCallError = result.exceptionOrNull()?.toFriendlyMessage()
+                )
+            }
+        }
     }
 
     fun logout() {

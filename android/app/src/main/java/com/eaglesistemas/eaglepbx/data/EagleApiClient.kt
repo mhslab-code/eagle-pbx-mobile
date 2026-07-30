@@ -118,6 +118,16 @@ class EagleApiClient(
         return requestUser("/api/me", "PATCH", payload)
     }
 
+    fun declineIncomingCall() {
+        readResponse(
+            connection("/api/calls/decline", "POST").apply {
+                sessionStore.read()?.let { setRequestProperty("Cookie", it) }
+                doOutput = true
+                outputStream.use { it.write(ByteArray(0)) }
+            }
+        )
+    }
+
     fun contacts(force: Boolean = false): List<EagleContact> {
         val path = if (force) "/api/contacts?refresh=1" else "/api/contacts"
         val response = readResponse(

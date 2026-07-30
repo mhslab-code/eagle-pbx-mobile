@@ -63,6 +63,12 @@ acompanhados pelo Liblinphone, e o aplicativo pode encerrar a chamada durante a
 tentativa ou depois do atendimento. O áudio permanece como etapa separada de
 homologação.
 
+Na versão 0.1.9, chamadas recebidas em primeiro plano exibem identidade,
+ramal e foto obtidos da agenda autorizada. O atendimento ocorre diretamente
+pelo Liblinphone e faz os demais dispositivos pararem de tocar. A recusa usa
+também a API de telefonia já homologada no desktop, encerrando a chamada em
+todos os dispositivos do ramal.
+
 O estado de presença já utiliza a API existente do Eagle PBX. Temporariamente,
 o DND continua sendo aplicado ao ramal inteiro no Asterisk. A separação do DND
 por instalação — Android, PWA, desktop e softphones — fica prevista para a
@@ -93,8 +99,8 @@ operação.
 
 - protótipo Liblinphone e compatibilidade de 16 KB validados;
 - registro SIP individual validado;
-- chamada interna originada e encerramento validados; recebimento e chamadas
-  externas pendentes;
+- chamadas internas originadas e recebidas, atendimento, recusa global e
+  encerramento validados; chamadas externas pendentes;
 - áudio bidirecional;
 - DTMF;
 - rotas de áudio e Bluetooth.

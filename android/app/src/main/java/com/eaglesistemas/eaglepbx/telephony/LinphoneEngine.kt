@@ -23,12 +23,18 @@ enum class SipEngineStatus {
 
 enum class SipCallStatus {
     IDLE,
+    INCOMING,
     OUTGOING,
     RINGING,
     CONNECTED,
     ENDING,
     FAILED
 }
+
+data class IncomingSipCall(
+    val number: String,
+    val displayName: String?
+)
 
 /**
  * Owns the native SIP core and the authenticated per-device account.
@@ -39,7 +45,8 @@ enum class SipCallStatus {
 class LinphoneEngine(
     context: Context,
     private val onStatusChanged: (SipEngineStatus) -> Unit,
-    private val onCallStatusChanged: (SipCallStatus) -> Unit
+    private val onCallStatusChanged: (SipCallStatus) -> Unit,
+    private val onIncomingCallChanged: (IncomingSipCall?) -> Unit
 ) {
     private val core: Core = Factory.instance().createCore(
         null,
@@ -76,6 +83,20 @@ class LinphoneEngine(
             message: String
         ) {
             when (state) {
+                Call.State.IncomingReceived,
+                Call.State.IncomingEarlyMedia -> {
+                    activeCall = call
+                    val remote = call.remoteAddress
+                    onIncomingCallChanged(
+                        IncomingSipCall(
+                            number = remote.username.orEmpty(),
+                            displayName = remote.displayName
+                                ?.trim()
+                                ?.takeIf(String::isNotBlank)
+                        )
+                    )
+                    onCallStatusChanged(SipCallStatus.INCOMING)
+                }
                 Call.State.OutgoingInit,
                 Call.State.OutgoingProgress -> {
                     activeCall = call
@@ -89,15 +110,18 @@ class LinphoneEngine(
                 Call.State.Connected,
                 Call.State.StreamsRunning -> {
                     activeCall = call
+                    onIncomingCallChanged(null)
                     onCallStatusChanged(SipCallStatus.CONNECTED)
                 }
                 Call.State.Error -> {
                     activeCall = null
+                    onIncomingCallChanged(null)
                     onCallStatusChanged(SipCallStatus.FAILED)
                 }
                 Call.State.End,
                 Call.State.Released -> {
                     activeCall = null
+                    onIncomingCallChanged(null)
                     onCallStatusChanged(SipCallStatus.IDLE)
                 }
                 else -> Unit
@@ -174,6 +198,21 @@ class LinphoneEngine(
         }
     }
 
+    fun acceptIncomingCall(): Boolean {
+        val call = activeCall ?: return false
+        return call.accept() == 0
+    }
+
+    fun rejectIncomingCall(): Boolean {
+        val call = activeCall ?: return false
+        val accepted = call.terminate() == 0
+        if (accepted) {
+            onIncomingCallChanged(null)
+            onCallStatusChanged(SipCallStatus.ENDING)
+        }
+        return accepted
+    }
+
     fun clearAccount() {
         activeCall?.terminate()
         activeCall = null
@@ -182,6 +221,7 @@ class LinphoneEngine(
         account = null
         authInfo = null
         sipDomain = null
+        onIncomingCallChanged(null)
         onCallStatusChanged(SipCallStatus.IDLE)
     }
 
