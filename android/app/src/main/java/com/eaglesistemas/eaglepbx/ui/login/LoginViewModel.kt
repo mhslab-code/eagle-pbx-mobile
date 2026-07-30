@@ -19,6 +19,7 @@ import com.eaglesistemas.eaglepbx.telephony.SipCallStatus
 import com.eaglesistemas.eaglepbx.telephony.SipEngineStatus
 import com.eaglesistemas.eaglepbx.telephony.SipAudioOutput
 import com.eaglesistemas.eaglepbx.telephony.AttendedTransferStatus
+import com.eaglesistemas.eaglepbx.telephony.ConferenceSetupStatus
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -48,6 +49,7 @@ data class LoginUiState(
     val sipEngineStatus: SipEngineStatus = SipEngineStatus.INITIALIZING,
     val sipCallStatus: SipCallStatus = SipCallStatus.IDLE,
     val attendedTransferStatus: AttendedTransferStatus = AttendedTransferStatus.IDLE,
+    val conferenceSetupStatus: ConferenceSetupStatus = ConferenceSetupStatus.IDLE,
     val microphoneMuted: Boolean = false,
     val audioOutputs: List<SipAudioOutput> = emptyList(),
     val incomingSipCall: IncomingSipCall? = null,
@@ -174,6 +176,11 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
                     mutableState.value = mutableState.value.copy(
                         attendedTransferStatus = status
                     )
+                },
+                onConferenceSetupChanged = { status ->
+                    mutableState.value = mutableState.value.copy(
+                        conferenceSetupStatus = status
+                    )
                 }
             ).also {
                 it.start()
@@ -211,10 +218,15 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
             mutableState.value.sipEngineStatus != SipEngineStatus.REGISTERED ||
             mutableState.value.sipCallStatus != SipCallStatus.IDLE
         ) return
-        if (linphoneEngine?.placeCall(destination) != true) {
-            mutableState.value = mutableState.value.copy(
-                sipCallStatus = SipCallStatus.FAILED
-            )
+        mutableState.value = mutableState.value.copy(
+            sipCallStatus = SipCallStatus.OUTGOING
+        )
+        viewModelScope.launch(Dispatchers.IO) {
+            if (linphoneEngine?.placeCall(destination) != true) {
+                mutableState.value = mutableState.value.copy(
+                    sipCallStatus = SipCallStatus.FAILED
+                )
+            }
         }
     }
 
@@ -264,7 +276,17 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
 
     fun startAttendedTransfer(destination: String): Boolean {
         if (mutableState.value.sipCallStatus != SipCallStatus.CONNECTED) return false
-        return linphoneEngine?.startAttendedTransfer(destination) == true
+        mutableState.value = mutableState.value.copy(
+            attendedTransferStatus = AttendedTransferStatus.CALLING
+        )
+        viewModelScope.launch(Dispatchers.IO) {
+            if (linphoneEngine?.startAttendedTransfer(destination) != true) {
+                mutableState.value = mutableState.value.copy(
+                    attendedTransferStatus = AttendedTransferStatus.FAILED
+                )
+            }
+        }
+        return true
     }
 
     fun cancelAttendedTransfer(): Boolean =
@@ -272,6 +294,42 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
 
     fun completeAttendedTransfer(): Boolean =
         linphoneEngine?.completeAttendedTransfer() == true
+
+    fun startAdditionalCall(destination: String): Boolean {
+        if (mutableState.value.sipCallStatus != SipCallStatus.CONNECTED) return false
+        mutableState.value = mutableState.value.copy(
+            conferenceSetupStatus = ConferenceSetupStatus.CALLING
+        )
+        viewModelScope.launch(Dispatchers.IO) {
+            if (linphoneEngine?.startAdditionalCall(destination) != true) {
+                mutableState.value = mutableState.value.copy(
+                    conferenceSetupStatus = ConferenceSetupStatus.FAILED
+                )
+            }
+        }
+        return true
+    }
+
+    fun cancelAdditionalCall(): Boolean =
+        linphoneEngine?.cancelAdditionalCall() == true
+
+    fun completeConference(): Boolean {
+        if (
+            mutableState.value.conferenceSetupStatus !=
+            ConferenceSetupStatus.CONNECTED
+        ) return false
+        mutableState.value = mutableState.value.copy(
+            conferenceSetupStatus = ConferenceSetupStatus.JOINING
+        )
+        viewModelScope.launch(Dispatchers.IO) {
+            if (linphoneEngine?.completeConference() != true) {
+                mutableState.value = mutableState.value.copy(
+                    conferenceSetupStatus = ConferenceSetupStatus.CONNECTED
+                )
+            }
+        }
+        return true
+    }
 
     fun acceptIncomingCall() {
         if (mutableState.value.sipCallStatus != SipCallStatus.INCOMING) return

@@ -113,3 +113,16 @@ fechar o código.
   travamento de recomposição.
 - Cancelamento, retomada e conclusão foram homologados entre os ramais 104 e
   105.
+
+## Revisão 0.1.17
+
+- `Adicionar chamada` mantém o primeiro participante em espera e somente
+  oferece a conferência após o segundo destino atender.
+- As consultas aos ramais 101–105 usam a rota interna sem caixa postal; quando
+  não há atendimento, a chamada original é retomada e o modal fecha após uma
+  confirmação visual breve.
+- A formação da conferência é executada fora da thread visual, evitando ANR
+  durante a persistência interna do Liblinphone.
+- Cliques repetidos são bloqueados assim que a formação começa.
+- A conferência 101 + 104 + 105 e o encerramento simultâneo dos dois
+  participantes pelo Android foram homologados.

@@ -9,7 +9,7 @@ com homologação operacional nos Samsung Galaxy A25 5G e validação complement
 no Samsung Galaxy S25 Ultra. O iOS será desenvolvido depois da homologação do
 fluxo Android.
 
-Versão de desenvolvimento atual: `0.1.16`. A identidade visual, o login nativo,
+Versão de desenvolvimento atual: `0.1.17`. A identidade visual, o login nativo,
 a restauração segura da sessão, o logoff, a navegação principal e a integração
 inicial de presença foram validados no emulador equivalente ao Galaxy A25 5G.
 A agenda corporativa, o histórico e o player autenticado de gravações também
@@ -39,6 +39,12 @@ usuário consulta o segundo destino. É possível cancelar a consulta e retomar 
 chamada original ou concluir a transferência, conectando os dois ramais e
 retirando o Android da sessão. Os dois caminhos foram homologados entre os
 ramais 104 e 105.
+Adicionar chamada mantém o primeiro participante em espera, consulta o segundo
+destino e somente libera a formação da conferência depois do atendimento real.
+Destinos internos sem atendimento não seguem para caixa postal nesse fluxo; a
+chamada original é retomada automaticamente. A conferência entre os ramais
+101, 104 e 105, bem como seu encerramento simultâneo pelo Android, foi
+homologada.
 
 ## Decisões aprovadas
 

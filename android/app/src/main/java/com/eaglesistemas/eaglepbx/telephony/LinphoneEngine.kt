@@ -41,6 +41,15 @@ enum class AttendedTransferStatus {
     FAILED
 }
 
+enum class ConferenceSetupStatus {
+    IDLE,
+    CALLING,
+    CONNECTED,
+    JOINING,
+    ACTIVE,
+    FAILED
+}
+
 data class IncomingSipCall(
     val number: String,
     val displayName: String?
@@ -63,7 +72,8 @@ class LinphoneEngine(
     private val onStatusChanged: (SipEngineStatus) -> Unit,
     private val onCallStatusChanged: (SipCallStatus) -> Unit,
     private val onIncomingCallChanged: (IncomingSipCall?) -> Unit,
-    private val onAttendedTransferChanged: (AttendedTransferStatus) -> Unit
+    private val onAttendedTransferChanged: (AttendedTransferStatus) -> Unit,
+    private val onConferenceSetupChanged: (ConferenceSetupStatus) -> Unit
 ) {
     private val core: Core = Factory.instance().createCore(
         null,
@@ -77,6 +87,11 @@ class LinphoneEngine(
     private var consultationCall: Call? = null
     private var releasedConsultationCall: Call? = null
     private var cancellingConsultation = false
+    private var originalConferenceCall: Call? = null
+    private var addedConferenceCall: Call? = null
+    private var releasedConferenceCall: Call? = null
+    private var cancellingAddedCall = false
+    private val conferenceCalls = mutableSetOf<Call>()
     private var sipDomain: String? = null
     private val listener = object : CoreListenerStub() {
         override fun onAccountRegistrationStateChanged(
@@ -103,6 +118,74 @@ class LinphoneEngine(
             state: Call.State,
             message: String
         ) {
+            if (call in conferenceCalls) {
+                when (state) {
+                    Call.State.Connected,
+                    Call.State.StreamsRunning -> {
+                        activeCall = call
+                        onCallStatusChanged(SipCallStatus.CONNECTED)
+                    }
+                    Call.State.Error,
+                    Call.State.End,
+                    Call.State.Released -> {
+                        conferenceCalls.remove(call)
+                        if (conferenceCalls.isEmpty()) {
+                            activeCall = null
+                            onConferenceSetupChanged(ConferenceSetupStatus.IDLE)
+                            onCallStatusChanged(SipCallStatus.IDLE)
+                        } else {
+                            activeCall = conferenceCalls.first()
+                            onCallStatusChanged(SipCallStatus.CONNECTED)
+                        }
+                    }
+                    else -> Unit
+                }
+                return
+            }
+            if (call == releasedConferenceCall) {
+                if (state == Call.State.Released) releasedConferenceCall = null
+                return
+            }
+            if (call == addedConferenceCall) {
+                when (state) {
+                    Call.State.OutgoingInit,
+                    Call.State.OutgoingProgress,
+                    Call.State.OutgoingRinging,
+                    Call.State.OutgoingEarlyMedia -> {
+                        activeCall = call
+                        onConferenceSetupChanged(ConferenceSetupStatus.CALLING)
+                    }
+                    Call.State.Connected -> Unit
+                    Call.State.StreamsRunning -> {
+                        activeCall = call
+                        onCallStatusChanged(SipCallStatus.CONNECTED)
+                        onConferenceSetupChanged(ConferenceSetupStatus.CONNECTED)
+                    }
+                    Call.State.Error,
+                    Call.State.End,
+                    Call.State.Released -> {
+                        if (addedConferenceCall == call) {
+                            releasedConferenceCall = call
+                            addedConferenceCall = null
+                            val original = originalConferenceCall
+                            originalConferenceCall = null
+                            activeCall = original
+                            if (original != null) {
+                                original.resume()
+                                onCallStatusChanged(SipCallStatus.CONNECTED)
+                            }
+                            if (state == Call.State.Error && !cancellingAddedCall) {
+                                onConferenceSetupChanged(ConferenceSetupStatus.FAILED)
+                            } else {
+                                onConferenceSetupChanged(ConferenceSetupStatus.IDLE)
+                            }
+                            cancellingAddedCall = false
+                        }
+                    }
+                    else -> Unit
+                }
+                return
+            }
             if (call == releasedConsultationCall) {
                 if (state == Call.State.Released) releasedConsultationCall = null
                 return
@@ -116,7 +199,7 @@ class LinphoneEngine(
                         activeCall = call
                         onAttendedTransferChanged(AttendedTransferStatus.CALLING)
                     }
-                    Call.State.Connected,
+                    Call.State.Connected -> Unit
                     Call.State.StreamsRunning -> {
                         activeCall = call
                         onCallStatusChanged(SipCallStatus.CONNECTED)
@@ -267,6 +350,11 @@ class LinphoneEngine(
     }
 
     fun hangupCall() {
+        if (conferenceCalls.isNotEmpty()) {
+            onCallStatusChanged(SipCallStatus.ENDING)
+            conferenceCalls.toList().forEach(Call::terminate)
+            return
+        }
         activeCall?.let {
             onCallStatusChanged(SipCallStatus.ENDING)
             it.terminate()
@@ -360,7 +448,8 @@ class LinphoneEngine(
             !normalized.matches(Regex("[0-9*#+]{1,40}"))
         ) return false
         val domain = sipDomain ?: return false
-        val address = Factory.instance().createAddress("sip:$normalized@$domain")
+        val consultationDestination = noVoicemailConsultationDestination(normalized)
+        val address = Factory.instance().createAddress("sip:$consultationDestination@$domain")
             ?: return false
         return runCatching {
             if (original.pause() != 0) return@runCatching false
@@ -411,6 +500,83 @@ class LinphoneEngine(
         return accepted
     }
 
+    fun startAdditionalCall(destination: String): Boolean {
+        val normalized = destination.trim()
+        val original = activeCall ?: return false
+        if (
+            originalConferenceCall != null ||
+            originalTransferCall != null ||
+            original.state !in setOf(Call.State.Connected, Call.State.StreamsRunning) ||
+            normalized.isBlank() ||
+            !normalized.matches(Regex("[0-9*#+]{1,40}"))
+        ) return false
+        val domain = sipDomain ?: return false
+        val consultationDestination = noVoicemailConsultationDestination(normalized)
+        val address = Factory.instance().createAddress("sip:$consultationDestination@$domain")
+            ?: return false
+        return runCatching {
+            if (original.pause() != 0) return@runCatching false
+            originalConferenceCall = original
+            val additional = core.inviteAddress(address)
+            if (additional == null) {
+                originalConferenceCall = null
+                original.resume()
+                return@runCatching false
+            }
+            addedConferenceCall = additional
+            activeCall = additional
+            onConferenceSetupChanged(ConferenceSetupStatus.CALLING)
+            true
+        }.getOrDefault(false)
+    }
+
+    private fun noVoicemailConsultationDestination(destination: String): String {
+        return if (destination.matches(Regex("10[1-5]"))) {
+            "88$destination"
+        } else {
+            destination
+        }
+    }
+
+    fun cancelAdditionalCall(): Boolean {
+        val original = originalConferenceCall ?: return false
+        val additional = addedConferenceCall
+        cancellingAddedCall = true
+        additional?.terminate()
+        if (additional == null) {
+            originalConferenceCall = null
+            activeCall = original
+            cancellingAddedCall = false
+            val accepted = original.resume() == 0
+            if (accepted) onCallStatusChanged(SipCallStatus.CONNECTED)
+            onConferenceSetupChanged(ConferenceSetupStatus.IDLE)
+            return accepted
+        }
+        return true
+    }
+
+    fun completeConference(): Boolean {
+        val original = originalConferenceCall ?: return false
+        val additional = addedConferenceCall ?: return false
+        if (
+            additional.state !in setOf(Call.State.Connected, Call.State.StreamsRunning)
+        ) return false
+        onConferenceSetupChanged(ConferenceSetupStatus.JOINING)
+        val accepted = core.addAllToConference() == 0
+        if (accepted) {
+            conferenceCalls.add(original)
+            conferenceCalls.add(additional)
+            originalConferenceCall = null
+            addedConferenceCall = null
+            activeCall = additional
+            onCallStatusChanged(SipCallStatus.CONNECTED)
+            onConferenceSetupChanged(ConferenceSetupStatus.ACTIVE)
+        } else {
+            onConferenceSetupChanged(ConferenceSetupStatus.CONNECTED)
+        }
+        return accepted
+    }
+
     private fun audioOutputLabel(device: AudioDevice): String {
         val type = when (device.type) {
             AudioDevice.Type.Earpiece -> "Auricular"
@@ -451,10 +617,18 @@ class LinphoneEngine(
     fun clearAccount() {
         consultationCall?.terminate()
         originalTransferCall?.terminate()
+        addedConferenceCall?.terminate()
+        originalConferenceCall?.terminate()
+        conferenceCalls.toList().forEach(Call::terminate)
+        conferenceCalls.clear()
         consultationCall = null
         originalTransferCall = null
         releasedConsultationCall = null
         cancellingConsultation = false
+        addedConferenceCall = null
+        originalConferenceCall = null
+        releasedConferenceCall = null
+        cancellingAddedCall = false
         activeCall?.terminate()
         activeCall = null
         account?.let { core.removeAccount(it) }
@@ -464,6 +638,7 @@ class LinphoneEngine(
         sipDomain = null
         onIncomingCallChanged(null)
         onAttendedTransferChanged(AttendedTransferStatus.IDLE)
+        onConferenceSetupChanged(ConferenceSetupStatus.IDLE)
         onCallStatusChanged(SipCallStatus.IDLE)
     }
 
