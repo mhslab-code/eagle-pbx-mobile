@@ -126,6 +126,7 @@ fun EaglePBXApp(viewModel: LoginViewModel = viewModel()) {
             recordingError = state.recordingError,
             sipEngineStatus = state.sipEngineStatus,
             sipCallStatus = state.sipCallStatus,
+            microphoneMuted = state.microphoneMuted,
             incomingSipCall = state.incomingSipCall,
             registeringMobileDevice = state.registeringMobileDevice,
             mobileDeviceStatus = state.mobileDevice?.status,
@@ -135,6 +136,7 @@ fun EaglePBXApp(viewModel: LoginViewModel = viewModel()) {
             onPlaceCall = viewModel::placeCall,
             onHangupCall = viewModel::hangupCall,
             onSendDtmf = viewModel::sendDtmf,
+            onToggleMicrophone = viewModel::toggleMicrophone,
             onAcceptIncomingCall = viewModel::acceptIncomingCall,
             onRejectIncomingCall = viewModel::rejectIncomingCall,
             onPresenceChange = viewModel::updatePresence,
@@ -355,6 +357,7 @@ fun AuthenticatedScreen(
     recordingError: String?,
     sipEngineStatus: SipEngineStatus,
     sipCallStatus: SipCallStatus,
+    microphoneMuted: Boolean,
     incomingSipCall: IncomingSipCall?,
     registeringMobileDevice: Boolean,
     mobileDeviceStatus: String?,
@@ -364,6 +367,7 @@ fun AuthenticatedScreen(
     onPlaceCall: (String) -> Unit,
     onHangupCall: () -> Unit,
     onSendDtmf: (Char) -> Unit,
+    onToggleMicrophone: () -> Unit,
     onAcceptIncomingCall: () -> Unit,
     onRejectIncomingCall: () -> Unit,
     onPresenceChange: (String) -> Unit,
@@ -503,12 +507,14 @@ fun AuthenticatedScreen(
                     MainSection.DIALER -> DialerContent(
                         sipEngineStatus = sipEngineStatus,
                         sipCallStatus = sipCallStatus,
+                        microphoneMuted = microphoneMuted,
                         registeringMobileDevice = registeringMobileDevice,
                         mobileDeviceStatus = mobileDeviceStatus,
                         mobileDeviceError = mobileDeviceError,
                         onPlaceCall = onPlaceCall,
                         onHangupCall = onHangupCall,
-                        onSendDtmf = onSendDtmf
+                        onSendDtmf = onSendDtmf,
+                        onToggleMicrophone = onToggleMicrophone
                     )
                     MainSection.CONTACTS -> ContactsContent(
                         contacts = contacts,
@@ -1216,12 +1222,14 @@ private fun formatHistoryDate(value: String): String {
 private fun DialerContent(
     sipEngineStatus: SipEngineStatus,
     sipCallStatus: SipCallStatus,
+    microphoneMuted: Boolean,
     registeringMobileDevice: Boolean,
     mobileDeviceStatus: String?,
     mobileDeviceError: String?,
     onPlaceCall: (String) -> Unit,
     onHangupCall: () -> Unit,
-    onSendDtmf: (Char) -> Unit
+    onSendDtmf: (Char) -> Unit,
+    onToggleMicrophone: () -> Unit
 ) {
     var number by rememberSaveable { mutableStateOf("") }
     var dtmfDigits by rememberSaveable { mutableStateOf("") }
@@ -1338,7 +1346,10 @@ private fun DialerContent(
     ) {
         DialActionButton(
             symbol = "♩",
-            label = "Microfone",
+            label = if (microphoneMuted) "Mudo" else "Microfone",
+            enabled = sipCallStatus == SipCallStatus.CONNECTED,
+            danger = microphoneMuted,
+            onClick = onToggleMicrophone,
             modifier = Modifier.weight(1f)
         )
         DialActionButton(

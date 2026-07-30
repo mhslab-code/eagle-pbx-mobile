@@ -45,6 +45,7 @@ data class LoginUiState(
     val recordingDuration: Int = 0,
     val sipEngineStatus: SipEngineStatus = SipEngineStatus.INITIALIZING,
     val sipCallStatus: SipCallStatus = SipCallStatus.IDLE,
+    val microphoneMuted: Boolean = false,
     val incomingSipCall: IncomingSipCall? = null,
     val sipCallError: String? = null,
     val registeringMobileDevice: Boolean = false,
@@ -144,7 +145,12 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
                 },
                 onCallStatusChanged = { status ->
                     mutableState.value = mutableState.value.copy(
-                        sipCallStatus = status
+                        sipCallStatus = status,
+                        microphoneMuted = if (status == SipCallStatus.IDLE) {
+                            false
+                        } else {
+                            mutableState.value.microphoneMuted
+                        }
                     )
                 },
                 onIncomingCallChanged = { call ->
@@ -205,6 +211,14 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
     fun sendDtmf(digit: Char) {
         if (mutableState.value.sipCallStatus != SipCallStatus.CONNECTED) return
         linphoneEngine?.sendDtmf(digit)
+    }
+
+    fun toggleMicrophone() {
+        if (mutableState.value.sipCallStatus != SipCallStatus.CONNECTED) return
+        val muted = !mutableState.value.microphoneMuted
+        if (linphoneEngine?.setMicrophoneMuted(muted) == true) {
+            mutableState.value = mutableState.value.copy(microphoneMuted = muted)
+        }
     }
 
     fun acceptIncomingCall() {

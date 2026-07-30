@@ -61,3 +61,13 @@ fechar o código.
 - A sequência é limpa no início ou no encerramento de outra chamada.
 - O comportamento foi homologado no emulador equivalente ao Galaxy A25 5G e
   comparado com o frontend compartilhado do PWA/Tauri.
+
+## Revisão 0.1.12
+
+- O botão Microfone fica habilitado somente durante uma chamada conectada.
+- A interface alterna entre `Microfone` e `Mudo`, com destaque visual no estado
+  silenciado, e retorna ao estado normal ao encerrar.
+- O estado é aplicado à chamada ativa do Liblinphone.
+- Somente a interface foi homologada no emulador. A confirmação do
+  silenciamento real exige aparelho físico, pois a sessão RDP não encaminha o
+  microfone ao emulador.

@@ -207,6 +207,15 @@ class LinphoneEngine(
         return call.sendDtmf(digit) == 0
     }
 
+    fun setMicrophoneMuted(muted: Boolean): Boolean {
+        val call = activeCall ?: return false
+        if (call.state !in setOf(Call.State.Connected, Call.State.StreamsRunning)) {
+            return false
+        }
+        call.microphoneMuted = muted
+        return call.microphoneMuted == muted
+    }
+
     fun acceptIncomingCall(): Boolean {
         val call = activeCall ?: return false
         return call.accept() == 0
