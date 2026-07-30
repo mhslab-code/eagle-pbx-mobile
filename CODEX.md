@@ -71,3 +71,13 @@ fechar o código.
 - Somente a interface foi homologada no emulador. A confirmação do
   silenciamento real exige aparelho físico, pois a sessão RDP não encaminha o
   microfone ao emulador.
+
+## Revisão 0.1.13
+
+- O botão Áudio fica habilitado somente durante chamada conectada.
+- Um modal lista as saídas de reprodução oferecidas pelo Android/Liblinphone e
+  marca em verde a saída atualmente selecionada.
+- Selecionar uma saída aplica o dispositivo à chamada ativa e fecha o modal
+  sem encerrar a ligação.
+- Listagem, seleção e continuidade da chamada foram homologadas no emulador.
+  O roteamento acústico real exige aparelho físico.

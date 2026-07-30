@@ -3,6 +3,7 @@ package com.eaglesistemas.eaglepbx.telephony
 import android.content.Context
 import com.eaglesistemas.eaglepbx.data.SipProvisioning
 import org.linphone.core.Account
+import org.linphone.core.AudioDevice
 import org.linphone.core.AuthInfo
 import org.linphone.core.Call
 import org.linphone.core.Core
@@ -34,6 +35,12 @@ enum class SipCallStatus {
 data class IncomingSipCall(
     val number: String,
     val displayName: String?
+)
+
+data class SipAudioOutput(
+    val id: String,
+    val label: String,
+    val selected: Boolean
 )
 
 /**
@@ -214,6 +221,54 @@ class LinphoneEngine(
         }
         call.microphoneMuted = muted
         return call.microphoneMuted == muted
+    }
+
+    fun audioOutputs(): List<SipAudioOutput> {
+        val selectedId = activeCall?.outputAudioDevice?.id
+        return core.audioDevices
+            .filter { it.hasCapability(AudioDevice.Capabilities.CapabilityPlay) }
+            .distinctBy(AudioDevice::getId)
+            .map { device ->
+                SipAudioOutput(
+                    id = device.id,
+                    label = audioOutputLabel(device),
+                    selected = device.id == selectedId
+                )
+            }
+    }
+
+    fun selectAudioOutput(id: String): Boolean {
+        val call = activeCall ?: return false
+        if (call.state !in setOf(Call.State.Connected, Call.State.StreamsRunning)) {
+            return false
+        }
+        val device = core.audioDevices.firstOrNull {
+            it.id == id && it.hasCapability(AudioDevice.Capabilities.CapabilityPlay)
+        } ?: return false
+        call.outputAudioDevice = device
+        return call.outputAudioDevice?.id == id
+    }
+
+    private fun audioOutputLabel(device: AudioDevice): String {
+        val type = when (device.type) {
+            AudioDevice.Type.Earpiece -> "Auricular"
+            AudioDevice.Type.Speaker -> "Alto-falante"
+            AudioDevice.Type.Bluetooth,
+            AudioDevice.Type.BluetoothA2DP -> "Bluetooth"
+            AudioDevice.Type.Headset -> "Headset"
+            AudioDevice.Type.Headphones -> "Fones de ouvido"
+            AudioDevice.Type.HearingAid -> "Aparelho auditivo"
+            AudioDevice.Type.Hdmi -> "HDMI"
+            AudioDevice.Type.GenericUsb -> "Áudio USB"
+            AudioDevice.Type.AuxLine -> "Saída auxiliar"
+            else -> "Saída de áudio"
+        }
+        val name = device.deviceName.trim()
+        return if (name.isBlank() || name.equals(type, ignoreCase = true)) {
+            type
+        } else {
+            "$type · $name"
+        }
     }
 
     fun acceptIncomingCall(): Boolean {

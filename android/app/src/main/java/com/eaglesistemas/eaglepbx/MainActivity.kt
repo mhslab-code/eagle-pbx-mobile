@@ -85,6 +85,7 @@ import com.eaglesistemas.eaglepbx.ui.login.LoginViewModel
 import com.eaglesistemas.eaglepbx.telephony.SipCallStatus
 import com.eaglesistemas.eaglepbx.telephony.SipEngineStatus
 import com.eaglesistemas.eaglepbx.telephony.IncomingSipCall
+import com.eaglesistemas.eaglepbx.telephony.SipAudioOutput
 import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -127,6 +128,7 @@ fun EaglePBXApp(viewModel: LoginViewModel = viewModel()) {
             sipEngineStatus = state.sipEngineStatus,
             sipCallStatus = state.sipCallStatus,
             microphoneMuted = state.microphoneMuted,
+            audioOutputs = state.audioOutputs,
             incomingSipCall = state.incomingSipCall,
             registeringMobileDevice = state.registeringMobileDevice,
             mobileDeviceStatus = state.mobileDevice?.status,
@@ -137,6 +139,8 @@ fun EaglePBXApp(viewModel: LoginViewModel = viewModel()) {
             onHangupCall = viewModel::hangupCall,
             onSendDtmf = viewModel::sendDtmf,
             onToggleMicrophone = viewModel::toggleMicrophone,
+            onLoadAudioOutputs = viewModel::loadAudioOutputs,
+            onSelectAudioOutput = viewModel::selectAudioOutput,
             onAcceptIncomingCall = viewModel::acceptIncomingCall,
             onRejectIncomingCall = viewModel::rejectIncomingCall,
             onPresenceChange = viewModel::updatePresence,
@@ -358,6 +362,7 @@ fun AuthenticatedScreen(
     sipEngineStatus: SipEngineStatus,
     sipCallStatus: SipCallStatus,
     microphoneMuted: Boolean,
+    audioOutputs: List<SipAudioOutput>,
     incomingSipCall: IncomingSipCall?,
     registeringMobileDevice: Boolean,
     mobileDeviceStatus: String?,
@@ -368,6 +373,8 @@ fun AuthenticatedScreen(
     onHangupCall: () -> Unit,
     onSendDtmf: (Char) -> Unit,
     onToggleMicrophone: () -> Unit,
+    onLoadAudioOutputs: () -> Unit,
+    onSelectAudioOutput: (String) -> Unit,
     onAcceptIncomingCall: () -> Unit,
     onRejectIncomingCall: () -> Unit,
     onPresenceChange: (String) -> Unit,
@@ -508,13 +515,16 @@ fun AuthenticatedScreen(
                         sipEngineStatus = sipEngineStatus,
                         sipCallStatus = sipCallStatus,
                         microphoneMuted = microphoneMuted,
+                        audioOutputs = audioOutputs,
                         registeringMobileDevice = registeringMobileDevice,
                         mobileDeviceStatus = mobileDeviceStatus,
                         mobileDeviceError = mobileDeviceError,
                         onPlaceCall = onPlaceCall,
                         onHangupCall = onHangupCall,
                         onSendDtmf = onSendDtmf,
-                        onToggleMicrophone = onToggleMicrophone
+                        onToggleMicrophone = onToggleMicrophone,
+                        onLoadAudioOutputs = onLoadAudioOutputs,
+                        onSelectAudioOutput = onSelectAudioOutput
                     )
                     MainSection.CONTACTS -> ContactsContent(
                         contacts = contacts,
@@ -1223,16 +1233,20 @@ private fun DialerContent(
     sipEngineStatus: SipEngineStatus,
     sipCallStatus: SipCallStatus,
     microphoneMuted: Boolean,
+    audioOutputs: List<SipAudioOutput>,
     registeringMobileDevice: Boolean,
     mobileDeviceStatus: String?,
     mobileDeviceError: String?,
     onPlaceCall: (String) -> Unit,
     onHangupCall: () -> Unit,
     onSendDtmf: (Char) -> Unit,
-    onToggleMicrophone: () -> Unit
+    onToggleMicrophone: () -> Unit,
+    onLoadAudioOutputs: () -> Unit,
+    onSelectAudioOutput: (String) -> Unit
 ) {
     var number by rememberSaveable { mutableStateOf("") }
     var dtmfDigits by rememberSaveable { mutableStateOf("") }
+    var audioDialogOpen by rememberSaveable { mutableStateOf(false) }
     val callActive = sipCallStatus in setOf(
         SipCallStatus.INCOMING,
         SipCallStatus.OUTGOING,
@@ -1376,6 +1390,11 @@ private fun DialerContent(
         DialActionButton(
             symbol = "◖))",
             label = "Áudio",
+            enabled = sipCallStatus == SipCallStatus.CONNECTED,
+            onClick = {
+                onLoadAudioOutputs()
+                audioDialogOpen = true
+            },
             modifier = Modifier.weight(1f)
         )
     }
@@ -1445,6 +1464,75 @@ private fun DialerContent(
             else -> EagleTextMuted
         },
         fontSize = 11.sp
+    )
+    if (audioDialogOpen) {
+        AudioOutputDialog(
+            outputs = audioOutputs,
+            onSelect = {
+                onSelectAudioOutput(it)
+                audioDialogOpen = false
+            },
+            onDismiss = { audioDialogOpen = false }
+        )
+    }
+}
+
+@Composable
+private fun AudioOutputDialog(
+    outputs: List<SipAudioOutput>,
+    onSelect: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Saída de áudio", color = EagleText) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    text = "Escolha onde deseja ouvir a chamada.",
+                    color = EagleTextMuted,
+                    fontSize = 13.sp
+                )
+                if (outputs.isEmpty()) {
+                    Text(
+                        text = "Nenhuma saída disponível.",
+                        color = EagleTextMuted,
+                        fontSize = 13.sp
+                    )
+                } else {
+                    outputs.forEach { output ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(13.dp))
+                                .border(1.dp, EagleBorder, RoundedCornerShape(13.dp))
+                                .clickable { onSelect(output.id) }
+                                .padding(horizontal = 14.dp, vertical = 13.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = output.label,
+                                color = EagleText,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                modifier = Modifier.weight(1f)
+                            )
+                            Text(
+                                text = if (output.selected) "●" else "○",
+                                color = if (output.selected) EagleSuccess else EagleTextMuted,
+                                fontSize = 20.sp
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Fechar", color = EagleBlue)
+            }
+        },
+        containerColor = EagleNavyLight
     )
 }
 

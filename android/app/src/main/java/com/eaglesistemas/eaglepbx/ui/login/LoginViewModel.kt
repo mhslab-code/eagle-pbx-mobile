@@ -17,6 +17,7 @@ import com.eaglesistemas.eaglepbx.telephony.LinphoneEngine
 import com.eaglesistemas.eaglepbx.telephony.IncomingSipCall
 import com.eaglesistemas.eaglepbx.telephony.SipCallStatus
 import com.eaglesistemas.eaglepbx.telephony.SipEngineStatus
+import com.eaglesistemas.eaglepbx.telephony.SipAudioOutput
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -46,6 +47,7 @@ data class LoginUiState(
     val sipEngineStatus: SipEngineStatus = SipEngineStatus.INITIALIZING,
     val sipCallStatus: SipCallStatus = SipCallStatus.IDLE,
     val microphoneMuted: Boolean = false,
+    val audioOutputs: List<SipAudioOutput> = emptyList(),
     val incomingSipCall: IncomingSipCall? = null,
     val sipCallError: String? = null,
     val registeringMobileDevice: Boolean = false,
@@ -150,6 +152,11 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
                             false
                         } else {
                             mutableState.value.microphoneMuted
+                        },
+                        audioOutputs = if (status == SipCallStatus.IDLE) {
+                            emptyList()
+                        } else {
+                            mutableState.value.audioOutputs
                         }
                     )
                 },
@@ -218,6 +225,22 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
         val muted = !mutableState.value.microphoneMuted
         if (linphoneEngine?.setMicrophoneMuted(muted) == true) {
             mutableState.value = mutableState.value.copy(microphoneMuted = muted)
+        }
+    }
+
+    fun loadAudioOutputs() {
+        if (mutableState.value.sipCallStatus != SipCallStatus.CONNECTED) return
+        mutableState.value = mutableState.value.copy(
+            audioOutputs = linphoneEngine?.audioOutputs().orEmpty()
+        )
+    }
+
+    fun selectAudioOutput(id: String) {
+        if (mutableState.value.sipCallStatus != SipCallStatus.CONNECTED) return
+        if (linphoneEngine?.selectAudioOutput(id) == true) {
+            mutableState.value = mutableState.value.copy(
+                audioOutputs = linphoneEngine?.audioOutputs().orEmpty()
+            )
         }
     }
 
