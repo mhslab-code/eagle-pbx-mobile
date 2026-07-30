@@ -90,3 +90,12 @@ fechar o código.
 - A retomada utiliza `resume()` e restaura o estado conectado.
 - Música de espera no ramal remoto, transições visuais e continuidade da
   chamada foram homologadas.
+
+## Revisão 0.1.15
+
+- O botão Transferir abre um modal com visor, teclado, backspace e confirmação
+  explícita.
+- A transferência direta usa `transferTo()` na chamada ativa.
+- Depois que o PBX aceita a operação, o Android sai da sessão e origem e
+  destino permanecem conectados.
+- O fluxo completo foi homologado entre os ramais 104 e 105.

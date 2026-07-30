@@ -142,6 +142,7 @@ fun EaglePBXApp(viewModel: LoginViewModel = viewModel()) {
             onLoadAudioOutputs = viewModel::loadAudioOutputs,
             onSelectAudioOutput = viewModel::selectAudioOutput,
             onToggleCallHold = viewModel::toggleCallHold,
+            onTransferDirect = viewModel::transferDirect,
             onAcceptIncomingCall = viewModel::acceptIncomingCall,
             onRejectIncomingCall = viewModel::rejectIncomingCall,
             onPresenceChange = viewModel::updatePresence,
@@ -377,6 +378,7 @@ fun AuthenticatedScreen(
     onLoadAudioOutputs: () -> Unit,
     onSelectAudioOutput: (String) -> Unit,
     onToggleCallHold: () -> Unit,
+    onTransferDirect: (String) -> Boolean,
     onAcceptIncomingCall: () -> Unit,
     onRejectIncomingCall: () -> Unit,
     onPresenceChange: (String) -> Unit,
@@ -527,7 +529,8 @@ fun AuthenticatedScreen(
                         onToggleMicrophone = onToggleMicrophone,
                         onLoadAudioOutputs = onLoadAudioOutputs,
                         onSelectAudioOutput = onSelectAudioOutput,
-                        onToggleCallHold = onToggleCallHold
+                        onToggleCallHold = onToggleCallHold,
+                        onTransferDirect = onTransferDirect
                     )
                     MainSection.CONTACTS -> ContactsContent(
                         contacts = contacts,
@@ -1246,11 +1249,13 @@ private fun DialerContent(
     onToggleMicrophone: () -> Unit,
     onLoadAudioOutputs: () -> Unit,
     onSelectAudioOutput: (String) -> Unit,
-    onToggleCallHold: () -> Unit
+    onToggleCallHold: () -> Unit,
+    onTransferDirect: (String) -> Boolean
 ) {
     var number by rememberSaveable { mutableStateOf("") }
     var dtmfDigits by rememberSaveable { mutableStateOf("") }
     var audioDialogOpen by rememberSaveable { mutableStateOf(false) }
+    var transferDialogOpen by rememberSaveable { mutableStateOf(false) }
     val callActive = sipCallStatus in setOf(
         SipCallStatus.INCOMING,
         SipCallStatus.OUTGOING,
@@ -1408,7 +1413,13 @@ private fun DialerContent(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(7.dp)
     ) {
-        DialActionButton("↦", "Transferir", enabled = false, modifier = Modifier.weight(1f))
+        DialActionButton(
+            symbol = "↦",
+            label = "Transferir",
+            enabled = sipCallStatus == SipCallStatus.CONNECTED,
+            onClick = { transferDialogOpen = true },
+            modifier = Modifier.weight(1f)
+        )
         DialActionButton(
             symbol = if (sipCallStatus == SipCallStatus.HELD) "▶" else "Ⅱ",
             label = if (sipCallStatus == SipCallStatus.HELD) "Retomar" else "Espera",
@@ -1488,6 +1499,114 @@ private fun DialerContent(
             onDismiss = { audioDialogOpen = false }
         )
     }
+    if (transferDialogOpen) {
+        DirectTransferDialog(
+            onTransfer = onTransferDirect,
+            onDismiss = { transferDialogOpen = false }
+        )
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun DirectTransferDialog(
+    onTransfer: (String) -> Boolean,
+    onDismiss: () -> Unit
+) {
+    var destination by rememberSaveable { mutableStateOf("") }
+    var error by remember { mutableStateOf<String?>(null) }
+    val keys = listOf(
+        DialKey("1"), DialKey("2", "ABC"), DialKey("3", "DEF"),
+        DialKey("4", "GHI"), DialKey("5", "JKL"), DialKey("6", "MNO"),
+        DialKey("7", "PQRS"), DialKey("8", "TUV"), DialKey("9", "WXYZ"),
+        DialKey("*"), DialKey("0", "+"), DialKey("#")
+    )
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Transferir chamada", color = EagleText) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
+                Text(
+                    text = "Digite o ramal ou telefone de destino.",
+                    color = EagleTextMuted,
+                    fontSize = 13.sp
+                )
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(58.dp)
+                        .clip(RoundedCornerShape(13.dp))
+                        .border(1.dp, EagleBorder, RoundedCornerShape(13.dp))
+                        .padding(horizontal = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = destination.ifBlank { "Ramal ou telefone" },
+                        color = if (destination.isBlank()) EagleTextMuted else EagleText,
+                        fontSize = 22.sp,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Text(
+                        text = "⌫",
+                        color = if (destination.isBlank()) EagleTextMuted else EagleText,
+                        fontSize = 22.sp,
+                        modifier = Modifier.combinedClickable(
+                            enabled = destination.isNotBlank(),
+                            onClick = { destination = destination.dropLast(1) },
+                            onLongClick = { destination = "" }
+                        )
+                    )
+                }
+                keys.chunked(3).forEach { row ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        row.forEach { key ->
+                            DialKeyButton(
+                                key = key,
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(48.dp),
+                                onClick = { destination += key.digit },
+                                onLongClick = {
+                                    if (key.digit == "0") destination += "+"
+                                }
+                            )
+                        }
+                    }
+                }
+                if (!error.isNullOrBlank()) {
+                    Text(
+                        text = requireNotNull(error),
+                        color = EagleDanger,
+                        fontSize = 12.sp
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                enabled = destination.isNotBlank(),
+                onClick = {
+                    if (onTransfer(destination)) {
+                        onDismiss()
+                    } else {
+                        error = "Não foi possível transferir a chamada."
+                    }
+                }
+            ) {
+                Text("Transferir", color = EagleBlue)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancelar", color = EagleTextMuted)
+            }
+        },
+        containerColor = EagleNavyLight
+    )
 }
 
 @Composable

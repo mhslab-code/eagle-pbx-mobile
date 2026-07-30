@@ -277,6 +277,22 @@ class LinphoneEngine(
         }
     }
 
+    fun transferDirect(destination: String): Boolean {
+        val normalized = destination.trim()
+        val call = activeCall ?: return false
+        if (
+            call.state !in setOf(Call.State.Connected, Call.State.StreamsRunning) ||
+            normalized.isBlank() ||
+            !normalized.matches(Regex("[0-9*#+]{1,40}"))
+        ) return false
+        val domain = sipDomain ?: return false
+        val address = Factory.instance().createAddress("sip:$normalized@$domain")
+            ?: return false
+        val accepted = call.transferTo(address) == 0
+        if (accepted) onCallStatusChanged(SipCallStatus.ENDING)
+        return accepted
+    }
+
     private fun audioOutputLabel(device: AudioDevice): String {
         val type = when (device.type) {
             AudioDevice.Type.Earpiece -> "Auricular"

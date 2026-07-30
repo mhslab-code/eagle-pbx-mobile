@@ -9,7 +9,7 @@ com homologação operacional nos Samsung Galaxy A25 5G e validação complement
 no Samsung Galaxy S25 Ultra. O iOS será desenvolvido depois da homologação do
 fluxo Android.
 
-Versão de desenvolvimento atual: `0.1.14`. A identidade visual, o login nativo,
+Versão de desenvolvimento atual: `0.1.15`. A identidade visual, o login nativo,
 a restauração segura da sessão, o logoff, a navegação principal e a integração
 inicial de presença foram validados no emulador equivalente ao Galaxy A25 5G.
 A agenda corporativa, o histórico e o player autenticado de gravações também
@@ -31,6 +31,9 @@ real permanece pendente de aparelho físico.
 Espera e retomada também estão operacionais: o interlocutor recebe a música
 do PBX, o botão muda para `Retomar` e a chamada volta ao estado conectado sem
 ser encerrada.
+A transferência direta utiliza um modal com visor e teclado, entrega a chamada
+ao destino escolhido e remove o Android da sessão depois da aceitação pelo
+PBX. O fluxo completo foi homologado entre os ramais 104 e 105.
 
 ## Decisões aprovadas
 

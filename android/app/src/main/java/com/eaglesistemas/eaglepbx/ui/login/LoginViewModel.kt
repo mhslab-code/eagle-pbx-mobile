@@ -250,6 +250,11 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
         linphoneEngine?.setCallHeld(current == SipCallStatus.CONNECTED)
     }
 
+    fun transferDirect(destination: String): Boolean {
+        if (mutableState.value.sipCallStatus != SipCallStatus.CONNECTED) return false
+        return linphoneEngine?.transferDirect(destination) == true
+    }
+
     fun acceptIncomingCall() {
         if (mutableState.value.sipCallStatus != SipCallStatus.INCOMING) return
         if (linphoneEngine?.acceptIncomingCall() != true) {
