@@ -65,10 +65,29 @@ class EagleApiClient(
         sessionStore.clear()
     }
 
+    fun updatePresence(presence: String): AuthenticatedUser {
+        require(presence in setOf("online", "offline", "dnd"))
+        val payload = JSONObject().put("presence", presence).toString()
+        return requestUser("/api/me", "PATCH", payload)
+    }
+
     private fun requestUser(path: String): AuthenticatedUser {
+        return requestUser(path, "GET", null)
+    }
+
+    private fun requestUser(
+        path: String,
+        method: String,
+        jsonBody: String?
+    ): AuthenticatedUser {
         val response = readResponse(
-            connection(path, "GET").apply {
+            connection(path, method).apply {
                 sessionStore.read()?.let { setRequestProperty("Cookie", it) }
+                if (jsonBody != null) {
+                    setRequestProperty("Content-Type", "application/json; charset=UTF-8")
+                    doOutput = true
+                    outputStream.use { it.write(jsonBody.toByteArray(Charsets.UTF_8)) }
+                }
             }
         )
         return parseUser(JSONObject(response.body))

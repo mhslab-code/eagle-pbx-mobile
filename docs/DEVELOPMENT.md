@@ -45,6 +45,15 @@ definitiva de assinatura e suas senhas não pertencem ao repositório.
 
 ## Marcos validados
 
+### 0.1.2
+
+- navegação nativa entre Discador, Contatos e Histórico;
+- cabeçalho com identidade do usuário e estado de presença;
+- modal Minha conta integrado ao logoff seguro;
+- alteração de presença integrada à API existente;
+- DND global ao ramal documentado como comportamento temporário;
+- DND independente por dispositivo planejado para a revisão 1.0.4.
+
 ### 0.1.1
 
 - login real no endpoint HTTPS homologado;

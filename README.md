@@ -9,9 +9,10 @@ com homologação operacional nos Samsung Galaxy A25 5G e validação complement
 no Samsung Galaxy S25 Ultra. O iOS será desenvolvido depois da homologação do
 fluxo Android.
 
-Versão de desenvolvimento atual: `0.1.1`. A identidade visual, o login nativo,
-a restauração segura da sessão e o logoff foram validados no emulador
-equivalente ao Galaxy A25 5G. A telefonia SIP ainda não está habilitada.
+Versão de desenvolvimento atual: `0.1.2`. A identidade visual, o login nativo,
+a restauração segura da sessão, o logoff, a navegação principal e a integração
+inicial de presença foram validados no emulador equivalente ao Galaxy A25 5G.
+A telefonia SIP ainda não está habilitada.
 
 ## Decisões aprovadas
 
@@ -27,6 +28,17 @@ equivalente ao Galaxy A25 5G. A telefonia SIP ainda não está habilitada.
 O Liblinphone ainda depende de protótipo técnico. Sua adoção definitiva somente
 ocorrerá depois da validação de chamadas, push, segundo plano, Bluetooth e
 compatibilidade com Android 16.
+
+## Comportamento temporário do DND
+
+Na API atual, `Não perturbe` é aplicado globalmente ao ramal no Asterisk. Assim,
+ao ativá-lo no Android, os demais dispositivos registrados no mesmo ramal
+também deixam de tocar. Este comportamento foi mantido nesta fase para não
+divergir do PWA e do aplicativo desktop.
+
+O DND independente por dispositivo está planejado para a revisão `1.0.4` do
+ecossistema Eagle PBX. Até essa revisão, o teste de DND deve considerar seu
+efeito global sobre o ramal.
 
 ## Escopo Android
 

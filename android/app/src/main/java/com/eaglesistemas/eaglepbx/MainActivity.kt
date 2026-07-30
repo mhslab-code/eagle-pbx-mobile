@@ -7,6 +7,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -28,9 +29,13 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -83,6 +88,9 @@ fun EaglePBXApp(viewModel: LoginViewModel = viewModel()) {
         state.restoringSession -> LoadingScreen()
         state.user != null -> AuthenticatedScreen(
             user = requireNotNull(state.user),
+            updatingPresence = state.updatingPresence,
+            presenceError = state.presenceError,
+            onPresenceChange = viewModel::updatePresence,
             onLogout = viewModel::logout
         )
         else -> LoginScreen(
@@ -282,8 +290,25 @@ fun LoadingScreen() {
 @Composable
 fun AuthenticatedScreen(
     user: AuthenticatedUser,
+    updatingPresence: Boolean,
+    presenceError: String?,
+    onPresenceChange: (String) -> Unit,
     onLogout: () -> Unit
 ) {
+    var presenceMenuOpen by remember { mutableStateOf(false) }
+    var accountDialogOpen by remember { mutableStateOf(false) }
+    var selectedSection by remember { mutableStateOf(MainSection.DIALER) }
+    val presenceLabel = when (user.presence) {
+        "dnd" -> "Não perturbe"
+        "offline" -> "Offline"
+        else -> "Online"
+    }
+    val presenceColor = when (user.presence) {
+        "dnd" -> EagleDanger
+        "offline" -> EagleTextMuted
+        else -> EagleSuccess
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -294,86 +319,258 @@ fun AuthenticatedScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .padding(horizontal = 18.dp)
         ) {
-            Spacer(Modifier.height(28.dp))
-            Image(
-                painter = painterResource(R.drawable.eagle_pbx_logo),
-                contentDescription = "Eagle Sistemas",
-                modifier = Modifier
-                    .size(72.dp)
-                    .clip(RoundedCornerShape(18.dp))
-            )
-            Spacer(Modifier.height(18.dp))
-            Text(
-                text = user.name,
-                color = EagleText,
-                fontSize = 25.sp,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center
-            )
-            Text(
-                text = "Ramal ${user.extension}",
-                color = EagleTextMuted,
-                fontSize = 17.sp
-            )
-            Spacer(Modifier.height(28.dp))
-            Column(
+            Spacer(Modifier.height(14.dp))
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(22.dp))
-                    .background(EagleNavyLight)
-                    .border(1.dp, EagleBorder, RoundedCornerShape(22.dp))
-                    .padding(22.dp)
+                    .padding(vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                Image(
+                    painter = painterResource(R.drawable.eagle_pbx_logo),
+                    contentDescription = "Eagle Sistemas",
+                    modifier = Modifier
+                        .size(50.dp)
+                        .clip(RoundedCornerShape(13.dp))
+                )
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(horizontal = 12.dp)
+                        .clickable { accountDialogOpen = true }
                 ) {
                     Text(
-                        text = "Sessão",
+                        text = user.name,
                         color = EagleText,
+                        fontSize = 18.sp,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = "CONECTADA",
-                        color = EagleSuccess,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.sp
+                        text = "Ramal ${user.extension}",
+                        color = EagleTextMuted,
+                        fontSize = 14.sp
                     )
                 }
+                Box {
+                    Button(
+                        onClick = { presenceMenuOpen = true },
+                        enabled = !updatingPresence,
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = EagleNavyLight,
+                            contentColor = presenceColor
+                        )
+                    ) {
+                        if (updatingPresence) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(18.dp),
+                                color = EagleBlue,
+                                strokeWidth = 2.dp
+                            )
+                        } else {
+                            Text(
+                                text = presenceLabel,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                    DropdownMenu(
+                        expanded = presenceMenuOpen,
+                        onDismissRequest = { presenceMenuOpen = false }
+                    ) {
+                        PresenceMenuItem("Online", "online") {
+                            presenceMenuOpen = false
+                            onPresenceChange(it)
+                        }
+                        PresenceMenuItem("Não perturbe", "dnd") {
+                            presenceMenuOpen = false
+                            onPresenceChange(it)
+                        }
+                        PresenceMenuItem("Offline", "offline") {
+                            presenceMenuOpen = false
+                            onPresenceChange(it)
+                        }
+                    }
+                }
+            }
+            if (!presenceError.isNullOrBlank()) {
+                Text(
+                    text = presenceError,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 8.dp),
+                    color = EagleDanger,
+                    fontSize = 12.sp,
+                    textAlign = TextAlign.Center
+                )
+            }
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .clip(RoundedCornerShape(22.dp))
+                    .background(EagleNavyLight)
+                    .border(1.dp, EagleBorder, RoundedCornerShape(22.dp))
+                    .padding(22.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = selectedSection.title,
+                    color = EagleText,
+                    fontSize = 26.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(Modifier.height(12.dp))
+                Text(
+                    text = selectedSection.description,
+                    color = EagleTextMuted,
+                    fontSize = 15.sp,
+                    textAlign = TextAlign.Center
+                )
+                Spacer(Modifier.height(22.dp))
+                Text(
+                    text = "Estrutura preparada",
+                    color = EagleSuccess,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+            Spacer(Modifier.height(12.dp))
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(18.dp))
+                    .background(EagleNavyLight)
+                    .border(1.dp, EagleBorder, RoundedCornerShape(18.dp))
+                    .padding(horizontal = 4.dp, vertical = 6.dp),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                MainSection.entries.forEach { section ->
+                    TextButton(
+                        onClick = { selectedSection = section },
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.textButtonColors(
+                            contentColor = if (selectedSection == section) {
+                                EagleBlue
+                            } else {
+                                EagleTextMuted
+                            }
+                        )
+                    ) {
+                        Text(
+                            text = section.shortTitle,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
+            Spacer(Modifier.height(10.dp))
+        }
+    }
+    if (accountDialogOpen) {
+        AccountDialog(
+            user = user,
+            onDismiss = { accountDialogOpen = false },
+            onLogout = {
+                accountDialogOpen = false
+                onLogout()
+            }
+        )
+    }
+}
+
+@Composable
+private fun AccountDialog(
+    user: AuthenticatedUser,
+    onDismiss: () -> Unit,
+    onLogout: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = "Minha conta",
+                fontWeight = FontWeight.Bold
+            )
+        },
+        text = {
+            Column {
+                Text(
+                    text = user.name,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = "Ramal ${user.extension}",
+                    color = EagleTextMuted
+                )
                 Spacer(Modifier.height(14.dp))
                 Text(
                     text = user.email,
                     color = EagleTextMuted,
                     fontSize = 14.sp
                 )
-                Spacer(Modifier.height(20.dp))
+                Spacer(Modifier.height(18.dp))
                 Text(
-                    text = "A autenticação nativa está ativa. A telefonia será habilitada na próxima fase.",
-                    color = EagleTextMuted,
-                    fontSize = 14.sp
+                    text = "Sessão protegida pelo Android Keystore.",
+                    color = EagleSuccess,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold
                 )
             }
-            Spacer(Modifier.weight(1f))
-            Button(
-                onClick = onLogout,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(52.dp),
-                shape = RoundedCornerShape(14.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = EagleNavyLight,
-                    contentColor = EagleText
-                )
-            ) {
-                Text("Sair", fontWeight = FontWeight.Bold)
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Fechar")
             }
-        }
-    }
+        },
+        dismissButton = {
+            TextButton(onClick = onLogout) {
+                Text("Sair", color = EagleDanger)
+            }
+        },
+        containerColor = EagleNavyLight,
+        textContentColor = EagleText,
+        titleContentColor = EagleText
+    )
+}
+
+@Composable
+private fun PresenceMenuItem(
+    label: String,
+    value: String,
+    onSelect: (String) -> Unit
+) {
+    DropdownMenuItem(
+        text = { Text(label) },
+        onClick = { onSelect(value) }
+    )
+}
+
+private enum class MainSection(
+    val title: String,
+    val shortTitle: String,
+    val description: String
+) {
+    DIALER(
+        title = "Discador",
+        shortTitle = "Discador",
+        description = "A telefonia nativa será conectada ao motor SIP nesta área."
+    ),
+    CONTACTS(
+        title = "Contatos",
+        shortTitle = "Contatos",
+        description = "A agenda corporativa autorizada ficará disponível nesta área."
+    ),
+    HISTORY(
+        title = "Histórico",
+        shortTitle = "Histórico",
+        description = "As chamadas e gravações autorizadas ficarão disponíveis nesta área."
+    )
 }
 
 @Preview(showBackground = true, showSystemUi = true)

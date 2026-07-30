@@ -47,6 +47,12 @@ Cada instalação deve possuir:
 Um ramal pode possuir múltiplos dispositivos, mas uma credencial não deve ser
 compartilhada entre eles.
 
+O estado de presença já utiliza a API existente do Eagle PBX. Temporariamente,
+o DND continua sendo aplicado ao ramal inteiro no Asterisk. A separação do DND
+por instalação — Android, PWA, desktop e softphones — fica prevista para a
+revisão 1.0.4 do ecossistema e exigirá identidade de dispositivo também nessa
+operação.
+
 ## Fases
 
 ### 1. Fundação
