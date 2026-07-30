@@ -22,8 +22,9 @@ administrativo ou aplicativo desktop.
 
 ## Ambiente inicial de homologação
 
-- aparelho: Samsung Galaxy S25 Ultra;
-- sistema: Android 16;
+- aparelhos operacionais: Samsung Galaxy A25 5G;
+- aparelho complementar: Samsung Galaxy S25 Ultra;
+- sistemas de homologação: Android 15 e Android 16;
 - instalações previstas: aproximadamente seis;
 - limite operacional inicial: dez ramais.
 

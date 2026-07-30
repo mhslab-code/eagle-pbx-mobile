@@ -52,7 +52,8 @@ compartilhada entre eles.
 ### 1. Fundação
 
 - repositório público e AGPLv3;
-- projeto Android;
+- projeto Android em Kotlin e Jetpack Compose;
+- SDK mínimo 28 e SDK alvo 36;
 - identidade visual;
 - proteção contra segredos;
 - pipeline de validação sem chave de produção.
@@ -83,7 +84,8 @@ compartilhada entre eles.
 
 ### 5. Homologação
 
-- Samsung Galaxy S25 Ultra com Android 16;
+- Samsung Galaxy A25 5G com Android 15 e Android 16;
+- Samsung Galaxy S25 Ultra com Android 16 como validação complementar;
 - Wi-Fi e rede móvel;
 - troca de rede durante chamada;
 - suspensão e encerramento;

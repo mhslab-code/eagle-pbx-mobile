@@ -5,8 +5,9 @@ Aplicativo mobile nativo de telefonia corporativa da Eagle Sistemas.
 ## Estado
 
 Projeto iniciado em 30 de julho de 2026. A primeira plataforma será Android,
-com homologação inicial no Samsung Galaxy S25 Ultra com Android 16. O iOS será
-desenvolvido depois da homologação do fluxo Android.
+com homologação operacional nos Samsung Galaxy A25 5G e validação complementar
+no Samsung Galaxy S25 Ultra. O iOS será desenvolvido depois da homologação do
+fluxo Android.
 
 ## Decisões aprovadas
 
@@ -55,6 +56,13 @@ Consulte [SECURITY.md](SECURITY.md) antes de contribuir.
 
 ## Compilação
 
-O projeto Android ainda não foi inicializado. A versão do Android Gradle
-Plugin, Kotlin, SDK mínimo e SDK alvo serão fixadas na etapa de bootstrap,
-depois da auditoria das versões estáveis e compatíveis com Android 16.
+O projeto Android está em [`android/`](android/) e utiliza:
+
+- identificador `com.eaglesistemas.eaglepbx`;
+- Kotlin e Jetpack Compose;
+- SDK mínimo 28;
+- SDK de compilação e alvo 36 (Android 16);
+- Gradle Wrapper versionado no repositório.
+
+Consulte [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) para preparar o ambiente e
+executar a validação local.
