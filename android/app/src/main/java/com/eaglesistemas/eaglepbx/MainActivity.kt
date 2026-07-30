@@ -134,6 +134,7 @@ fun EaglePBXApp(viewModel: LoginViewModel = viewModel()) {
             onSeekRecording = viewModel::seekRecording,
             onPlaceCall = viewModel::placeCall,
             onHangupCall = viewModel::hangupCall,
+            onSendDtmf = viewModel::sendDtmf,
             onAcceptIncomingCall = viewModel::acceptIncomingCall,
             onRejectIncomingCall = viewModel::rejectIncomingCall,
             onPresenceChange = viewModel::updatePresence,
@@ -362,6 +363,7 @@ fun AuthenticatedScreen(
     onSeekRecording: (Int) -> Unit,
     onPlaceCall: (String) -> Unit,
     onHangupCall: () -> Unit,
+    onSendDtmf: (Char) -> Unit,
     onAcceptIncomingCall: () -> Unit,
     onRejectIncomingCall: () -> Unit,
     onPresenceChange: (String) -> Unit,
@@ -505,7 +507,8 @@ fun AuthenticatedScreen(
                         mobileDeviceStatus = mobileDeviceStatus,
                         mobileDeviceError = mobileDeviceError,
                         onPlaceCall = onPlaceCall,
-                        onHangupCall = onHangupCall
+                        onHangupCall = onHangupCall,
+                        onSendDtmf = onSendDtmf
                     )
                     MainSection.CONTACTS -> ContactsContent(
                         contacts = contacts,
@@ -1217,7 +1220,8 @@ private fun DialerContent(
     mobileDeviceStatus: String?,
     mobileDeviceError: String?,
     onPlaceCall: (String) -> Unit,
-    onHangupCall: () -> Unit
+    onHangupCall: () -> Unit,
+    onSendDtmf: (Char) -> Unit
 ) {
     var number by rememberSaveable { mutableStateOf("") }
     val callActive = sipCallStatus in setOf(
@@ -1285,9 +1289,18 @@ private fun DialerContent(
                 DialKeyButton(
                     key = key,
                     modifier = Modifier.weight(1f),
-                    onClick = { number += key.digit },
+                    onClick = {
+                        if (sipCallStatus == SipCallStatus.CONNECTED) {
+                            onSendDtmf(key.digit.first())
+                        } else {
+                            number += key.digit
+                        }
+                    },
                     onLongClick = {
-                        if (key.digit == "0") {
+                        if (
+                            key.digit == "0" &&
+                            sipCallStatus != SipCallStatus.CONNECTED
+                        ) {
                             number += "+"
                         }
                     }

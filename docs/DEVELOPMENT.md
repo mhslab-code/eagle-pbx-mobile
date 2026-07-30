@@ -45,6 +45,14 @@ definitiva de assinatura e suas senhas não pertencem ao repositório.
 
 ## Marcos validados
 
+### 0.1.10
+
+- teclado numérico envia DTMF somente durante chamada conectada;
+- dígitos `1`, `2` e `#` recebidos e encaminhados pelo Asterisk;
+- validação feita pelo canal temporário de diagnóstico DTMF, removido depois do
+  teste;
+- testes unitários, compilação e instalação no emulador aprovados.
+
 ### 0.1.9
 
 - chamada interna recebida em primeiro plano;

@@ -9,7 +9,7 @@ com homologação operacional nos Samsung Galaxy A25 5G e validação complement
 no Samsung Galaxy S25 Ultra. O iOS será desenvolvido depois da homologação do
 fluxo Android.
 
-Versão de desenvolvimento atual: `0.1.9`. A identidade visual, o login nativo,
+Versão de desenvolvimento atual: `0.1.10`. A identidade visual, o login nativo,
 a restauração segura da sessão, o logoff, a navegação principal e a integração
 inicial de presença foram validados no emulador equivalente ao Galaxy A25 5G.
 A agenda corporativa, o histórico e o player autenticado de gravações também
@@ -17,7 +17,8 @@ estão integrados. Cada instalação registra uma identidade individual na API,
 recebe exclusivamente sua configuração SIP e estabelece registro PJSIP TLS
 com o Liblinphone. Chamadas internas originadas e recebidas, atendimento,
 recusa global e encerramento pelo aplicativo foram homologados. O áudio
-permanece pendente de homologação em aparelho físico.
+permanece pendente de homologação em aparelho físico. O envio de DTMF durante
+a chamada foi validado diretamente no Asterisk.
 
 ## Decisões aprovadas
 

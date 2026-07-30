@@ -198,6 +198,15 @@ class LinphoneEngine(
         }
     }
 
+    fun sendDtmf(digit: Char): Boolean {
+        if (digit !in "0123456789*#") return false
+        val call = activeCall ?: return false
+        if (call.state !in setOf(Call.State.Connected, Call.State.StreamsRunning)) {
+            return false
+        }
+        return call.sendDtmf(digit) == 0
+    }
+
     fun acceptIncomingCall(): Boolean {
         val call = activeCall ?: return false
         return call.accept() == 0

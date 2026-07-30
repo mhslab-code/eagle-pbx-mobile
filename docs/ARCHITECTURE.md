@@ -69,6 +69,10 @@ pelo Liblinphone e faz os demais dispositivos pararem de tocar. A recusa usa
 também a API de telefonia já homologada no desktop, encerrando a chamada em
 todos os dispositivos do ramal.
 
+Na versão 0.1.10, as teclas do discador enviam DTMF pelo Liblinphone durante
+uma chamada conectada. O Asterisk confirmou a recepção e o encaminhamento dos
+eventos por RFC4733, independentemente do áudio redirecionado pelo RDP.
+
 O estado de presença já utiliza a API existente do Eagle PBX. Temporariamente,
 o DND continua sendo aplicado ao ramal inteiro no Asterisk. A separação do DND
 por instalação — Android, PWA, desktop e softphones — fica prevista para a
@@ -101,6 +105,7 @@ operação.
 - registro SIP individual validado;
 - chamadas internas originadas e recebidas, atendimento, recusa global e
   encerramento validados; chamadas externas pendentes;
+- DTMF durante chamada validado;
 - áudio bidirecional;
 - DTMF;
 - rotas de áudio e Bluetooth.

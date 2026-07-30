@@ -202,6 +202,11 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
         linphoneEngine?.hangupCall()
     }
 
+    fun sendDtmf(digit: Char) {
+        if (mutableState.value.sipCallStatus != SipCallStatus.CONNECTED) return
+        linphoneEngine?.sendDtmf(digit)
+    }
+
     fun acceptIncomingCall() {
         if (mutableState.value.sipCallStatus != SipCallStatus.INCOMING) return
         if (linphoneEngine?.acceptIncomingCall() != true) {
