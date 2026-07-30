@@ -1224,6 +1224,7 @@ private fun DialerContent(
     onSendDtmf: (Char) -> Unit
 ) {
     var number by rememberSaveable { mutableStateOf("") }
+    var dtmfDigits by rememberSaveable { mutableStateOf("") }
     val callActive = sipCallStatus in setOf(
         SipCallStatus.INCOMING,
         SipCallStatus.OUTGOING,
@@ -1231,6 +1232,13 @@ private fun DialerContent(
         SipCallStatus.CONNECTED,
         SipCallStatus.ENDING
     )
+    LaunchedEffect(sipCallStatus) {
+        if (sipCallStatus == SipCallStatus.IDLE ||
+            sipCallStatus == SipCallStatus.OUTGOING
+        ) {
+            dtmfDigits = ""
+        }
+    }
     val keys = listOf(
         DialKey("1"), DialKey("2", "ABC"), DialKey("3", "DEF"),
         DialKey("4", "GHI"), DialKey("5", "JKL"), DialKey("6", "MNO"),
@@ -1247,19 +1255,33 @@ private fun DialerContent(
             .padding(horizontal = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(
-            text = number.ifBlank { "Digite o ramal ou telefone" },
+        Column(
             modifier = Modifier.weight(1f),
-            color = if (number.isBlank()) EagleTextMuted else EagleText,
-            fontSize = when {
-                number.length > 22 -> 19.sp
-                number.length > 15 -> 24.sp
-                else -> 31.sp
-            },
-            fontWeight = if (number.isBlank()) FontWeight.SemiBold else FontWeight.Normal,
-            textAlign = TextAlign.Center,
-            maxLines = 1
-        )
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = number.ifBlank { "Digite o ramal ou telefone" },
+                color = if (number.isBlank()) EagleTextMuted else EagleText,
+                fontSize = when {
+                    number.length > 22 -> 19.sp
+                    number.length > 15 -> 24.sp
+                    else -> 31.sp
+                },
+                fontWeight = if (number.isBlank()) FontWeight.SemiBold else FontWeight.Normal,
+                textAlign = TextAlign.Center,
+                maxLines = 1
+            )
+            if (dtmfDigits.isNotEmpty()) {
+                Text(
+                    text = "DTMF: $dtmfDigits",
+                    color = EagleBlue,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center,
+                    maxLines = 1
+                )
+            }
+        }
         Box(
             modifier = Modifier
                 .size(48.dp)
@@ -1291,6 +1313,7 @@ private fun DialerContent(
                     modifier = Modifier.weight(1f),
                     onClick = {
                         if (sipCallStatus == SipCallStatus.CONNECTED) {
+                            dtmfDigits = (dtmfDigits + key.digit).takeLast(32)
                             onSendDtmf(key.digit.first())
                         } else {
                             number += key.digit

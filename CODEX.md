@@ -52,3 +52,12 @@ fechar o código.
 - revogar a sessão e o endpoint do dispositivo quando o acesso for bloqueado;
 - registrar eventos de provisionamento e revogação sem registrar segredos;
 - implementar push e telefonia nativa antes de considerar o mobile homologado.
+
+## Revisão 0.1.11
+
+- As teclas DTMF aceitas durante uma chamada são exibidas no formato
+  `DTMF: 12#`.
+- O destino originalmente discado permanece inalterado.
+- A sequência é limpa no início ou no encerramento de outra chamada.
+- O comportamento foi homologado no emulador equivalente ao Galaxy A25 5G e
+  comparado com o frontend compartilhado do PWA/Tauri.
