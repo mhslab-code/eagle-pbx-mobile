@@ -45,6 +45,17 @@ definitiva de assinatura e suas senhas não pertencem ao repositório.
 
 ## Marcos validados
 
+### 0.1.5
+
+- Liblinphone `5.5.13` integrado a partir do repositório Maven oficial;
+- núcleo SIP inicializado sem credenciais ou conta provisionada;
+- estado `Motor SIP inicializado` validado no emulador;
+- APK limitado a `arm64-v8a` para aparelhos e `x86_64` para o emulador;
+- empacotamento e 28 bibliotecas nativas validados para páginas de 16 KB;
+- testes unitários, compilação e inicialização sem falhas;
+- registro SIP permanece bloqueado até existir provisionamento individual e
+  revogável por dispositivo.
+
 ### 0.1.4
 
 - histórico pessoal carregado pela API autenticada;

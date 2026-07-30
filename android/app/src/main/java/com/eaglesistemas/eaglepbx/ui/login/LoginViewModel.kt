@@ -10,6 +10,8 @@ import com.eaglesistemas.eaglepbx.data.EagleApiClient
 import com.eaglesistemas.eaglepbx.data.EagleContact
 import com.eaglesistemas.eaglepbx.data.HistoryCall
 import com.eaglesistemas.eaglepbx.data.SecureSessionStore
+import com.eaglesistemas.eaglepbx.telephony.LinphoneEngine
+import com.eaglesistemas.eaglepbx.telephony.SipEngineStatus
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -36,6 +38,7 @@ data class LoginUiState(
     val recordingPlaying: Boolean = false,
     val recordingPosition: Int = 0,
     val recordingDuration: Int = 0,
+    val sipEngineStatus: SipEngineStatus = SipEngineStatus.INITIALIZING,
     val user: AuthenticatedUser? = null,
     val error: String? = null,
     val presenceError: String? = null,
@@ -46,20 +49,40 @@ data class LoginUiState(
 
 class LoginViewModel(application: Application) : AndroidViewModel(application) {
     private val api = EagleApiClient(SecureSessionStore(application))
+    private var linphoneEngine: LinphoneEngine? = null
     private var mediaPlayer: MediaPlayer? = null
     private var playbackJob: Job? = null
     private val mutableState = MutableStateFlow(LoginUiState())
     val state: StateFlow<LoginUiState> = mutableState.asStateFlow()
 
     init {
+        initializeSipEngine()
         viewModelScope.launch {
             val result = runCatching {
                 withContext(Dispatchers.IO) { api.restoreSession() }
             }
             mutableState.value = LoginUiState(
                 restoringSession = false,
+                sipEngineStatus = mutableState.value.sipEngineStatus,
                 user = result.getOrNull(),
                 error = result.exceptionOrNull()?.toFriendlyMessage()
+            )
+        }
+    }
+
+    private fun initializeSipEngine() {
+        runCatching {
+            LinphoneEngine(getApplication()).also {
+                it.start()
+                linphoneEngine = it
+            }
+        }.onSuccess {
+            mutableState.value = mutableState.value.copy(
+                sipEngineStatus = SipEngineStatus.READY
+            )
+        }.onFailure {
+            mutableState.value = mutableState.value.copy(
+                sipEngineStatus = SipEngineStatus.UNAVAILABLE
             )
         }
     }
@@ -82,7 +105,10 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
     fun logout() {
         viewModelScope.launch {
             withContext(Dispatchers.IO) { api.logout() }
-            mutableState.value = LoginUiState(restoringSession = false)
+            mutableState.value = LoginUiState(
+                restoringSession = false,
+                sipEngineStatus = mutableState.value.sipEngineStatus
+            )
         }
     }
 
@@ -108,6 +134,7 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
                 withContext(Dispatchers.IO) { api.logout() }
                 mutableState.value = LoginUiState(
                     restoringSession = false,
+                    sipEngineStatus = mutableState.value.sipEngineStatus,
                     error = error.toFriendlyMessage()
                 )
             }
@@ -138,6 +165,7 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
                 withContext(Dispatchers.IO) { api.logout() }
                 mutableState.value = LoginUiState(
                     restoringSession = false,
+                    sipEngineStatus = mutableState.value.sipEngineStatus,
                     error = error.toFriendlyMessage()
                 )
             }
@@ -168,6 +196,7 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
                 withContext(Dispatchers.IO) { api.logout() }
                 mutableState.value = LoginUiState(
                     restoringSession = false,
+                    sipEngineStatus = mutableState.value.sipEngineStatus,
                     error = error.toFriendlyMessage()
                 )
             }
@@ -283,6 +312,8 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
 
     override fun onCleared() {
         releasePlayer()
+        linphoneEngine?.stop()
+        linphoneEngine = null
         super.onCleared()
     }
 

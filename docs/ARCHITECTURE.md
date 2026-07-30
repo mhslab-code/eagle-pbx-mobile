@@ -28,7 +28,7 @@ credenciais técnicas. Todos os dados passam pelas APIs autorizadas.
 - interface nativa;
 - camada autenticada de API;
 - armazenamento seguro de sessão e provisionamento;
-- motor SIP Liblinphone, condicionado ao protótipo;
+- motor SIP Liblinphone `5.5.13`, inicializado sem conta nesta fase;
 - integração Telecom Framework/`ConnectionService`;
 - serviço de push FCM;
 - gerenciamento de áudio e Bluetooth;
@@ -74,7 +74,7 @@ operação.
 
 ### 3. Telefonia em primeiro plano
 
-- protótipo Liblinphone;
+- protótipo Liblinphone e compatibilidade de 16 KB validados;
 - registro SIP;
 - chamadas internas e externas;
 - áudio bidirecional;

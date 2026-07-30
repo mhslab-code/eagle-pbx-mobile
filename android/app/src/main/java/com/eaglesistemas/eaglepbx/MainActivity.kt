@@ -82,6 +82,7 @@ import com.eaglesistemas.eaglepbx.ui.theme.EagleText
 import com.eaglesistemas.eaglepbx.ui.theme.EagleTextMuted
 import com.eaglesistemas.eaglepbx.ui.theme.EaglePBXTheme
 import com.eaglesistemas.eaglepbx.ui.login.LoginViewModel
+import com.eaglesistemas.eaglepbx.telephony.SipEngineStatus
 import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -121,6 +122,7 @@ fun EaglePBXApp(viewModel: LoginViewModel = viewModel()) {
             recordingPosition = state.recordingPosition,
             recordingDuration = state.recordingDuration,
             recordingError = state.recordingError,
+            sipEngineStatus = state.sipEngineStatus,
             onToggleRecording = viewModel::toggleRecording,
             onSeekRecording = viewModel::seekRecording,
             onPresenceChange = viewModel::updatePresence,
@@ -339,6 +341,7 @@ fun AuthenticatedScreen(
     recordingPosition: Int,
     recordingDuration: Int,
     recordingError: String?,
+    sipEngineStatus: SipEngineStatus,
     onToggleRecording: (HistoryCall) -> Unit,
     onSeekRecording: (Int) -> Unit,
     onPresenceChange: (String) -> Unit,
@@ -475,7 +478,7 @@ fun AuthenticatedScreen(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 when (selectedSection) {
-                    MainSection.DIALER -> DialerContent()
+                    MainSection.DIALER -> DialerContent(sipEngineStatus)
                     MainSection.CONTACTS -> ContactsContent(
                         contacts = contacts,
                         loading = loadingContacts,
@@ -1171,7 +1174,7 @@ private fun formatHistoryDate(value: String): String {
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun DialerContent() {
+private fun DialerContent(sipEngineStatus: SipEngineStatus) {
     var number by rememberSaveable { mutableStateOf("") }
     val keys = listOf(
         DialKey("1"), DialKey("2", "ABC"), DialKey("3", "DEF"),
@@ -1275,8 +1278,16 @@ private fun DialerContent() {
     }
     Spacer(Modifier.height(8.dp))
     Text(
-        text = "Telefonia SIP em preparação",
-        color = EagleTextMuted,
+        text = when (sipEngineStatus) {
+            SipEngineStatus.INITIALIZING -> "Inicializando motor SIP..."
+            SipEngineStatus.READY -> "Motor SIP inicializado"
+            SipEngineStatus.UNAVAILABLE -> "Motor SIP indisponível"
+        },
+        color = if (sipEngineStatus == SipEngineStatus.READY) {
+            EagleSuccess
+        } else {
+            EagleTextMuted
+        },
         fontSize = 11.sp
     )
 }
