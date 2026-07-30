@@ -81,3 +81,12 @@ fechar o código.
   sem encerrar a ligação.
 - Listagem, seleção e continuidade da chamada foram homologadas no emulador.
   O roteamento acústico real exige aparelho físico.
+
+## Revisão 0.1.14
+
+- O botão Espera utiliza `pause()` na chamada ativa do Liblinphone.
+- Durante a espera, a interface informa `Chamada em espera` e oferece a ação
+  `Retomar`.
+- A retomada utiliza `resume()` e restaura o estado conectado.
+- Música de espera no ramal remoto, transições visuais e continuidade da
+  chamada foram homologadas.

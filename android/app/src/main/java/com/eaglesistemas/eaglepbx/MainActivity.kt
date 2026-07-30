@@ -141,6 +141,7 @@ fun EaglePBXApp(viewModel: LoginViewModel = viewModel()) {
             onToggleMicrophone = viewModel::toggleMicrophone,
             onLoadAudioOutputs = viewModel::loadAudioOutputs,
             onSelectAudioOutput = viewModel::selectAudioOutput,
+            onToggleCallHold = viewModel::toggleCallHold,
             onAcceptIncomingCall = viewModel::acceptIncomingCall,
             onRejectIncomingCall = viewModel::rejectIncomingCall,
             onPresenceChange = viewModel::updatePresence,
@@ -375,6 +376,7 @@ fun AuthenticatedScreen(
     onToggleMicrophone: () -> Unit,
     onLoadAudioOutputs: () -> Unit,
     onSelectAudioOutput: (String) -> Unit,
+    onToggleCallHold: () -> Unit,
     onAcceptIncomingCall: () -> Unit,
     onRejectIncomingCall: () -> Unit,
     onPresenceChange: (String) -> Unit,
@@ -524,7 +526,8 @@ fun AuthenticatedScreen(
                         onSendDtmf = onSendDtmf,
                         onToggleMicrophone = onToggleMicrophone,
                         onLoadAudioOutputs = onLoadAudioOutputs,
-                        onSelectAudioOutput = onSelectAudioOutput
+                        onSelectAudioOutput = onSelectAudioOutput,
+                        onToggleCallHold = onToggleCallHold
                     )
                     MainSection.CONTACTS -> ContactsContent(
                         contacts = contacts,
@@ -1242,7 +1245,8 @@ private fun DialerContent(
     onSendDtmf: (Char) -> Unit,
     onToggleMicrophone: () -> Unit,
     onLoadAudioOutputs: () -> Unit,
-    onSelectAudioOutput: (String) -> Unit
+    onSelectAudioOutput: (String) -> Unit,
+    onToggleCallHold: () -> Unit
 ) {
     var number by rememberSaveable { mutableStateOf("") }
     var dtmfDigits by rememberSaveable { mutableStateOf("") }
@@ -1252,6 +1256,7 @@ private fun DialerContent(
         SipCallStatus.OUTGOING,
         SipCallStatus.RINGING,
         SipCallStatus.CONNECTED,
+        SipCallStatus.HELD,
         SipCallStatus.ENDING
     )
     LaunchedEffect(sipCallStatus) {
@@ -1404,7 +1409,14 @@ private fun DialerContent(
         horizontalArrangement = Arrangement.spacedBy(7.dp)
     ) {
         DialActionButton("↦", "Transferir", enabled = false, modifier = Modifier.weight(1f))
-        DialActionButton("Ⅱ", "Espera", enabled = false, modifier = Modifier.weight(1f))
+        DialActionButton(
+            symbol = if (sipCallStatus == SipCallStatus.HELD) "▶" else "Ⅱ",
+            label = if (sipCallStatus == SipCallStatus.HELD) "Retomar" else "Espera",
+            enabled = sipCallStatus in setOf(SipCallStatus.CONNECTED, SipCallStatus.HELD),
+            primary = sipCallStatus == SipCallStatus.HELD,
+            onClick = onToggleCallHold,
+            modifier = Modifier.weight(1f)
+        )
         DialActionButton("☎+", "Adicionar", enabled = false, modifier = Modifier.weight(1f))
     }
     Spacer(Modifier.height(8.dp))
@@ -1415,6 +1427,7 @@ private fun DialerContent(
                 SipCallStatus.INCOMING -> "Chamada recebida"
                 SipCallStatus.RINGING -> "Chamando..."
                 SipCallStatus.CONNECTED -> "Em chamada"
+                SipCallStatus.HELD -> "Chamada em espera"
                 SipCallStatus.ENDING -> "Encerrando chamada..."
                 SipCallStatus.FAILED -> "Não foi possível completar a chamada"
                 SipCallStatus.IDLE -> ""

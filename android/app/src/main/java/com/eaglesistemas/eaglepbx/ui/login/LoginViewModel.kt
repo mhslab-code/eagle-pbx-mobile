@@ -244,6 +244,12 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun toggleCallHold() {
+        val current = mutableState.value.sipCallStatus
+        if (current !in setOf(SipCallStatus.CONNECTED, SipCallStatus.HELD)) return
+        linphoneEngine?.setCallHeld(current == SipCallStatus.CONNECTED)
+    }
+
     fun acceptIncomingCall() {
         if (mutableState.value.sipCallStatus != SipCallStatus.INCOMING) return
         if (linphoneEngine?.acceptIncomingCall() != true) {

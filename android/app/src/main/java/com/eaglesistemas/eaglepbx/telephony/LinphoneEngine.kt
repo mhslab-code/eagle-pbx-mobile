@@ -28,6 +28,7 @@ enum class SipCallStatus {
     OUTGOING,
     RINGING,
     CONNECTED,
+    HELD,
     ENDING,
     FAILED
 }
@@ -118,6 +119,16 @@ class LinphoneEngine(
                 Call.State.StreamsRunning -> {
                     activeCall = call
                     onIncomingCallChanged(null)
+                    onCallStatusChanged(SipCallStatus.CONNECTED)
+                }
+                Call.State.Pausing,
+                Call.State.Paused,
+                Call.State.PausedByRemote -> {
+                    activeCall = call
+                    onCallStatusChanged(SipCallStatus.HELD)
+                }
+                Call.State.Resuming -> {
+                    activeCall = call
                     onCallStatusChanged(SipCallStatus.CONNECTED)
                 }
                 Call.State.Error -> {
@@ -247,6 +258,23 @@ class LinphoneEngine(
         } ?: return false
         call.outputAudioDevice = device
         return call.outputAudioDevice?.id == id
+    }
+
+    fun setCallHeld(held: Boolean): Boolean {
+        val call = activeCall ?: return false
+        return if (held) {
+            if (call.state !in setOf(Call.State.Connected, Call.State.StreamsRunning)) {
+                false
+            } else {
+                call.pause() == 0
+            }
+        } else {
+            if (call.state !in setOf(Call.State.Paused, Call.State.PausedByRemote)) {
+                false
+            } else {
+                call.resume() == 0
+            }
+        }
     }
 
     private fun audioOutputLabel(device: AudioDevice): String {
