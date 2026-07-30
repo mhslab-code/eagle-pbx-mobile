@@ -33,6 +33,14 @@ enum class SipCallStatus {
     FAILED
 }
 
+enum class AttendedTransferStatus {
+    IDLE,
+    CALLING,
+    CONNECTED,
+    COMPLETING,
+    FAILED
+}
+
 data class IncomingSipCall(
     val number: String,
     val displayName: String?
@@ -54,7 +62,8 @@ class LinphoneEngine(
     context: Context,
     private val onStatusChanged: (SipEngineStatus) -> Unit,
     private val onCallStatusChanged: (SipCallStatus) -> Unit,
-    private val onIncomingCallChanged: (IncomingSipCall?) -> Unit
+    private val onIncomingCallChanged: (IncomingSipCall?) -> Unit,
+    private val onAttendedTransferChanged: (AttendedTransferStatus) -> Unit
 ) {
     private val core: Core = Factory.instance().createCore(
         null,
@@ -64,6 +73,10 @@ class LinphoneEngine(
     private var account: Account? = null
     private var authInfo: AuthInfo? = null
     private var activeCall: Call? = null
+    private var originalTransferCall: Call? = null
+    private var consultationCall: Call? = null
+    private var releasedConsultationCall: Call? = null
+    private var cancellingConsultation = false
     private var sipDomain: String? = null
     private val listener = object : CoreListenerStub() {
         override fun onAccountRegistrationStateChanged(
@@ -90,6 +103,50 @@ class LinphoneEngine(
             state: Call.State,
             message: String
         ) {
+            if (call == releasedConsultationCall) {
+                if (state == Call.State.Released) releasedConsultationCall = null
+                return
+            }
+            if (call == consultationCall) {
+                when (state) {
+                    Call.State.OutgoingInit,
+                    Call.State.OutgoingProgress,
+                    Call.State.OutgoingRinging,
+                    Call.State.OutgoingEarlyMedia -> {
+                        activeCall = call
+                        onAttendedTransferChanged(AttendedTransferStatus.CALLING)
+                    }
+                    Call.State.Connected,
+                    Call.State.StreamsRunning -> {
+                        activeCall = call
+                        onCallStatusChanged(SipCallStatus.CONNECTED)
+                        onAttendedTransferChanged(AttendedTransferStatus.CONNECTED)
+                    }
+                    Call.State.Error,
+                    Call.State.End,
+                    Call.State.Released -> {
+                        if (consultationCall == call) {
+                            releasedConsultationCall = call
+                            consultationCall = null
+                            val original = originalTransferCall
+                            originalTransferCall = null
+                            activeCall = original
+                            if (original != null) {
+                                original.resume()
+                                onCallStatusChanged(SipCallStatus.CONNECTED)
+                            }
+                            if (state == Call.State.Error && !cancellingConsultation) {
+                                onAttendedTransferChanged(AttendedTransferStatus.FAILED)
+                            } else {
+                                onAttendedTransferChanged(AttendedTransferStatus.IDLE)
+                            }
+                            cancellingConsultation = false
+                        }
+                    }
+                    else -> Unit
+                }
+                return
+            }
             when (state) {
                 Call.State.IncomingReceived,
                 Call.State.IncomingEarlyMedia -> {
@@ -293,6 +350,67 @@ class LinphoneEngine(
         return accepted
     }
 
+    fun startAttendedTransfer(destination: String): Boolean {
+        val normalized = destination.trim()
+        val original = activeCall ?: return false
+        if (
+            originalTransferCall != null ||
+            original.state !in setOf(Call.State.Connected, Call.State.StreamsRunning) ||
+            normalized.isBlank() ||
+            !normalized.matches(Regex("[0-9*#+]{1,40}"))
+        ) return false
+        val domain = sipDomain ?: return false
+        val address = Factory.instance().createAddress("sip:$normalized@$domain")
+            ?: return false
+        return runCatching {
+            if (original.pause() != 0) return@runCatching false
+            originalTransferCall = original
+            val consultation = core.inviteAddress(address)
+            if (consultation == null) {
+                originalTransferCall = null
+                original.resume()
+                return@runCatching false
+            }
+            consultationCall = consultation
+            activeCall = consultation
+            onAttendedTransferChanged(AttendedTransferStatus.CALLING)
+            true
+        }.getOrDefault(false)
+    }
+
+    fun cancelAttendedTransfer(): Boolean {
+        val original = originalTransferCall ?: return false
+        val consultation = consultationCall
+        cancellingConsultation = true
+        consultation?.terminate()
+        if (consultation == null) {
+            originalTransferCall = null
+            activeCall = original
+            cancellingConsultation = false
+            val accepted = original.resume() == 0
+            if (accepted) onCallStatusChanged(SipCallStatus.CONNECTED)
+            onAttendedTransferChanged(AttendedTransferStatus.IDLE)
+            return accepted
+        }
+        return true
+    }
+
+    fun completeAttendedTransfer(): Boolean {
+        val original = originalTransferCall ?: return false
+        val consultation = consultationCall ?: return false
+        if (
+            consultation.state !in setOf(Call.State.Connected, Call.State.StreamsRunning)
+        ) return false
+        onAttendedTransferChanged(AttendedTransferStatus.COMPLETING)
+        val accepted = original.transferToAnother(consultation) == 0
+        if (!accepted) {
+            onAttendedTransferChanged(AttendedTransferStatus.CONNECTED)
+        } else {
+            onCallStatusChanged(SipCallStatus.ENDING)
+        }
+        return accepted
+    }
+
     private fun audioOutputLabel(device: AudioDevice): String {
         val type = when (device.type) {
             AudioDevice.Type.Earpiece -> "Auricular"
@@ -331,6 +449,12 @@ class LinphoneEngine(
     }
 
     fun clearAccount() {
+        consultationCall?.terminate()
+        originalTransferCall?.terminate()
+        consultationCall = null
+        originalTransferCall = null
+        releasedConsultationCall = null
+        cancellingConsultation = false
         activeCall?.terminate()
         activeCall = null
         account?.let { core.removeAccount(it) }
@@ -339,6 +463,7 @@ class LinphoneEngine(
         authInfo = null
         sipDomain = null
         onIncomingCallChanged(null)
+        onAttendedTransferChanged(AttendedTransferStatus.IDLE)
         onCallStatusChanged(SipCallStatus.IDLE)
     }
 

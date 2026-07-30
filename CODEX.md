@@ -99,3 +99,17 @@ fechar o código.
 - Depois que o PBX aceita a operação, o Android sai da sessão e origem e
   destino permanecem conectados.
 - O fluxo completo foi homologado entre os ramais 104 e 105.
+
+## Revisão 0.1.16
+
+- O modal de transferência oferece as ações direta e assistida.
+- A transferência assistida coloca a chamada original em espera e estabelece
+  uma segunda chamada de consulta pelo Liblinphone.
+- `Cancelar consulta` encerra somente o segundo destino e retoma a chamada
+  original.
+- `Concluir transferência` usa `transferToAnother()`, conecta os dois ramais e
+  remove o Android da sessão.
+- A interface preserva sua estrutura durante as transições para evitar
+  travamento de recomposição.
+- Cancelamento, retomada e conclusão foram homologados entre os ramais 104 e
+  105.

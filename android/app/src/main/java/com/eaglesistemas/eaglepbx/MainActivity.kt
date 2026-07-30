@@ -83,6 +83,7 @@ import com.eaglesistemas.eaglepbx.ui.theme.EagleTextMuted
 import com.eaglesistemas.eaglepbx.ui.theme.EaglePBXTheme
 import com.eaglesistemas.eaglepbx.ui.login.LoginViewModel
 import com.eaglesistemas.eaglepbx.telephony.SipCallStatus
+import com.eaglesistemas.eaglepbx.telephony.AttendedTransferStatus
 import com.eaglesistemas.eaglepbx.telephony.SipEngineStatus
 import com.eaglesistemas.eaglepbx.telephony.IncomingSipCall
 import com.eaglesistemas.eaglepbx.telephony.SipAudioOutput
@@ -127,6 +128,7 @@ fun EaglePBXApp(viewModel: LoginViewModel = viewModel()) {
             recordingError = state.recordingError,
             sipEngineStatus = state.sipEngineStatus,
             sipCallStatus = state.sipCallStatus,
+            attendedTransferStatus = state.attendedTransferStatus,
             microphoneMuted = state.microphoneMuted,
             audioOutputs = state.audioOutputs,
             incomingSipCall = state.incomingSipCall,
@@ -143,6 +145,9 @@ fun EaglePBXApp(viewModel: LoginViewModel = viewModel()) {
             onSelectAudioOutput = viewModel::selectAudioOutput,
             onToggleCallHold = viewModel::toggleCallHold,
             onTransferDirect = viewModel::transferDirect,
+            onStartAttendedTransfer = viewModel::startAttendedTransfer,
+            onCancelAttendedTransfer = viewModel::cancelAttendedTransfer,
+            onCompleteAttendedTransfer = viewModel::completeAttendedTransfer,
             onAcceptIncomingCall = viewModel::acceptIncomingCall,
             onRejectIncomingCall = viewModel::rejectIncomingCall,
             onPresenceChange = viewModel::updatePresence,
@@ -363,6 +368,7 @@ fun AuthenticatedScreen(
     recordingError: String?,
     sipEngineStatus: SipEngineStatus,
     sipCallStatus: SipCallStatus,
+    attendedTransferStatus: AttendedTransferStatus,
     microphoneMuted: Boolean,
     audioOutputs: List<SipAudioOutput>,
     incomingSipCall: IncomingSipCall?,
@@ -379,6 +385,9 @@ fun AuthenticatedScreen(
     onSelectAudioOutput: (String) -> Unit,
     onToggleCallHold: () -> Unit,
     onTransferDirect: (String) -> Boolean,
+    onStartAttendedTransfer: (String) -> Boolean,
+    onCancelAttendedTransfer: () -> Boolean,
+    onCompleteAttendedTransfer: () -> Boolean,
     onAcceptIncomingCall: () -> Unit,
     onRejectIncomingCall: () -> Unit,
     onPresenceChange: (String) -> Unit,
@@ -518,6 +527,7 @@ fun AuthenticatedScreen(
                     MainSection.DIALER -> DialerContent(
                         sipEngineStatus = sipEngineStatus,
                         sipCallStatus = sipCallStatus,
+                        attendedTransferStatus = attendedTransferStatus,
                         microphoneMuted = microphoneMuted,
                         audioOutputs = audioOutputs,
                         registeringMobileDevice = registeringMobileDevice,
@@ -530,7 +540,10 @@ fun AuthenticatedScreen(
                         onLoadAudioOutputs = onLoadAudioOutputs,
                         onSelectAudioOutput = onSelectAudioOutput,
                         onToggleCallHold = onToggleCallHold,
-                        onTransferDirect = onTransferDirect
+                        onTransferDirect = onTransferDirect,
+                        onStartAttendedTransfer = onStartAttendedTransfer,
+                        onCancelAttendedTransfer = onCancelAttendedTransfer,
+                        onCompleteAttendedTransfer = onCompleteAttendedTransfer
                     )
                     MainSection.CONTACTS -> ContactsContent(
                         contacts = contacts,
@@ -1238,6 +1251,7 @@ private fun formatHistoryDate(value: String): String {
 private fun DialerContent(
     sipEngineStatus: SipEngineStatus,
     sipCallStatus: SipCallStatus,
+    attendedTransferStatus: AttendedTransferStatus,
     microphoneMuted: Boolean,
     audioOutputs: List<SipAudioOutput>,
     registeringMobileDevice: Boolean,
@@ -1250,7 +1264,10 @@ private fun DialerContent(
     onLoadAudioOutputs: () -> Unit,
     onSelectAudioOutput: (String) -> Unit,
     onToggleCallHold: () -> Unit,
-    onTransferDirect: (String) -> Boolean
+    onTransferDirect: (String) -> Boolean,
+    onStartAttendedTransfer: (String) -> Boolean,
+    onCancelAttendedTransfer: () -> Boolean,
+    onCompleteAttendedTransfer: () -> Boolean
 ) {
     var number by rememberSaveable { mutableStateOf("") }
     var dtmfDigits by rememberSaveable { mutableStateOf("") }
@@ -1500,8 +1517,12 @@ private fun DialerContent(
         )
     }
     if (transferDialogOpen) {
-        DirectTransferDialog(
-            onTransfer = onTransferDirect,
+        TransferDialog(
+            status = attendedTransferStatus,
+            onTransferDirect = onTransferDirect,
+            onStartAttended = onStartAttendedTransfer,
+            onCancelAttended = onCancelAttendedTransfer,
+            onCompleteAttended = onCompleteAttendedTransfer,
             onDismiss = { transferDialogOpen = false }
         )
     }
@@ -1509,8 +1530,12 @@ private fun DialerContent(
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun DirectTransferDialog(
-    onTransfer: (String) -> Boolean,
+private fun TransferDialog(
+    status: AttendedTransferStatus,
+    onTransferDirect: (String) -> Boolean,
+    onStartAttended: (String) -> Boolean,
+    onCancelAttended: () -> Boolean,
+    onCompleteAttended: () -> Boolean,
     onDismiss: () -> Unit
 ) {
     var destination by rememberSaveable { mutableStateOf("") }
@@ -1522,15 +1547,48 @@ private fun DirectTransferDialog(
         DialKey("*"), DialKey("0", "+"), DialKey("#")
     )
     AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Transferir chamada", color = EagleText) },
+        onDismissRequest = {
+            if (status == AttendedTransferStatus.IDLE ||
+                status == AttendedTransferStatus.FAILED
+            ) onDismiss()
+        },
+        title = {
+            Text(
+                if (status in setOf(
+                        AttendedTransferStatus.CALLING,
+                        AttendedTransferStatus.CONNECTED,
+                        AttendedTransferStatus.COMPLETING
+                    )
+                ) "Transferência assistida" else "Transferir chamada",
+                color = EagleText
+            )
+        },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
-                Text(
-                    text = "Digite o ramal ou telefone de destino.",
-                    color = EagleTextMuted,
-                    fontSize = 13.sp
+                val consulting = status in setOf(
+                    AttendedTransferStatus.CALLING,
+                    AttendedTransferStatus.CONNECTED,
+                    AttendedTransferStatus.COMPLETING
                 )
+                if (consulting) {
+                    Text(
+                        text = when (status) {
+                            AttendedTransferStatus.CALLING ->
+                                "Consultando $destination. A chamada original está em espera."
+                            AttendedTransferStatus.CONNECTED ->
+                                "Consulta estabelecida. Converse com o destino e escolha como continuar."
+                            AttendedTransferStatus.COMPLETING ->
+                                "Concluindo a transferência..."
+                            else -> ""
+                        },
+                        color = EagleTextMuted,
+                        fontSize = 13.sp
+                    )
+                } else Text(
+                        text = "Digite o ramal ou telefone de destino.",
+                        color = EagleTextMuted,
+                        fontSize = 13.sp
+                    )
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -1552,7 +1610,7 @@ private fun DirectTransferDialog(
                         color = if (destination.isBlank()) EagleTextMuted else EagleText,
                         fontSize = 22.sp,
                         modifier = Modifier.combinedClickable(
-                            enabled = destination.isNotBlank(),
+                            enabled = destination.isNotBlank() && !consulting,
                             onClick = { destination = destination.dropLast(1) },
                             onLongClick = { destination = "" }
                         )
@@ -1569,17 +1627,24 @@ private fun DirectTransferDialog(
                                 modifier = Modifier
                                     .weight(1f)
                                     .height(48.dp),
-                                onClick = { destination += key.digit },
+                                onClick = {
+                                    if (!consulting) destination += key.digit
+                                },
                                 onLongClick = {
-                                    if (key.digit == "0") destination += "+"
+                                    if (!consulting && key.digit == "0") destination += "+"
                                 }
                             )
                         }
                     }
                 }
-                if (!error.isNullOrBlank()) {
+                val visibleError = error ?: if (status == AttendedTransferStatus.FAILED) {
+                    "A consulta não foi completada. A chamada original foi retomada."
+                } else {
+                    null
+                }
+                if (!visibleError.isNullOrBlank()) {
                     Text(
-                        text = requireNotNull(error),
+                        text = visibleError,
                         color = EagleDanger,
                         fontSize = 12.sp
                     )
@@ -1587,22 +1652,63 @@ private fun DirectTransferDialog(
             }
         },
         confirmButton = {
-            TextButton(
-                enabled = destination.isNotBlank(),
-                onClick = {
-                    if (onTransfer(destination)) {
-                        onDismiss()
-                    } else {
-                        error = "Não foi possível transferir a chamada."
+            when (status) {
+                AttendedTransferStatus.CONNECTED -> TextButton(
+                    onClick = {
+                        if (onCompleteAttended()) onDismiss()
+                        else error = "Não foi possível concluir a transferência."
+                    }
+                ) {
+                    Text("Concluir transferência", color = EagleBlue)
+                }
+                AttendedTransferStatus.CALLING,
+                AttendedTransferStatus.COMPLETING -> Unit
+                else -> Row {
+                    TextButton(
+                        enabled = destination.isNotBlank(),
+                        onClick = {
+                            if (onTransferDirect(destination)) onDismiss()
+                            else error = "Não foi possível transferir a chamada."
+                        }
+                    ) {
+                        Text("Direta", color = EagleTextMuted)
+                    }
+                    TextButton(
+                        enabled = destination.isNotBlank(),
+                        onClick = {
+                            if (!onStartAttended(destination)) {
+                                error = "Não foi possível iniciar a consulta."
+                            }
+                        }
+                    ) {
+                        Text("Assistida", color = EagleBlue)
                     }
                 }
-            ) {
-                Text("Transferir", color = EagleBlue)
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancelar", color = EagleTextMuted)
+            TextButton(
+                enabled = status != AttendedTransferStatus.COMPLETING,
+                onClick = {
+                    if (status in setOf(
+                            AttendedTransferStatus.CALLING,
+                            AttendedTransferStatus.CONNECTED
+                        )
+                    ) {
+                        onCancelAttended()
+                    } else {
+                        onDismiss()
+                    }
+                }
+            ) {
+                Text(
+                    if (status in setOf(
+                            AttendedTransferStatus.CALLING,
+                            AttendedTransferStatus.CONNECTED
+                        )
+                    ) "Cancelar consulta" else "Cancelar",
+                    color = EagleTextMuted
+                )
             }
         },
         containerColor = EagleNavyLight

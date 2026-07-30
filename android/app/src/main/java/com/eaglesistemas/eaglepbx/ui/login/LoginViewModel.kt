@@ -18,6 +18,7 @@ import com.eaglesistemas.eaglepbx.telephony.IncomingSipCall
 import com.eaglesistemas.eaglepbx.telephony.SipCallStatus
 import com.eaglesistemas.eaglepbx.telephony.SipEngineStatus
 import com.eaglesistemas.eaglepbx.telephony.SipAudioOutput
+import com.eaglesistemas.eaglepbx.telephony.AttendedTransferStatus
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -46,6 +47,7 @@ data class LoginUiState(
     val recordingDuration: Int = 0,
     val sipEngineStatus: SipEngineStatus = SipEngineStatus.INITIALIZING,
     val sipCallStatus: SipCallStatus = SipCallStatus.IDLE,
+    val attendedTransferStatus: AttendedTransferStatus = AttendedTransferStatus.IDLE,
     val microphoneMuted: Boolean = false,
     val audioOutputs: List<SipAudioOutput> = emptyList(),
     val incomingSipCall: IncomingSipCall? = null,
@@ -167,6 +169,11 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
                     if (call != null && !mutableState.value.contactsLoaded) {
                         loadContacts(false)
                     }
+                },
+                onAttendedTransferChanged = { status ->
+                    mutableState.value = mutableState.value.copy(
+                        attendedTransferStatus = status
+                    )
                 }
             ).also {
                 it.start()
@@ -254,6 +261,17 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
         if (mutableState.value.sipCallStatus != SipCallStatus.CONNECTED) return false
         return linphoneEngine?.transferDirect(destination) == true
     }
+
+    fun startAttendedTransfer(destination: String): Boolean {
+        if (mutableState.value.sipCallStatus != SipCallStatus.CONNECTED) return false
+        return linphoneEngine?.startAttendedTransfer(destination) == true
+    }
+
+    fun cancelAttendedTransfer(): Boolean =
+        linphoneEngine?.cancelAttendedTransfer() == true
+
+    fun completeAttendedTransfer(): Boolean =
+        linphoneEngine?.completeAttendedTransfer() == true
 
     fun acceptIncomingCall() {
         if (mutableState.value.sipCallStatus != SipCallStatus.INCOMING) return
