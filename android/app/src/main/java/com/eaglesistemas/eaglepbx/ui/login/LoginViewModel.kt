@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.eaglesistemas.eaglepbx.data.ApiException
 import com.eaglesistemas.eaglepbx.data.AuthenticatedUser
 import com.eaglesistemas.eaglepbx.data.EagleApiClient
+import com.eaglesistemas.eaglepbx.data.EagleContact
 import com.eaglesistemas.eaglepbx.data.SecureSessionStore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -19,9 +20,13 @@ data class LoginUiState(
     val restoringSession: Boolean = true,
     val submitting: Boolean = false,
     val updatingPresence: Boolean = false,
+    val loadingContacts: Boolean = false,
+    val contactsLoaded: Boolean = false,
+    val contacts: List<EagleContact> = emptyList(),
     val user: AuthenticatedUser? = null,
     val error: String? = null,
-    val presenceError: String? = null
+    val presenceError: String? = null,
+    val contactsError: String? = null
 )
 
 class LoginViewModel(application: Application) : AndroidViewModel(application) {
@@ -83,6 +88,36 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
             if (error is ApiException &&
                 error.statusCode in listOf(401, 403)
             ) {
+                withContext(Dispatchers.IO) { api.logout() }
+                mutableState.value = LoginUiState(
+                    restoringSession = false,
+                    error = error.toFriendlyMessage()
+                )
+            }
+        }
+    }
+
+    fun loadContacts(force: Boolean = false) {
+        val current = mutableState.value
+        if (current.loadingContacts || current.user == null ||
+            (!force && current.contactsLoaded)
+        ) return
+        mutableState.value = current.copy(
+            loadingContacts = true,
+            contactsError = null
+        )
+        viewModelScope.launch {
+            val result = runCatching {
+                withContext(Dispatchers.IO) { api.contacts(force) }
+            }
+            val error = result.exceptionOrNull()
+            mutableState.value = mutableState.value.copy(
+                loadingContacts = false,
+                contactsLoaded = result.isSuccess,
+                contacts = result.getOrNull() ?: mutableState.value.contacts,
+                contactsError = error?.toFriendlyMessage()
+            )
+            if (error is ApiException && error.statusCode in listOf(401, 403)) {
                 withContext(Dispatchers.IO) { api.logout() }
                 mutableState.value = LoginUiState(
                     restoringSession = false,

@@ -1,6 +1,7 @@
 package com.eaglesistemas.eaglepbx.data
 
 import com.eaglesistemas.eaglepbx.BuildConfig
+import org.json.JSONArray
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URI
@@ -69,6 +70,51 @@ class EagleApiClient(
         require(presence in setOf("online", "offline", "dnd"))
         val payload = JSONObject().put("presence", presence).toString()
         return requestUser("/api/me", "PATCH", payload)
+    }
+
+    fun contacts(force: Boolean = false): List<EagleContact> {
+        val path = if (force) "/api/contacts?refresh=1" else "/api/contacts"
+        val response = readResponse(
+            connection(path, "GET").apply {
+                sessionStore.read()?.let { setRequestProperty("Cookie", it) }
+            }
+        )
+        val items = JSONObject(response.body).optJSONArray("items") ?: JSONArray()
+        val contacts = LinkedHashMap<String, EagleContact>()
+        for (index in 0 until items.length()) {
+            val item = items.optJSONObject(index) ?: continue
+            val name = item.optString("name", "Contato").trim().ifBlank { "Contato" }
+            val numbersJson = item.optJSONArray("numbers") ?: JSONArray().apply {
+                val number = item.optString("number").trim()
+                if (number.isNotBlank()) {
+                    put(JSONObject().put("number", number).put("label", "Telefone"))
+                }
+            }
+            val numbers = buildList<ContactNumber> {
+                for (numberIndex in 0 until numbersJson.length()) {
+                    val entry = numbersJson.optJSONObject(numberIndex) ?: continue
+                    val number = entry.optString("number").trim()
+                    if (number.isNotBlank() && none { it.number == number }) {
+                        add(
+                            ContactNumber(
+                                number = number,
+                                label = entry.optString("label", "Telefone")
+                            )
+                        )
+                    }
+                }
+            }
+            val key = name.lowercase()
+            val existing = contacts[key]
+            contacts[key] = EagleContact(
+                name = existing?.name ?: name,
+                numbers = ((existing?.numbers ?: emptyList()) + numbers)
+                    .distinctBy { it.number },
+                photo = existing?.photo ?: item.optString("photo")
+                    .takeUnless { it.isBlank() || it == "null" }
+            )
+        }
+        return contacts.values.sortedBy { it.name.lowercase() }
     }
 
     private fun requestUser(path: String): AuthenticatedUser {

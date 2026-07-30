@@ -45,6 +45,15 @@ definitiva de assinatura e suas senhas não pertencem ao repositório.
 
 ## Marcos validados
 
+### 0.1.3
+
+- agenda corporativa carregada pela API autenticada;
+- contatos ordenados alfabeticamente e consolidados em um card por pessoa;
+- fotografias CardDAV e iniciais de contingência validadas;
+- pesquisa por nome, número e rótulo;
+- modal com todos os números de cada contato;
+- atualização manual da agenda sem duplicação de cards.
+
 ### 0.1.2
 
 - navegação nativa entre Discador, Contatos e Histórico;

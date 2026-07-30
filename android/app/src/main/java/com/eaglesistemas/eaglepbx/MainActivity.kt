@@ -1,6 +1,8 @@
 package com.eaglesistemas.eaglepbx
 
+import android.graphics.BitmapFactory
 import android.os.Bundle
+import android.util.Base64
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -24,7 +26,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -40,6 +45,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -49,6 +55,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -61,6 +68,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.eaglesistemas.eaglepbx.data.AuthenticatedUser
+import com.eaglesistemas.eaglepbx.data.EagleContact
 import com.eaglesistemas.eaglepbx.ui.theme.EagleBlue
 import com.eaglesistemas.eaglepbx.ui.theme.EagleBlueDark
 import com.eaglesistemas.eaglepbx.ui.theme.EagleBorder
@@ -94,6 +102,10 @@ fun EaglePBXApp(viewModel: LoginViewModel = viewModel()) {
             user = requireNotNull(state.user),
             updatingPresence = state.updatingPresence,
             presenceError = state.presenceError,
+            contacts = state.contacts,
+            loadingContacts = state.loadingContacts,
+            contactsError = state.contactsError,
+            onLoadContacts = viewModel::loadContacts,
             onPresenceChange = viewModel::updatePresence,
             onLogout = viewModel::logout
         )
@@ -296,6 +308,10 @@ fun AuthenticatedScreen(
     user: AuthenticatedUser,
     updatingPresence: Boolean,
     presenceError: String?,
+    contacts: List<EagleContact>,
+    loadingContacts: Boolean,
+    contactsError: String?,
+    onLoadContacts: (Boolean) -> Unit,
     onPresenceChange: (String) -> Unit,
     onLogout: () -> Unit
 ) {
@@ -311,6 +327,10 @@ fun AuthenticatedScreen(
         "dnd" -> EagleDanger
         "offline" -> EagleTextMuted
         else -> EagleSuccess
+    }
+
+    LaunchedEffect(selectedSection) {
+        if (selectedSection == MainSection.CONTACTS) onLoadContacts(false)
     }
 
     Box(
@@ -426,7 +446,13 @@ fun AuthenticatedScreen(
             ) {
                 when (selectedSection) {
                     MainSection.DIALER -> DialerContent()
-                    else -> PreparedSection(selectedSection)
+                    MainSection.CONTACTS -> ContactsContent(
+                        contacts = contacts,
+                        loading = loadingContacts,
+                        error = contactsError,
+                        onRefresh = { onLoadContacts(true) }
+                    )
+                    MainSection.HISTORY -> PreparedSection(selectedSection)
                 }
             }
             Spacer(Modifier.height(12.dp))
@@ -495,6 +521,284 @@ private fun PreparedSection(section: MainSection) {
         color = EagleSuccess,
         fontSize = 13.sp,
         fontWeight = FontWeight.Bold
+    )
+}
+
+@Composable
+private fun ContactsContent(
+    contacts: List<EagleContact>,
+    loading: Boolean,
+    error: String?,
+    onRefresh: () -> Unit
+) {
+    var search by rememberSaveable { mutableStateOf("") }
+    var selectedContact by remember { mutableStateOf<EagleContact?>(null) }
+    val filtered = remember(contacts, search) {
+        val query = search.trim().lowercase()
+        if (query.isBlank()) {
+            contacts
+        } else {
+            contacts.filter { contact ->
+                contact.name.lowercase().contains(query) ||
+                    contact.numbers.any {
+                        it.number.lowercase().contains(query) ||
+                            it.label.lowercase().contains(query)
+                    }
+            }
+        }
+    }
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = "Contatos",
+                color = EagleText,
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = "${contacts.size} contato${if (contacts.size == 1) "" else "s"}",
+                color = EagleTextMuted,
+                fontSize = 12.sp
+            )
+        }
+        Button(
+            onClick = onRefresh,
+            enabled = !loading,
+            shape = RoundedCornerShape(12.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = EagleNavy,
+                contentColor = EagleBlue
+            )
+        ) {
+            if (loading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(18.dp),
+                    color = EagleBlue,
+                    strokeWidth = 2.dp
+                )
+            } else {
+                Text("Atualizar", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            }
+        }
+    }
+    Spacer(Modifier.height(10.dp))
+    OutlinedTextField(
+        value = search,
+        onValueChange = { search = it },
+        modifier = Modifier.fillMaxWidth(),
+        placeholder = { Text("Pesquisar nome ou número") },
+        singleLine = true,
+        shape = RoundedCornerShape(14.dp),
+        colors = TextFieldDefaults.colors(
+            focusedContainerColor = EagleNavy,
+            unfocusedContainerColor = EagleNavy,
+            focusedTextColor = EagleText,
+            unfocusedTextColor = EagleText,
+            focusedIndicatorColor = EagleBlue,
+            unfocusedIndicatorColor = EagleBorder,
+            cursorColor = EagleBlue,
+            focusedPlaceholderColor = EagleTextMuted,
+            unfocusedPlaceholderColor = EagleTextMuted
+        )
+    )
+    Spacer(Modifier.height(10.dp))
+    when {
+        loading && contacts.isEmpty() -> Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            CircularProgressIndicator(color = EagleBlue)
+        }
+        !error.isNullOrBlank() && contacts.isEmpty() -> Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = error,
+                color = EagleDanger,
+                textAlign = TextAlign.Center
+            )
+        }
+        filtered.isEmpty() -> Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = if (contacts.isEmpty()) {
+                    "Nenhum contato disponível."
+                } else {
+                    "Nenhum contato corresponde à busca."
+                },
+                color = EagleTextMuted,
+                textAlign = TextAlign.Center
+            )
+        }
+        else -> LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            items(filtered, key = { it.name.lowercase() }) { contact ->
+                ContactCard(
+                    contact = contact,
+                    onClick = { selectedContact = contact }
+                )
+            }
+        }
+    }
+
+    selectedContact?.let { contact ->
+        ContactNumbersDialog(
+            contact = contact,
+            onDismiss = { selectedContact = null }
+        )
+    }
+}
+
+@Composable
+private fun ContactCard(
+    contact: EagleContact,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(EagleNavy)
+            .border(1.dp, EagleBorder, RoundedCornerShape(16.dp))
+            .clickable(onClick = onClick)
+            .padding(12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        ContactAvatar(contact)
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .padding(horizontal = 12.dp)
+        ) {
+            Text(
+                text = contact.name,
+                color = EagleText,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = when (contact.numbers.size) {
+                    0 -> "Sem telefone"
+                    1 -> contact.numbers.first().number
+                    else -> "${contact.numbers.size} números disponíveis"
+                },
+                color = EagleTextMuted,
+                fontSize = 12.sp
+            )
+        }
+        Text(
+            text = "☎",
+            color = if (contact.numbers.isEmpty()) EagleTextMuted else EagleSuccess,
+            fontSize = 20.sp
+        )
+    }
+}
+
+@Composable
+private fun ContactAvatar(contact: EagleContact) {
+    val bitmap = remember(contact.photo) {
+        val encoded = contact.photo
+            ?.takeIf { it.startsWith("data:image/") && it.contains(",") }
+            ?.substringAfter(',')
+        encoded?.let {
+            runCatching {
+                val bytes = Base64.decode(it, Base64.DEFAULT)
+                BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.asImageBitmap()
+            }.getOrNull()
+        }
+    }
+    Box(
+        modifier = Modifier
+            .size(48.dp)
+            .clip(CircleShape)
+            .background(EagleBlueDark),
+        contentAlignment = Alignment.Center
+    ) {
+        if (bitmap != null) {
+            Image(
+                bitmap = bitmap,
+                contentDescription = "Foto de ${contact.name}",
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
+            )
+        } else {
+            Text(
+                text = contact.name
+                    .split(' ')
+                    .filter(String::isNotBlank)
+                    .take(2)
+                    .mapNotNull { it.firstOrNull()?.uppercase() }
+                    .joinToString("")
+                    .ifBlank { "EP" },
+                color = EagleText,
+                fontWeight = FontWeight.Bold
+            )
+        }
+    }
+}
+
+@Composable
+private fun ContactNumbersDialog(
+    contact: EagleContact,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = contact.name,
+                fontWeight = FontWeight.Bold
+            )
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
+                if (contact.numbers.isEmpty()) {
+                    Text("Nenhum telefone disponível.", color = EagleTextMuted)
+                } else {
+                    contact.numbers.forEach { entry ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                                .border(1.dp, EagleBorder, RoundedCornerShape(12.dp))
+                                .padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = entry.number,
+                                    color = EagleText,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    text = entry.label,
+                                    color = EagleTextMuted,
+                                    fontSize = 12.sp
+                                )
+                            }
+                            Text("☎", color = EagleSuccess, fontSize = 19.sp)
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Fechar")
+            }
+        },
+        containerColor = EagleNavyLight,
+        textContentColor = EagleText,
+        titleContentColor = EagleText
     )
 }
 

@@ -9,10 +9,11 @@ com homologação operacional nos Samsung Galaxy A25 5G e validação complement
 no Samsung Galaxy S25 Ultra. O iOS será desenvolvido depois da homologação do
 fluxo Android.
 
-Versão de desenvolvimento atual: `0.1.2`. A identidade visual, o login nativo,
+Versão de desenvolvimento atual: `0.1.3`. A identidade visual, o login nativo,
 a restauração segura da sessão, o logoff, a navegação principal e a integração
 inicial de presença foram validados no emulador equivalente ao Galaxy A25 5G.
-A telefonia SIP ainda não está habilitada.
+A agenda corporativa nativa também está integrada. A telefonia SIP ainda não
+está habilitada.
 
 ## Decisões aprovadas
 
