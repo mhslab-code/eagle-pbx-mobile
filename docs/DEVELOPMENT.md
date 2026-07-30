@@ -45,6 +45,16 @@ definitiva de assinatura e suas senhas não pertencem ao repositório.
 
 ## Marcos validados
 
+### 0.1.1
+
+- login real no endpoint HTTPS homologado;
+- senha mantida somente em memória durante o envio;
+- cookie de sessão cifrado por chave do Android Keystore;
+- restauração após encerramento e abertura do processo;
+- logoff remoto e limpeza local;
+- nenhum marcador de sessão observado no Logcat;
+- conta administrativa recusada no aplicativo mobile.
+
 ### 0.1.0
 
 - projeto Kotlin/Jetpack Compose compilado com API 36;

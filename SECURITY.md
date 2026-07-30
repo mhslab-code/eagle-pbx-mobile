@@ -35,3 +35,14 @@ O aplicativo recebe somente credenciais temporárias ou específicas do próprio
 dispositivo por canal autenticado. Bloqueio ou revogação deve invalidar a
 sessão do App e o endpoint correspondente sem afetar telefones físicos,
 Groundwire ou outros dispositivos do ramal.
+
+## Sessão Android
+
+- a senha do usuário é transmitida somente por HTTPS e nunca é persistida;
+- o cookie de sessão é cifrado com AES-GCM por chave não exportável do Android
+  Keystore;
+- backups do aplicativo estão desativados;
+- tráfego HTTP sem TLS está bloqueado no manifesto;
+- logoff remoto e respostas de bloqueio ou sessão inválida removem a cópia
+  local;
+- cookies, senhas e tokens não podem ser escritos em logs.

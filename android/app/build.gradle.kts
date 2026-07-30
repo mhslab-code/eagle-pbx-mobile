@@ -13,8 +13,8 @@ android {
         applicationId = "com.eaglesistemas.eaglepbx"
         minSdk = 28
         targetSdk = 36
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = 2
+        versionName = "0.1.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -31,7 +31,15 @@ android {
         targetCompatibility = JavaVersion.VERSION_11
     }
     buildFeatures {
+        buildConfig = true
         compose = true
+    }
+    buildTypes.configureEach {
+        buildConfigField(
+            "String",
+            "API_BASE_URL",
+            "\"https://app.pbx.eaglesistemas.com\""
+        )
     }
 }
 
@@ -44,6 +52,8 @@ dependencies {
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation(libs.androidx.lifecycle.viewmodel.compose)
+    implementation(libs.androidx.lifecycle.viewmodel.ktx)
     testImplementation(libs.junit)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
