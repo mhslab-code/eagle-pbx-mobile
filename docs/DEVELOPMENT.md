@@ -45,6 +45,16 @@ definitiva de assinatura e suas senhas não pertencem ao repositório.
 
 ## Marcos validados
 
+### 0.1.8
+
+- botão de chamada habilitado somente com registro SIP e destino preenchido;
+- chamada interna originada pelo endpoint exclusivo do dispositivo;
+- estados de início, toque, conexão, encerramento e falha integrados à interface;
+- botão muda para encerramento durante a tentativa ou chamada ativa;
+- chamada para o ramal 102 e encerramento pelo Android homologados no emulador;
+- testes unitários, compilação e instalação no emulador aprovados;
+- áudio bidirecional e chamada recebida permanecem como próximas etapas.
+
 ### 0.1.7
 
 - configuração SIP solicitada somente depois do registro autenticado do
@@ -55,7 +65,7 @@ definitiva de assinatura e suas senhas não pertencem ao repositório.
 - contato disponível validado sem reinício e sem alterar PJSIP 101–105,
   Groundwire, PWA ou Tauri;
 - testes unitários, compilação e instalação no emulador aprovados;
-- primeira chamada interna e recebimento permanecem como próximos testes.
+- primeira chamada interna e recebimento permaneciam como próximos testes.
 
 ### 0.1.6
 

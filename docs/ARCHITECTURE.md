@@ -57,6 +57,12 @@ configuração SIP. A API valida conjuntamente sessão, usuário, hash da instal
 estado e nome do endpoint. A credencial é mantida apenas em memória pelo
 aplicativo, entregue por HTTPS e usada para registrar PJSIP TLS com SRTP.
 
+Na versão 0.1.8, o discador origina chamadas internas pelo endpoint SIP
+exclusivo do dispositivo. Os estados de tentativa, toque e conexão são
+acompanhados pelo Liblinphone, e o aplicativo pode encerrar a chamada durante a
+tentativa ou depois do atendimento. O áudio permanece como etapa separada de
+homologação.
+
 O estado de presença já utiliza a API existente do Eagle PBX. Temporariamente,
 o DND continua sendo aplicado ao ramal inteiro no Asterisk. A separação do DND
 por instalação — Android, PWA, desktop e softphones — fica prevista para a
@@ -81,13 +87,14 @@ operação.
 - contatos e fotografias;
 - histórico e gravações autorizadas;
 - cadastro do dispositivo concluído;
-- revogação e provisionamento SIP do dispositivo pendentes.
+- provisionamento SIP individual concluído; revogação administrativa pendente.
 
 ### 3. Telefonia em primeiro plano
 
 - protótipo Liblinphone e compatibilidade de 16 KB validados;
 - registro SIP individual validado;
-- chamadas internas e externas;
+- chamada interna originada e encerramento validados; recebimento e chamadas
+  externas pendentes;
 - áudio bidirecional;
 - DTMF;
 - rotas de áudio e Bluetooth.

@@ -82,6 +82,7 @@ import com.eaglesistemas.eaglepbx.ui.theme.EagleText
 import com.eaglesistemas.eaglepbx.ui.theme.EagleTextMuted
 import com.eaglesistemas.eaglepbx.ui.theme.EaglePBXTheme
 import com.eaglesistemas.eaglepbx.ui.login.LoginViewModel
+import com.eaglesistemas.eaglepbx.telephony.SipCallStatus
 import com.eaglesistemas.eaglepbx.telephony.SipEngineStatus
 import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
@@ -123,11 +124,14 @@ fun EaglePBXApp(viewModel: LoginViewModel = viewModel()) {
             recordingDuration = state.recordingDuration,
             recordingError = state.recordingError,
             sipEngineStatus = state.sipEngineStatus,
+            sipCallStatus = state.sipCallStatus,
             registeringMobileDevice = state.registeringMobileDevice,
             mobileDeviceStatus = state.mobileDevice?.status,
             mobileDeviceError = state.mobileDeviceError,
             onToggleRecording = viewModel::toggleRecording,
             onSeekRecording = viewModel::seekRecording,
+            onPlaceCall = viewModel::placeCall,
+            onHangupCall = viewModel::hangupCall,
             onPresenceChange = viewModel::updatePresence,
             onLogout = viewModel::logout
         )
@@ -345,11 +349,14 @@ fun AuthenticatedScreen(
     recordingDuration: Int,
     recordingError: String?,
     sipEngineStatus: SipEngineStatus,
+    sipCallStatus: SipCallStatus,
     registeringMobileDevice: Boolean,
     mobileDeviceStatus: String?,
     mobileDeviceError: String?,
     onToggleRecording: (HistoryCall) -> Unit,
     onSeekRecording: (Int) -> Unit,
+    onPlaceCall: (String) -> Unit,
+    onHangupCall: () -> Unit,
     onPresenceChange: (String) -> Unit,
     onLogout: () -> Unit
 ) {
@@ -486,9 +493,12 @@ fun AuthenticatedScreen(
                 when (selectedSection) {
                     MainSection.DIALER -> DialerContent(
                         sipEngineStatus = sipEngineStatus,
+                        sipCallStatus = sipCallStatus,
                         registeringMobileDevice = registeringMobileDevice,
                         mobileDeviceStatus = mobileDeviceStatus,
-                        mobileDeviceError = mobileDeviceError
+                        mobileDeviceError = mobileDeviceError,
+                        onPlaceCall = onPlaceCall,
+                        onHangupCall = onHangupCall
                     )
                     MainSection.CONTACTS -> ContactsContent(
                         contacts = contacts,
@@ -1187,11 +1197,20 @@ private fun formatHistoryDate(value: String): String {
 @Composable
 private fun DialerContent(
     sipEngineStatus: SipEngineStatus,
+    sipCallStatus: SipCallStatus,
     registeringMobileDevice: Boolean,
     mobileDeviceStatus: String?,
-    mobileDeviceError: String?
+    mobileDeviceError: String?,
+    onPlaceCall: (String) -> Unit,
+    onHangupCall: () -> Unit
 ) {
     var number by rememberSaveable { mutableStateOf("") }
+    val callActive = sipCallStatus in setOf(
+        SipCallStatus.OUTGOING,
+        SipCallStatus.RINGING,
+        SipCallStatus.CONNECTED,
+        SipCallStatus.ENDING
+    )
     val keys = listOf(
         DialKey("1"), DialKey("2", "ABC"), DialKey("3", "DEF"),
         DialKey("4", "GHI"), DialKey("5", "JKL"), DialKey("6", "MNO"),
@@ -1274,7 +1293,21 @@ private fun DialerContent(
             symbol = "☎",
             label = "",
             primary = true,
-            enabled = false,
+            danger = callActive,
+            enabled = (
+                callActive ||
+                    (
+                        sipEngineStatus == SipEngineStatus.REGISTERED &&
+                            number.isNotBlank()
+                    )
+                ),
+            onClick = {
+                if (callActive) {
+                    onHangupCall()
+                } else {
+                    onPlaceCall(number)
+                }
+            },
             modifier = Modifier.weight(1f)
         )
         DialActionButton(
@@ -1293,6 +1326,25 @@ private fun DialerContent(
         DialActionButton("☎+", "Adicionar", enabled = false, modifier = Modifier.weight(1f))
     }
     Spacer(Modifier.height(8.dp))
+    if (sipCallStatus != SipCallStatus.IDLE) {
+        Text(
+            text = when (sipCallStatus) {
+                SipCallStatus.OUTGOING -> "Iniciando chamada..."
+                SipCallStatus.RINGING -> "Chamando..."
+                SipCallStatus.CONNECTED -> "Em chamada"
+                SipCallStatus.ENDING -> "Encerrando chamada..."
+                SipCallStatus.FAILED -> "Não foi possível completar a chamada"
+                SipCallStatus.IDLE -> ""
+            },
+            color = if (sipCallStatus == SipCallStatus.FAILED) {
+                EagleDanger
+            } else {
+                EagleSuccess
+            },
+            fontSize = 11.sp
+        )
+        Spacer(Modifier.height(3.dp))
+    }
     Text(
         text = when (sipEngineStatus) {
             SipEngineStatus.INITIALIZING -> "Inicializando motor SIP..."
@@ -1374,20 +1426,32 @@ private fun DialActionButton(
     label: String,
     modifier: Modifier = Modifier,
     primary: Boolean = false,
-    enabled: Boolean = true
+    danger: Boolean = false,
+    enabled: Boolean = true,
+    onClick: () -> Unit = {}
 ) {
+    val background = when {
+        danger -> EagleDanger
+        primary -> EagleBlueDark
+        else -> EagleNavyLight
+    }
     Row(
         modifier = modifier
             .height(52.dp)
             .clip(RoundedCornerShape(15.dp))
-            .background(if (primary) EagleBlueDark else EagleNavyLight)
-            .border(1.dp, if (primary) EagleBlue else EagleBorder, RoundedCornerShape(15.dp)),
+            .background(background)
+            .border(
+                1.dp,
+                if (primary || danger) EagleBlue else EagleBorder,
+                RoundedCornerShape(15.dp)
+            )
+            .clickable(enabled = enabled, onClick = onClick),
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
             text = symbol,
-            color = if (enabled || primary) EagleBlue else EagleBorder,
+            color = if (danger) EagleText else if (enabled || primary) EagleBlue else EagleBorder,
             fontSize = if (primary) 25.sp else 19.sp,
             fontWeight = FontWeight.Bold
         )

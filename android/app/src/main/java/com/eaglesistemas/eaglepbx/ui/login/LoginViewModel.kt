@@ -14,6 +14,7 @@ import com.eaglesistemas.eaglepbx.data.DeviceIdentityStore
 import com.eaglesistemas.eaglepbx.data.MobileDeviceRegistration
 import com.eaglesistemas.eaglepbx.data.SecureSessionStore
 import com.eaglesistemas.eaglepbx.telephony.LinphoneEngine
+import com.eaglesistemas.eaglepbx.telephony.SipCallStatus
 import com.eaglesistemas.eaglepbx.telephony.SipEngineStatus
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -42,6 +43,7 @@ data class LoginUiState(
     val recordingPosition: Int = 0,
     val recordingDuration: Int = 0,
     val sipEngineStatus: SipEngineStatus = SipEngineStatus.INITIALIZING,
+    val sipCallStatus: SipCallStatus = SipCallStatus.IDLE,
     val registeringMobileDevice: Boolean = false,
     val mobileDevice: MobileDeviceRegistration? = null,
     val mobileDeviceError: String? = null,
@@ -130,11 +132,19 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun initializeSipEngine() {
         runCatching {
-            LinphoneEngine(getApplication()) { status ->
-                mutableState.value = mutableState.value.copy(
-                    sipEngineStatus = status
-                )
-            }.also {
+            LinphoneEngine(
+                context = getApplication(),
+                onStatusChanged = { status ->
+                    mutableState.value = mutableState.value.copy(
+                        sipEngineStatus = status
+                    )
+                },
+                onCallStatusChanged = { status ->
+                    mutableState.value = mutableState.value.copy(
+                        sipCallStatus = status
+                    )
+                }
+            ).also {
                 it.start()
                 linphoneEngine = it
             }
@@ -163,6 +173,22 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
             )
             if (result.getOrNull() != null) registerMobileDevice()
         }
+    }
+
+    fun placeCall(destination: String) {
+        if (
+            mutableState.value.sipEngineStatus != SipEngineStatus.REGISTERED ||
+            mutableState.value.sipCallStatus != SipCallStatus.IDLE
+        ) return
+        if (linphoneEngine?.placeCall(destination) != true) {
+            mutableState.value = mutableState.value.copy(
+                sipCallStatus = SipCallStatus.FAILED
+            )
+        }
+    }
+
+    fun hangupCall() {
+        linphoneEngine?.hangupCall()
     }
 
     fun logout() {
