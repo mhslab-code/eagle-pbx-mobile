@@ -28,7 +28,7 @@ credenciais técnicas. Todos os dados passam pelas APIs autorizadas.
 - interface nativa;
 - camada autenticada de API;
 - armazenamento seguro de sessão e provisionamento;
-- motor SIP Liblinphone `5.5.13`, inicializado sem conta nesta fase;
+- motor SIP Liblinphone `5.5.13`, com conta individual provisionada pela API;
 - integração Telecom Framework/`ConnectionService`;
 - serviço de push FCM;
 - gerenciamento de áudio e Bluetooth;
@@ -47,10 +47,15 @@ Cada instalação deve possuir:
 Um ramal pode possuir múltiplos dispositivos, mas uma credencial não deve ser
 compartilhada entre eles.
 
-Na versão 0.1.6, o identificador é criado localmente e mantido em armazenamento
+Desde a versão 0.1.6, o identificador é criado localmente e mantido em armazenamento
 privado separado da sessão. A API recebe esse valor por HTTPS, armazena somente
 seu hash e cria um registro idempotente com estado `pending`. Nenhuma credencial
 SIP é criada ou devolvida nessa etapa.
+
+Na versão 0.1.7, um dispositivo marcado como `ready` pode solicitar sua
+configuração SIP. A API valida conjuntamente sessão, usuário, hash da instalação,
+estado e nome do endpoint. A credencial é mantida apenas em memória pelo
+aplicativo, entregue por HTTPS e usada para registrar PJSIP TLS com SRTP.
 
 O estado de presença já utiliza a API existente do Eagle PBX. Temporariamente,
 o DND continua sendo aplicado ao ramal inteiro no Asterisk. A separação do DND
@@ -81,7 +86,7 @@ operação.
 ### 3. Telefonia em primeiro plano
 
 - protótipo Liblinphone e compatibilidade de 16 KB validados;
-- registro SIP;
+- registro SIP individual validado;
 - chamadas internas e externas;
 - áudio bidirecional;
 - DTMF;

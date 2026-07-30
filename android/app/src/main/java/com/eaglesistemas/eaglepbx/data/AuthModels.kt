@@ -18,6 +18,14 @@ data class MobileDeviceRegistration(
     val reason: String
 )
 
+data class SipProvisioning(
+    val username: String,
+    val password: String,
+    val domain: String,
+    val port: Int,
+    val transport: String
+)
+
 class ApiException(
     message: String,
     val statusCode: Int

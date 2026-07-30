@@ -102,12 +102,39 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
                 mobileDevice = result.getOrNull(),
                 mobileDeviceError = result.exceptionOrNull()?.toFriendlyMessage()
             )
+            if (result.getOrNull()?.status == "ready") configureSipAccount()
+        }
+    }
+
+    private fun configureSipAccount() {
+        viewModelScope.launch {
+            val result = runCatching {
+                withContext(Dispatchers.IO) { api.mobileSipConfig() }
+            }
+            result.onSuccess { provisioning ->
+                runCatching {
+                    linphoneEngine?.configure(provisioning)
+                        ?: error("Motor SIP indisponível")
+                }.onFailure {
+                    mutableState.value = mutableState.value.copy(
+                        sipEngineStatus = SipEngineStatus.REGISTRATION_FAILED
+                    )
+                }
+            }.onFailure {
+                mutableState.value = mutableState.value.copy(
+                    sipEngineStatus = SipEngineStatus.REGISTRATION_FAILED
+                )
+            }
         }
     }
 
     private fun initializeSipEngine() {
         runCatching {
-            LinphoneEngine(getApplication()).also {
+            LinphoneEngine(getApplication()) { status ->
+                mutableState.value = mutableState.value.copy(
+                    sipEngineStatus = status
+                )
+            }.also {
                 it.start()
                 linphoneEngine = it
             }
@@ -140,6 +167,7 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
 
     fun logout() {
         viewModelScope.launch {
+            linphoneEngine?.clearAccount()
             withContext(Dispatchers.IO) { api.logout() }
             mutableState.value = LoginUiState(
                 restoringSession = false,

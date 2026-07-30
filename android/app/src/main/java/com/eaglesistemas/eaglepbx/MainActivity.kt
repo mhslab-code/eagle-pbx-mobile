@@ -1297,10 +1297,18 @@ private fun DialerContent(
         text = when (sipEngineStatus) {
             SipEngineStatus.INITIALIZING -> "Inicializando motor SIP..."
             SipEngineStatus.READY -> "Motor SIP inicializado"
+            SipEngineStatus.REGISTERING -> "Registrando telefone..."
+            SipEngineStatus.REGISTERED -> "Telefone SIP registrado"
+            SipEngineStatus.REGISTRATION_FAILED -> "Falha no registro SIP"
             SipEngineStatus.UNAVAILABLE -> "Motor SIP indisponível"
         },
-        color = if (sipEngineStatus == SipEngineStatus.READY) {
+        color = if (
+            sipEngineStatus == SipEngineStatus.READY ||
+            sipEngineStatus == SipEngineStatus.REGISTERED
+        ) {
             EagleSuccess
+        } else if (sipEngineStatus == SipEngineStatus.REGISTRATION_FAILED) {
+            EagleDanger
         } else {
             EagleTextMuted
         },

@@ -45,6 +45,18 @@ definitiva de assinatura e suas senhas não pertencem ao repositório.
 
 ## Marcos validados
 
+### 0.1.7
+
+- configuração SIP solicitada somente depois do registro autenticado do
+  dispositivo;
+- credencial individual mantida apenas em memória e removida no logoff;
+- transporte PJSIP TLS e mídia SRTP obrigatória configurados no Liblinphone;
+- endpoint mobile exclusivo registrado no Asterisk;
+- contato disponível validado sem reinício e sem alterar PJSIP 101–105,
+  Groundwire, PWA ou Tauri;
+- testes unitários, compilação e instalação no emulador aprovados;
+- primeira chamada interna e recebimento permanecem como próximos testes.
+
 ### 0.1.6
 
 - identidade aleatória e persistente criada por instalação;
