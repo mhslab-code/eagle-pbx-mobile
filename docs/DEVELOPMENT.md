@@ -42,3 +42,13 @@ definitiva de assinatura e suas senhas não pertencem ao repositório.
 - Android 15/API 35 será usado na matriz de compatibilidade;
 - uma imagem com páginas de memória de 16 KB será validada antes da adoção
   definitiva de bibliotecas nativas, especialmente o Liblinphone.
+
+## Marcos validados
+
+### 0.1.0
+
+- projeto Kotlin/Jetpack Compose compilado com API 36;
+- testes unitários e geração do APK de depuração aprovados;
+- instalação e inicialização no emulador Galaxy A25 5G aprovadas;
+- identidade visual e tela inicial de login aprovadas;
+- campos ainda sem integração com a API.

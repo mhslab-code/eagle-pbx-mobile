@@ -9,6 +9,10 @@ com homologação operacional nos Samsung Galaxy A25 5G e validação complement
 no Samsung Galaxy S25 Ultra. O iOS será desenvolvido depois da homologação do
 fluxo Android.
 
+Versão de desenvolvimento atual: `0.1.0`. A identidade visual e a tela nativa
+inicial de login foram validadas no emulador equivalente ao Galaxy A25 5G. A
+autenticação ainda não está conectada à API.
+
 ## Decisões aprovadas
 
 - identificador Android: `com.eaglesistemas.eaglepbx`;

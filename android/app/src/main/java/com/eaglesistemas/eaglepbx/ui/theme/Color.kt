@@ -2,10 +2,11 @@ package com.eaglesistemas.eaglepbx.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-val Purple80 = Color(0xFFD0BCFF)
-val PurpleGrey80 = Color(0xFFCCC2DC)
-val Pink80 = Color(0xFFEFB8C8)
-
-val Purple40 = Color(0xFF6650a4)
-val PurpleGrey40 = Color(0xFF625b71)
-val Pink40 = Color(0xFF7D5260)
+val EagleNavy = Color(0xFF061B2E)
+val EagleNavyLight = Color(0xFF0D2A43)
+val EagleBlue = Color(0xFF2389F5)
+val EagleBlueDark = Color(0xFF126DD2)
+val EagleText = Color(0xFFF7FAFF)
+val EagleTextMuted = Color(0xFFA9C0D8)
+val EagleBorder = Color(0xFF315978)
+val EagleSuccess = Color(0xFF2ED99A)
