@@ -77,8 +77,11 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.Call
+import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.filled.DesktopWindows
 import androidx.compose.material.icons.filled.Dialpad
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.Person
@@ -94,6 +97,7 @@ import androidx.activity.viewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import androidx.core.view.WindowCompat
 import com.eaglesistemas.eaglepbx.data.AuthenticatedUser
 import com.eaglesistemas.eaglepbx.data.EagleContact
 import com.eaglesistemas.eaglepbx.data.HistoryCall
@@ -101,12 +105,17 @@ import com.eaglesistemas.eaglepbx.ui.theme.EagleBlue
 import com.eaglesistemas.eaglepbx.ui.theme.EagleBlueDark
 import com.eaglesistemas.eaglepbx.ui.theme.EagleBorder
 import com.eaglesistemas.eaglepbx.ui.theme.EagleDanger
+import com.eaglesistemas.eaglepbx.ui.theme.EagleHeaderBorder
+import com.eaglesistemas.eaglepbx.ui.theme.EagleHeaderNavy
+import com.eaglesistemas.eaglepbx.ui.theme.EagleHeaderText
+import com.eaglesistemas.eaglepbx.ui.theme.EagleHeaderTextMuted
 import com.eaglesistemas.eaglepbx.ui.theme.EagleNavy
 import com.eaglesistemas.eaglepbx.ui.theme.EagleNavyLight
 import com.eaglesistemas.eaglepbx.ui.theme.EagleSuccess
 import com.eaglesistemas.eaglepbx.ui.theme.EagleText
 import com.eaglesistemas.eaglepbx.ui.theme.EagleTextMuted
 import com.eaglesistemas.eaglepbx.ui.theme.EaglePBXTheme
+import com.eaglesistemas.eaglepbx.ui.theme.EagleThemePreference
 import com.eaglesistemas.eaglepbx.ui.login.LoginViewModel
 import com.eaglesistemas.eaglepbx.telephony.SipCallStatus
 import com.eaglesistemas.eaglepbx.telephony.AttendedTransferStatus
@@ -136,9 +145,30 @@ class MainActivity : ComponentActivity() {
         handleNotificationAction(intent)
         observeLockedScreenCallEnd()
         enableEdgeToEdge()
+        WindowCompat.getInsetsController(window, window.decorView).apply {
+            isAppearanceLightStatusBars = false
+            isAppearanceLightNavigationBars = false
+        }
+        val themePreferences = getSharedPreferences("eagle-pbx-ui", MODE_PRIVATE)
         setContent {
-            EaglePBXTheme {
-                EaglePBXApp(loginViewModel)
+            var themePreference by remember {
+                mutableStateOf(
+                    EagleThemePreference.fromStorage(
+                        themePreferences.getString("theme", null)
+                    )
+                )
+            }
+            EaglePBXTheme(preference = themePreference) {
+                EaglePBXApp(
+                    viewModel = loginViewModel,
+                    themePreference = themePreference,
+                    onThemePreferenceChange = { preference ->
+                        themePreference = preference
+                        themePreferences.edit()
+                            .putString("theme", preference.storageValue)
+                            .apply()
+                    }
+                )
             }
         }
     }
@@ -197,10 +227,16 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun EaglePBXApp(viewModel: LoginViewModel = viewModel()) {
+fun EaglePBXApp(
+    viewModel: LoginViewModel = viewModel(),
+    themePreference: EagleThemePreference = EagleThemePreference.SYSTEM,
+    onThemePreferenceChange: (EagleThemePreference) -> Unit = {}
+) {
     val state by viewModel.state.collectAsState()
     when {
-        state.restoringSession -> LoadingScreen()
+        state.restoringSession -> EaglePBXTheme(preference = EagleThemePreference.DARK) {
+            LoadingScreen()
+        }
         state.user != null -> AuthenticatedScreen(
             user = requireNotNull(state.user),
             connectionError = state.connectionError,
@@ -249,13 +285,17 @@ fun EaglePBXApp(viewModel: LoginViewModel = viewModel()) {
             onAcceptIncomingCall = viewModel::acceptIncomingCall,
             onRejectIncomingCall = viewModel::rejectIncomingCall,
             onPresenceChange = viewModel::updatePresence,
+            themePreference = themePreference,
+            onThemePreferenceChange = onThemePreferenceChange,
             onLogout = viewModel::logout
         )
-        else -> LoginScreen(
-            submitting = state.submitting,
-            error = state.error,
-            onLogin = viewModel::login
-        )
+        else -> EaglePBXTheme(preference = EagleThemePreference.DARK) {
+            LoginScreen(
+                submitting = state.submitting,
+                error = state.error,
+                onLogin = viewModel::login
+            )
+        }
     }
 }
 
@@ -494,6 +534,8 @@ fun AuthenticatedScreen(
     onAcceptIncomingCall: () -> Unit,
     onRejectIncomingCall: () -> Unit,
     onPresenceChange: (String) -> Unit,
+    themePreference: EagleThemePreference,
+    onThemePreferenceChange: (EagleThemePreference) -> Unit,
     onLogout: () -> Unit
 ) {
     var presenceMenuOpen by remember { mutableStateOf(false) }
@@ -528,7 +570,7 @@ fun AuthenticatedScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(EagleNavy)
+            .background(EagleHeaderNavy)
             .statusBarsPadding()
             .navigationBarsPadding()
     ) {
@@ -547,7 +589,7 @@ fun AuthenticatedScreen(
                     painter = painterResource(R.drawable.eagle_pbx_logo_official),
                     contentDescription = "Eagle Sistemas",
                     modifier = Modifier.size(68.dp),
-                    colorFilter = ColorFilter.tint(EagleText)
+                    colorFilter = ColorFilter.tint(EagleHeaderText)
                 )
                 Column(
                     modifier = Modifier
@@ -556,13 +598,13 @@ fun AuthenticatedScreen(
                 ) {
                     Text(
                         text = "eagle sistemas",
-                        color = EagleText,
+                        color = EagleHeaderText,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
                         text = "tecnologia e segurança",
-                        color = EagleTextMuted,
+                        color = EagleHeaderTextMuted,
                         fontSize = 9.sp,
                         fontWeight = FontWeight.SemiBold
                     )
@@ -573,7 +615,7 @@ fun AuthenticatedScreen(
                             .width(112.dp)
                             .height(34.dp)
                             .clip(RoundedCornerShape(10.dp))
-                            .border(1.dp, EagleBorder, RoundedCornerShape(10.dp))
+                            .border(1.dp, EagleHeaderBorder, RoundedCornerShape(10.dp))
                             .clickable(enabled = !updatingPresence) {
                                 presenceMenuOpen = true
                             },
@@ -591,13 +633,13 @@ fun AuthenticatedScreen(
                             Spacer(Modifier.width(6.dp))
                             Text(
                                 text = presenceLabel,
-                                color = EagleText,
+                                color = EagleHeaderText,
                                 fontSize = if (presenceLabel == "Não perturbe") 10.sp else 12.sp,
                                 fontWeight = FontWeight.SemiBold,
                                 maxLines = 1
                             )
                             Spacer(Modifier.width(6.dp))
-                            Text("⌄", color = EagleText, fontSize = 14.sp)
+                            Text("⌄", color = EagleHeaderText, fontSize = 14.sp)
                         }
                     }
                     DropdownMenu(
@@ -624,7 +666,7 @@ fun AuthenticatedScreen(
                     .fillMaxWidth()
                     .height(1.dp)
                     .padding(horizontal = 18.dp)
-                    .background(EagleBorder.copy(alpha = 0.65f))
+                    .background(EagleHeaderBorder.copy(alpha = 0.65f))
             )
             Row(
                 modifier = Modifier
@@ -642,24 +684,48 @@ fun AuthenticatedScreen(
                 ) {
                     Text(
                         text = user.name,
-                        color = EagleText,
+                        color = EagleHeaderText,
                         fontSize = 17.sp,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
                         text = "Ramal ${user.extension}",
-                        color = EagleTextMuted,
+                        color = EagleHeaderTextMuted,
                         fontSize = 13.sp
                     )
                 }
-                Box(
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .border(1.dp, EagleBorder, RoundedCornerShape(12.dp)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text("☰", color = EagleText, fontSize = 19.sp)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .border(1.dp, EagleHeaderBorder, RoundedCornerShape(12.dp))
+                            .clickable {
+                                onThemePreferenceChange(themePreference.next())
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = when (themePreference) {
+                                EagleThemePreference.LIGHT -> Icons.Filled.LightMode
+                                EagleThemePreference.DARK -> Icons.Filled.DarkMode
+                                EagleThemePreference.SYSTEM -> Icons.Filled.DesktopWindows
+                            },
+                            contentDescription =
+                                "Tema: ${themePreference.label}. Toque para alterar.",
+                            tint = EagleHeaderText,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .border(1.dp, EagleHeaderBorder, RoundedCornerShape(12.dp)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("☰", color = EagleHeaderText, fontSize = 19.sp)
+                    }
                 }
             }
             if (!presenceError.isNullOrBlank()) {
@@ -750,8 +816,8 @@ fun AuthenticatedScreen(
                     .fillMaxWidth()
                     .padding(horizontal = 6.dp)
                     .clip(RoundedCornerShape(18.dp))
-                    .background(EagleNavyLight)
-                    .border(1.dp, EagleBorder, RoundedCornerShape(18.dp))
+                    .background(EagleHeaderNavy)
+                    .border(1.dp, EagleHeaderBorder, RoundedCornerShape(18.dp))
                     .padding(horizontal = 4.dp, vertical = 6.dp),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
@@ -763,7 +829,7 @@ fun AuthenticatedScreen(
                             contentColor = if (selectedSection == section) {
                                 EagleBlue
                             } else {
-                                EagleTextMuted
+                                EagleHeaderTextMuted
                             }
                         )
                     ) {
@@ -828,7 +894,7 @@ private fun UserAvatar(user: AuthenticatedUser, contact: EagleContact?) {
             .size(56.dp)
             .clip(CircleShape)
             .background(EagleBlueDark)
-            .border(1.dp, EagleTextMuted, CircleShape),
+            .border(1.dp, EagleHeaderTextMuted, CircleShape),
         contentAlignment = Alignment.Center
     ) {
         if (bitmap != null) {

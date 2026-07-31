@@ -274,3 +274,15 @@ fechar o código.
 - Cabeçalho, presença, visor, teclado, ações e navegação inferior devem manter
   a mesma hierarquia visual do PWA/Tauri.
 - A revisão é exclusivamente visual e não altera regras SIP, chamadas ou push.
+
+## Revisão 0.1.36
+
+- O cabeçalho autenticado possui um seletor de aparência à esquerda do menu da
+  conta, seguindo a mesma posição e comportamento do PWA/Tauri.
+- A alternância é cíclica: `Claro` → `Escuro` → `Sistema` → `Claro`, indicada
+  respectivamente pelos ícones de sol, lua e monitor.
+- A preferência é persistida localmente no aparelho. `Sistema` acompanha as
+  mudanças de aparência do Android sem exigir novo login.
+- Cabeçalho e navegação inferior permanecem escuros nos três modos; superfícies,
+  textos, bordas, abas e modais usam a paleta correspondente.
+- Login, restauração de sessão, regras SIP, push e chamadas não foram alterados.

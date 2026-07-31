@@ -115,6 +115,13 @@ da agenda autorizada, presença contornada, cabeçalho em dois níveis, Discador
 sem cartão externo, ícones nativos nas ações e navegação inferior com ícones e
 legendas. Esta revisão é exclusivamente visual e não altera o motor SIP.
 
+A revisão `0.1.36` adicionou ao cabeçalho o seletor de aparência homologado no
+PWA/Tauri. O botão alterna sequencialmente entre `Claro`, `Escuro` e `Sistema`,
+mantém a escolha no aparelho e, no modo `Sistema`, acompanha a configuração do
+Android. Cabeçalho, navegação inferior, login e restauração da sessão preservam
+a identidade escura da marca; o conteúdo das abas e os modais adotam o tema
+selecionado. Não houve alteração no motor SIP nem nos fluxos de chamada.
+
 ## Comportamento temporário do DND
 
 Na API atual, `Não perturbe` é aplicado globalmente ao ramal no Asterisk. Assim,
