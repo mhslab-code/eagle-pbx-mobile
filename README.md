@@ -9,7 +9,7 @@ com homologação operacional nos Samsung Galaxy A25 5G e validação complement
 no Samsung Galaxy S25 Ultra. O iOS será desenvolvido depois da homologação do
 fluxo Android.
 
-Versão de desenvolvimento atual: `0.1.28`. A identidade visual, o login nativo,
+Versão de desenvolvimento atual: `0.1.29`. A identidade visual, o login nativo,
 a restauração segura da sessão, o logoff, a navegação principal e a integração
 inicial de presença foram validados no emulador equivalente ao Galaxy A25 5G.
 A agenda corporativa, o histórico e o player autenticado de gravações também
@@ -51,8 +51,11 @@ novamente o servidor, mantendo as chamadas recentes sincronizadas.
 Enquanto o aplicativo permanece aberto em segundo plano, um serviço de
 telefonia mantém o processo SIP elegível para execução. O ciclo de vida do
 Liblinphone acompanha a passagem entre primeiro e segundo plano, mantém o
-transporte SIP ativo e renova o registro ao retornar. Push e recuperação após
-encerramento do processo permanecem nas fases seguintes.
+transporte SIP ativo e renova o registro ao retornar. O serviço FCM já recebe
+o evento `incoming_call` em alta prioridade, restaura a interface autenticada,
+apresenta a notificação de chamada e inicia o ciclo de registro SIP. A
+homologação após encerramento do processo depende agora do canal móvel
+retardado no PBX.
 Em chamadas recebidas, o serviço nativo do Liblinphone mantém o ciclo da
 chamada e uma notificação de alta prioridade alerta e abre a interface de
 atendimento quando o aplicativo está em segundo plano.
@@ -87,11 +90,13 @@ O arquivo Android `google-services.json` de produção e a credencial de serviç
 usada pelo backend são segredos operacionais: permanecem fora do Git e devem ser
 armazenados exclusivamente nos respectivos servidores e ambientes autorizados.
 
-A revisão `0.1.27` integra ao APK o plugin Google Services e o módulo principal
+A revisão `0.1.27` integrou ao APK o plugin Google Services e o módulo principal
 do Firebase Cloud Messaging, sem Analytics e sem outros produtos Firebase. O
 arquivo de configuração real foi validado apenas na VM Android e continua
-ignorado pelo Git. Registro do token no backend e despertar da chamada serão
-implementados nas próximas etapas.
+ignorado pelo Git. As revisões `0.1.28` e `0.1.29` acrescentaram,
+respectivamente, o registro revogável do FID no backend e o processamento do
+evento de chamada que desperta a sessão autenticada e inicia o registro SIP.
+Nenhum identificador de instalação é exibido ou gravado em log.
 
 O protótipo utiliza Liblinphone `5.5.13`. Sua adoção definitiva somente
 ocorrerá depois da validação de registro, chamadas, push, segundo plano,

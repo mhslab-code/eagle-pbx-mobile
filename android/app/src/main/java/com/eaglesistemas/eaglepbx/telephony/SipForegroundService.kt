@@ -10,6 +10,8 @@ import android.content.Intent
 import android.media.RingtoneManager
 import android.media.Ringtone
 import android.os.IBinder
+import android.os.Handler
+import android.os.Looper
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import com.eaglesistemas.eaglepbx.MainActivity
@@ -106,6 +108,8 @@ class SipForegroundService : Service() {
         private var onRejectIncoming: (() -> Unit)? = null
 
         private var incomingRingtone: Ringtone? = null
+        private val incomingTimeoutHandler = Handler(Looper.getMainLooper())
+        private var incomingGeneration = 0L
 
         fun setRejectCallHandler(onReject: (() -> Unit)?) {
             onRejectIncoming = onReject
@@ -126,6 +130,7 @@ class SipForegroundService : Service() {
         }
 
         fun showIncoming(context: Context, call: IncomingSipCall) {
+            val generation = ++incomingGeneration
             stopIncomingRingtone()
             incomingRingtone = RingtoneManager.getRingtone(
                 context,
@@ -192,9 +197,13 @@ class SipForegroundService : Service() {
                 .build()
             context.getSystemService(NotificationManager::class.java)
                 .notify(INCOMING_NOTIFICATION_ID, notification)
+            incomingTimeoutHandler.postDelayed({
+                if (generation == incomingGeneration) cancelIncoming(context)
+            }, 45_000L)
         }
 
         fun cancelIncoming(context: Context) {
+            incomingGeneration += 1
             stopIncomingRingtone()
             context.getSystemService(NotificationManager::class.java)
                 .cancel(INCOMING_NOTIFICATION_ID)

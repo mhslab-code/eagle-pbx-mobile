@@ -1,5 +1,16 @@
 # CODEX — Eagle PBX Mobile
 
+## Revisão 0.1.29
+
+- o serviço FCM processa somente eventos `incoming_call` em sessão autenticada;
+- o evento apresenta a notificação nativa de chamada e traz a interface ao
+  primeiro plano para restaurar o motor SIP;
+- o registro FCM é renovado durante o despertar e o alerta preliminar possui
+  limite de 45 segundos para não permanecer ativo sem um `INVITE`;
+- nome e número do chamador são limitados antes de chegar à interface;
+- a homologação do processo encerrado depende da tentativa SIP retardada no
+  PBX e não deve ser declarada apenas com o teste FCM.
+
 ## Revisão 0.1.28
 
 - o Firebase Installation ID (FID) é enviado após autenticação e registro do
