@@ -1,5 +1,15 @@
 # CODEX — Eagle PBX Mobile
 
+## Revisão 0.1.27
+
+- O projeto Android passou a usar o plugin Google Services e o módulo principal
+  do Firebase Cloud Messaging, controlado pelo Firebase BoM.
+- Analytics e demais produtos Firebase não foram adicionados.
+- A configuração real foi validada exclusivamente no ambiente Android e
+  permanece ignorada pelo Git.
+- Esta revisão prepara o recebimento FCM; registro do token e despertar SIP
+  continuam nas etapas seguintes.
+
 ## Decisão de infraestrutura push — 2026-07-31
 
 - O Android usará um projeto Firebase exclusivo denominado `Eagle PBX Mobile`.

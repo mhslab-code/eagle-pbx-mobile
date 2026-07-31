@@ -45,6 +45,16 @@ definitiva de assinatura e suas senhas não pertencem ao repositório.
 
 ## Marcos validados
 
+### 0.1.27
+
+- projeto Firebase exclusivo associado ao identificador Android aprovado;
+- plugin Google Services e módulo principal do Firebase Cloud Messaging
+  integrados sem Analytics;
+- `google-services.json` real mantido fora do Git;
+- testes unitários e geração do APK de depuração aprovados na VM Android;
+- registro do token no backend e recebimento de push permanecem como próximas
+  etapas.
+
 ### 0.1.10
 
 - teclado numérico envia DTMF somente durante chamada conectada;

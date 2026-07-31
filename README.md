@@ -9,7 +9,7 @@ com homologação operacional nos Samsung Galaxy A25 5G e validação complement
 no Samsung Galaxy S25 Ultra. O iOS será desenvolvido depois da homologação do
 fluxo Android.
 
-Versão de desenvolvimento atual: `0.1.26`. A identidade visual, o login nativo,
+Versão de desenvolvimento atual: `0.1.27`. A identidade visual, o login nativo,
 a restauração segura da sessão, o logoff, a navegação principal e a integração
 inicial de presença foram validados no emulador equivalente ao Galaxy A25 5G.
 A agenda corporativa, o histórico e o player autenticado de gravações também
@@ -86,6 +86,12 @@ outros serviços pagos do Firebase para esse fluxo.
 O arquivo Android `google-services.json` de produção e a credencial de serviço
 usada pelo backend são segredos operacionais: permanecem fora do Git e devem ser
 armazenados exclusivamente nos respectivos servidores e ambientes autorizados.
+
+A revisão `0.1.27` integra ao APK o plugin Google Services e o módulo principal
+do Firebase Cloud Messaging, sem Analytics e sem outros produtos Firebase. O
+arquivo de configuração real foi validado apenas na VM Android e continua
+ignorado pelo Git. Registro do token no backend e despertar da chamada serão
+implementados nas próximas etapas.
 
 O protótipo utiliza Liblinphone `5.5.13`. Sua adoção definitiva somente
 ocorrerá depois da validação de registro, chamadas, push, segundo plano,
