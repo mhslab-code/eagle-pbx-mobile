@@ -7,8 +7,9 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.media.AudioAttributes
+import android.media.MediaPlayer
 import android.media.RingtoneManager
-import android.media.Ringtone
 import android.os.IBinder
 import android.os.Handler
 import android.os.Looper
@@ -107,7 +108,7 @@ class SipForegroundService : Service() {
         @Volatile
         private var onRejectIncoming: (() -> Unit)? = null
 
-        private var incomingRingtone: Ringtone? = null
+        private var incomingRingtone: MediaPlayer? = null
         private val incomingTimeoutHandler = Handler(Looper.getMainLooper())
         private var incomingGeneration = 0L
         private var currentIncomingCallId = ""
@@ -144,12 +145,32 @@ class SipForegroundService : Service() {
             currentIncomingCallId = callId
             val generation = ++incomingGeneration
             stopIncomingRingtone()
-            incomingRingtone = RingtoneManager.getRingtone(
-                context,
+            val ringtoneUri =
                 RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE)
-            )?.apply {
-                isLooping = true
-                play()
+            incomingRingtone = MediaPlayer().also { player ->
+                runCatching {
+                    player.setAudioAttributes(
+                        AudioAttributes.Builder()
+                            .setUsage(AudioAttributes.USAGE_NOTIFICATION_RINGTONE)
+                            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                            .build()
+                    )
+                    player.setDataSource(context, ringtoneUri)
+                    player.isLooping = true
+                    player.setOnPreparedListener { prepared ->
+                        if (incomingRingtone === prepared) prepared.start()
+                        else prepared.release()
+                    }
+                    player.setOnErrorListener { failed, _, _ ->
+                        if (incomingRingtone === failed) incomingRingtone = null
+                        failed.release()
+                        true
+                    }
+                    player.prepareAsync()
+                }.onFailure {
+                    if (incomingRingtone === player) incomingRingtone = null
+                    player.release()
+                }
             }
             val openApp = PendingIntent.getActivity(
                 context,
@@ -231,7 +252,11 @@ class SipForegroundService : Service() {
         }
 
         private fun stopIncomingRingtone() {
-            incomingRingtone?.stop()
+            incomingRingtone?.runCatching {
+                if (isPlaying) stop()
+                reset()
+                release()
+            }
             incomingRingtone = null
         }
     }

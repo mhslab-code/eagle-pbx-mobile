@@ -1,5 +1,11 @@
 # CODEX — Eagle PBX Mobile
 
+## Revisão 0.1.31
+
+- o toque de chamada recebida usa reprodução assíncrona em loop e permanece
+  ativo até atender, recusar, receber o cancelamento correlacionado ou expirar;
+- a preparação do áudio não bloqueia a thread principal do aplicativo.
+
 ## Revisão 0.1.30
 
 - o push de cancelamento correlacionado encerra imediatamente toque e
