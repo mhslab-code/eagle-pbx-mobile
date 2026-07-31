@@ -262,3 +262,15 @@ fechar o código.
   aberto novamente.
 - A atualização manual do histórico propaga a recarga forçada até a API e
   desabilita cache HTTP para a requisição.
+
+## Revisão 0.1.35
+
+- O Discador Android deve seguir a composição homologada do Eagle PBX desktop,
+  preservando a adaptação nativa para a tela do aparelho.
+- A marca usa o ativo oficial do projeto; não usar emojis ou representações
+  genéricas para ações telefônicas.
+- A fotografia do usuário é resolvida pela agenda autorizada com base no ramal,
+  com iniciais apenas como fallback.
+- Cabeçalho, presença, visor, teclado, ações e navegação inferior devem manter
+  a mesma hierarquia visual do PWA/Tauri.
+- A revisão é exclusivamente visual e não altera regras SIP, chamadas ou push.

@@ -109,6 +109,12 @@ técnicas de provisionamento bem-sucedido deixaram de ocupar a interface; apenas
 falhas acionáveis são apresentadas ao usuário. Nenhuma regra SIP ou fluxo de
 chamada foi alterado nesta revisão.
 
+A revisão `0.1.35` substituiu a aproximação inicial pela composição visual do
+Eagle PBX desktop: logotipo oficial monocromático, fotografia do usuário obtida
+da agenda autorizada, presença contornada, cabeçalho em dois níveis, Discador
+sem cartão externo, ícones nativos nas ações e navegação inferior com ícones e
+legendas. Esta revisão é exclusivamente visual e não altera o motor SIP.
+
 ## Comportamento temporário do DND
 
 Na API atual, `Não perturbe` é aplicado globalmente ao ramal no Asterisk. Assim,

@@ -44,6 +44,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
@@ -62,6 +63,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -72,6 +74,17 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowForward
+import androidx.compose.material.icons.filled.Call
+import androidx.compose.material.icons.filled.Dialpad
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.PersonAdd
+import androidx.compose.material.icons.filled.VolumeUp
+import androidx.compose.ui.graphics.vector.ImageVector
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
@@ -496,10 +509,20 @@ fun AuthenticatedScreen(
         "offline" -> EagleTextMuted
         else -> EagleSuccess
     }
+    val userContact = remember(contacts, user.extension) {
+        contacts.firstOrNull { contact ->
+            contact.numbers.any { number ->
+                number.number.filter(Char::isDigit) == user.extension.filter(Char::isDigit)
+            }
+        }
+    }
 
     LaunchedEffect(selectedSection) {
         if (selectedSection == MainSection.CONTACTS) onLoadContacts(false)
         if (selectedSection == MainSection.HISTORY) onLoadHistory(false)
+    }
+    LaunchedEffect(user.extension) {
+        onLoadContacts(false)
     }
 
     Box(
@@ -512,62 +535,69 @@ fun AuthenticatedScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 18.dp)
         ) {
-            Spacer(Modifier.height(10.dp))
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 8.dp),
+                    .height(72.dp)
+                    .padding(horizontal = 18.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Image(
-                    painter = painterResource(R.drawable.eagle_pbx_logo),
+                    painter = painterResource(R.drawable.eagle_pbx_logo_official),
                     contentDescription = "Eagle Sistemas",
-                    modifier = Modifier
-                        .size(42.dp)
-                        .clip(RoundedCornerShape(11.dp))
+                    modifier = Modifier.size(68.dp),
+                    colorFilter = ColorFilter.tint(EagleText)
                 )
                 Column(
                     modifier = Modifier
                         .weight(1f)
-                        .padding(start = 10.dp)
+                        .padding(start = 8.dp)
                 ) {
                     Text(
                         text = "eagle sistemas",
                         color = EagleText,
-                        fontSize = 17.sp,
+                        fontSize = 18.sp,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
                         text = "tecnologia e segurança",
-                        color = EagleBlue,
+                        color = EagleTextMuted,
                         fontSize = 9.sp,
                         fontWeight = FontWeight.SemiBold
                     )
                 }
                 Box {
-                    Button(
-                        onClick = { presenceMenuOpen = true },
-                        enabled = !updatingPresence,
-                        shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = EagleNavyLight,
-                            contentColor = presenceColor
-                        )
+                    Row(
+                        modifier = Modifier
+                            .width(112.dp)
+                            .height(34.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .border(1.dp, EagleBorder, RoundedCornerShape(10.dp))
+                            .clickable(enabled = !updatingPresence) {
+                                presenceMenuOpen = true
+                            },
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         if (updatingPresence) {
                             CircularProgressIndicator(
-                                modifier = Modifier.size(18.dp),
+                                modifier = Modifier.size(16.dp),
                                 color = EagleBlue,
                                 strokeWidth = 2.dp
                             )
                         } else {
+                            Text("●", color = presenceColor, fontSize = 12.sp)
+                            Spacer(Modifier.width(6.dp))
                             Text(
                                 text = presenceLabel,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold
+                                color = EagleText,
+                                fontSize = if (presenceLabel == "Não perturbe") 10.sp else 12.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                maxLines = 1
                             )
+                            Spacer(Modifier.width(6.dp))
+                            Text("⌄", color = EagleText, fontSize = 14.sp)
                         }
                     }
                     DropdownMenu(
@@ -593,16 +623,18 @@ fun AuthenticatedScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(1.dp)
+                    .padding(horizontal = 18.dp)
                     .background(EagleBorder.copy(alpha = 0.65f))
             )
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .height(72.dp)
                     .clickable { accountDialogOpen = true }
-                    .padding(vertical = 10.dp),
+                    .padding(horizontal = 18.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                UserAvatar(user = user)
+                UserAvatar(user = user, contact = userContact)
                 Column(
                     modifier = Modifier
                         .weight(1f)
@@ -622,12 +654,12 @@ fun AuthenticatedScreen(
                 }
                 Box(
                     modifier = Modifier
-                        .size(42.dp)
+                        .size(40.dp)
                         .clip(RoundedCornerShape(12.dp))
                         .border(1.dp, EagleBorder, RoundedCornerShape(12.dp)),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("☰", color = EagleText, fontSize = 20.sp)
+                    Text("☰", color = EagleText, fontSize = 19.sp)
                 }
             }
             if (!presenceError.isNullOrBlank()) {
@@ -645,11 +677,21 @@ fun AuthenticatedScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f)
-                    .clip(RoundedCornerShape(22.dp))
-                    .background(EagleNavyLight)
-                    .border(1.dp, EagleBorder, RoundedCornerShape(22.dp))
+                    .then(
+                        if (selectedSection == MainSection.DIALER) {
+                            Modifier
+                                .background(EagleNavyLight)
+                                .padding(horizontal = 16.dp)
+                        } else {
+                            Modifier
+                                .padding(horizontal = 18.dp)
+                                .clip(RoundedCornerShape(22.dp))
+                                .background(EagleNavyLight)
+                                .border(1.dp, EagleBorder, RoundedCornerShape(22.dp))
+                        }
+                    )
                     .padding(
-                        horizontal = if (selectedSection == MainSection.DIALER) 12.dp else 22.dp,
+                        horizontal = if (selectedSection == MainSection.DIALER) 0.dp else 22.dp,
                         vertical = if (selectedSection == MainSection.DIALER) 12.dp else 22.dp
                     ),
                 horizontalAlignment = Alignment.CenterHorizontally
@@ -706,6 +748,7 @@ fun AuthenticatedScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .padding(horizontal = 6.dp)
                     .clip(RoundedCornerShape(18.dp))
                     .background(EagleNavyLight)
                     .border(1.dp, EagleBorder, RoundedCornerShape(18.dp))
@@ -724,11 +767,22 @@ fun AuthenticatedScreen(
                             }
                         )
                     ) {
-                        Text(
-                            text = section.shortTitle,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold
-                        )
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(
+                                imageVector = when (section) {
+                                    MainSection.DIALER -> Icons.Filled.Dialpad
+                                    MainSection.CONTACTS -> Icons.Filled.Person
+                                    MainSection.HISTORY -> Icons.Filled.History
+                                },
+                                contentDescription = null,
+                                modifier = Modifier.size(22.dp)
+                            )
+                            Text(
+                                text = section.shortTitle,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
                     }
                 }
             }
@@ -756,9 +810,10 @@ fun AuthenticatedScreen(
 }
 
 @Composable
-private fun UserAvatar(user: AuthenticatedUser) {
-    val bitmap = remember(user.avatar) {
-        val encoded = user.avatar
+private fun UserAvatar(user: AuthenticatedUser, contact: EagleContact?) {
+    val photo = contact?.photo ?: user.avatar
+    val bitmap = remember(photo) {
+        val encoded = photo
             ?.takeIf { it.startsWith("data:image/") && it.contains(",") }
             ?.substringAfter(',')
         encoded?.let {
@@ -770,9 +825,10 @@ private fun UserAvatar(user: AuthenticatedUser) {
     }
     Box(
         modifier = Modifier
-            .size(48.dp)
+            .size(56.dp)
             .clip(CircleShape)
-            .background(EagleBlueDark),
+            .background(EagleBlueDark)
+            .border(1.dp, EagleTextMuted, CircleShape),
         contentAlignment = Alignment.Center
     ) {
         if (bitmap != null) {
@@ -1495,7 +1551,9 @@ private fun DialerContent(
             Text(
                 text = number.ifBlank { "Digite o ramal ou telefone" },
                 color = if (number.isBlank()) EagleTextMuted else EagleText,
-                fontSize = when {
+                fontSize = if (number.isBlank()) {
+                    14.sp
+                } else when {
                     number.length > 22 -> 19.sp
                     number.length > 15 -> 24.sp
                     else -> 31.sp
@@ -1570,7 +1628,7 @@ private fun DialerContent(
         horizontalArrangement = Arrangement.spacedBy(7.dp)
     ) {
         DialActionButton(
-            symbol = "♩",
+            icon = Icons.Filled.Mic,
             label = if (microphoneMuted) "Mudo" else "Microfone",
             enabled = sipCallStatus == SipCallStatus.CONNECTED,
             danger = microphoneMuted,
@@ -1578,7 +1636,7 @@ private fun DialerContent(
             modifier = Modifier.weight(1f)
         )
         DialActionButton(
-            symbol = "☎",
+            icon = Icons.Filled.Call,
             label = "",
             primary = true,
             danger = callActive,
@@ -1599,7 +1657,7 @@ private fun DialerContent(
             modifier = Modifier.weight(1f)
         )
         DialActionButton(
-            symbol = "◖))",
+            icon = Icons.Filled.VolumeUp,
             label = "Áudio",
             enabled = sipCallStatus == SipCallStatus.CONNECTED,
             onClick = {
@@ -1615,14 +1673,14 @@ private fun DialerContent(
         horizontalArrangement = Arrangement.spacedBy(7.dp)
     ) {
         DialActionButton(
-            symbol = "↦",
+            icon = Icons.Filled.ArrowForward,
             label = "Transferir",
             enabled = sipCallStatus == SipCallStatus.CONNECTED,
             onClick = { transferDialogOpen = true },
             modifier = Modifier.weight(1f)
         )
         DialActionButton(
-            symbol = if (sipCallStatus == SipCallStatus.HELD) "▶" else "Ⅱ",
+            icon = if (sipCallStatus == SipCallStatus.HELD) Icons.Filled.Call else Icons.Filled.Pause,
             label = if (sipCallStatus == SipCallStatus.HELD) "Retomar" else "Espera",
             enabled = sipCallStatus in setOf(SipCallStatus.CONNECTED, SipCallStatus.HELD),
             primary = sipCallStatus == SipCallStatus.HELD,
@@ -1630,8 +1688,8 @@ private fun DialerContent(
             modifier = Modifier.weight(1f)
         )
         DialActionButton(
-            "☎+",
-            "Adicionar",
+            icon = Icons.Filled.PersonAdd,
+            label = "Adicionar",
             enabled = sipCallStatus == SipCallStatus.CONNECTED &&
                 conferenceSetupStatus != ConferenceSetupStatus.ACTIVE,
             onClick = { addCallDialogOpen = true },
@@ -2298,7 +2356,7 @@ private fun DialKeyButton(
 
 @Composable
 private fun DialActionButton(
-    symbol: String,
+    icon: ImageVector,
     label: String,
     modifier: Modifier = Modifier,
     primary: Boolean = false,
@@ -2325,11 +2383,11 @@ private fun DialActionButton(
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(
-            text = symbol,
-            color = if (danger) EagleText else if (enabled || primary) EagleBlue else EagleBorder,
-            fontSize = if (primary) 25.sp else 19.sp,
-            fontWeight = FontWeight.Bold
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = if (danger || primary) EagleText else if (enabled) EagleBlue else EagleBorder,
+            modifier = Modifier.size(if (primary) 34.dp else 25.dp)
         )
         if (label.isNotEmpty()) {
             Spacer(Modifier.width(6.dp))
