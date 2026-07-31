@@ -13,6 +13,7 @@ import com.eaglesistemas.eaglepbx.data.HistoryCall
 import com.eaglesistemas.eaglepbx.data.DeviceIdentityStore
 import com.eaglesistemas.eaglepbx.data.MobileDeviceRegistration
 import com.eaglesistemas.eaglepbx.data.SecureSessionStore
+import com.google.firebase.messaging.FirebaseMessaging
 import com.eaglesistemas.eaglepbx.telephony.LinphoneEngine
 import com.eaglesistemas.eaglepbx.telephony.IncomingSipCall
 import com.eaglesistemas.eaglepbx.telephony.SipCallStatus
@@ -116,8 +117,16 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
                 mobileDevice = result.getOrNull(),
                 mobileDeviceError = result.exceptionOrNull()?.toFriendlyMessage()
             )
-            if (result.getOrNull()?.status == "ready") configureSipAccount()
+            result.getOrNull()?.let {
+                synchronizePushRegistration()
+                if (it.status == "ready") configureSipAccount()
+            }
         }
+    }
+
+    private fun synchronizePushRegistration() {
+        if (mutableState.value.user == null) return
+        FirebaseMessaging.getInstance().register()
     }
 
     private fun configureSipAccount() {

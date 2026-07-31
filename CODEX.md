@@ -1,5 +1,13 @@
 # CODEX — Eagle PBX Mobile
 
+## Revisão 0.1.28
+
+- o Firebase Installation ID (FID) é enviado após autenticação e registro do
+  dispositivo e renovado pelo serviço oficial do Firebase;
+- o FID nunca é exibido na interface ou escrito em logs;
+- esta revisão prepara o endereçamento do push, mas ainda não envia nem processa
+  eventos de chamada recebida via FCM.
+
 ## Revisão 0.1.27
 
 - O projeto Android passou a usar o plugin Google Services e o módulo principal

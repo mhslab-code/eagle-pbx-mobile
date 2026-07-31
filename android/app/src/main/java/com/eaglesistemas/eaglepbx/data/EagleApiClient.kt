@@ -90,6 +90,22 @@ class EagleApiClient(
         )
     }
 
+    fun updatePushRegistration(firebaseInstallationId: String) {
+        require(firebaseInstallationId.isNotBlank())
+        val payload = JSONObject()
+            .put("deviceInstallationId", deviceIdentityStore.installationId())
+            .put("firebaseInstallationId", firebaseInstallationId)
+            .toString()
+        readResponse(
+            connection("/api/mobile/devices/push-registration", "PUT").apply {
+                sessionStore.read()?.let { setRequestProperty("Cookie", it) }
+                setRequestProperty("Content-Type", "application/json; charset=UTF-8")
+                doOutput = true
+                outputStream.use { it.write(payload.toByteArray(Charsets.UTF_8)) }
+            }
+        )
+    }
+
     fun mobileSipConfig(): SipProvisioning {
         val payload = JSONObject()
             .put("installationId", deviceIdentityStore.installationId())

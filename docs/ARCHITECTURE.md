@@ -61,10 +61,11 @@ Decisões operacionais:
 
 - Firebase Cloud Messaging é utilizado na modalidade sem custo;
 - o backend existente envia o push, sem Cloud Functions ou Cloud Run;
-- cada instalação associa seu token FCM à identidade revogável do dispositivo;
+- cada instalação associa seu Firebase Installation ID (FID) à identidade
+  revogável do dispositivo;
 - a API nunca devolve credenciais Firebase ao cliente;
 - a credencial de serviço e `google-services.json` real não são versionados;
-- tokens substituídos, inválidos ou pertencentes a dispositivos revogados são
+- registros substituídos, inválidos ou pertencentes a dispositivos revogados são
   removidos do cadastro;
 - o payload contém apenas identificadores mínimos da chamada, sem senha SIP,
   cookie de sessão ou outro segredo.
