@@ -444,7 +444,7 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
         )
         viewModelScope.launch {
             val result = runCatching {
-                withContext(Dispatchers.IO) { api.history() }
+                withContext(Dispatchers.IO) { api.history(force) }
             }
             val error = result.exceptionOrNull()
             mutableState.value = mutableState.value.copy(

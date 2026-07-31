@@ -173,10 +173,20 @@ class EagleApiClient(
         return contacts.values.sortedBy { it.name.lowercase() }
     }
 
-    fun history(): List<HistoryCall> {
+    fun history(force: Boolean = false): List<HistoryCall> {
+        val path = if (force) {
+            "/api/history?refresh=${System.currentTimeMillis()}"
+        } else {
+            "/api/history"
+        }
         val response = readResponse(
-            connection("/api/history", "GET").apply {
+            connection(path, "GET").apply {
                 sessionStore.read()?.let { setRequestProperty("Cookie", it) }
+                if (force) {
+                    useCaches = false
+                    setRequestProperty("Cache-Control", "no-cache, no-store")
+                    setRequestProperty("Pragma", "no-cache")
+                }
             }
         )
         val items = JSONObject(response.body).optJSONArray("items") ?: JSONArray()

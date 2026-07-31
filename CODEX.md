@@ -130,3 +130,5 @@ fechar o código.
   uma confirmação visual neutra e fecha o modal automaticamente.
 - O estado de falha anterior não reaparece quando o modal de transferência é
   aberto novamente.
+- A atualização manual do histórico propaga a recarga forçada até a API e
+  desabilita cache HTTP para a requisição.

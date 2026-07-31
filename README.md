@@ -46,6 +46,8 @@ Destinos internos sem atendimento não seguem para caixa postal nesse fluxo; a
 chamada original é retomada automaticamente. A conferência entre os ramais
 101, 104 e 105, bem como seu encerramento simultâneo pelo Android, foi
 homologada.
+O botão `Atualizar` do histórico ignora respostas HTTP armazenadas e consulta
+novamente o servidor, mantendo as chamadas recentes sincronizadas.
 
 ## Decisões aprovadas
 
