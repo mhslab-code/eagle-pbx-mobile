@@ -1,14 +1,25 @@
 package com.eaglesistemas.eaglepbx
 
 import android.Manifest
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.BitmapFactory
 import android.os.Build
 import android.os.Bundle
+import android.os.SystemClock
+import android.provider.Settings
 import android.util.Base64
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.Image
@@ -43,6 +54,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
@@ -51,6 +63,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -65,6 +78,8 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -74,6 +89,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.Call
@@ -81,12 +98,14 @@ import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.DesktopWindows
 import androidx.compose.material.icons.filled.Dialpad
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.VolumeUp
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.ui.graphics.vector.ImageVector
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -95,8 +114,12 @@ import kotlinx.coroutines.launch
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.activity.viewModels
 import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
+import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import com.eaglesistemas.eaglepbx.data.AuthenticatedUser
 import com.eaglesistemas.eaglepbx.data.EagleContact
@@ -266,6 +289,9 @@ fun EaglePBXApp(
             registeringMobileDevice = state.registeringMobileDevice,
             mobileDeviceStatus = state.mobileDevice?.status,
             mobileDeviceError = state.mobileDeviceError,
+            savingProfile = state.savingProfile,
+            profileMessage = state.profileMessage,
+            profileError = state.profileError,
             onToggleRecording = viewModel::toggleRecording,
             onSeekRecording = viewModel::seekRecording,
             onPlaceCall = viewModel::placeCall,
@@ -285,6 +311,8 @@ fun EaglePBXApp(
             onAcceptIncomingCall = viewModel::acceptIncomingCall,
             onRejectIncomingCall = viewModel::rejectIncomingCall,
             onPresenceChange = viewModel::updatePresence,
+            onUpdateProfile = viewModel::updateProfile,
+            onClearProfileFeedback = viewModel::clearProfileFeedback,
             themePreference = themePreference,
             onThemePreferenceChange = onThemePreferenceChange,
             onLogout = viewModel::logout
@@ -515,6 +543,9 @@ fun AuthenticatedScreen(
     registeringMobileDevice: Boolean,
     mobileDeviceStatus: String?,
     mobileDeviceError: String?,
+    savingProfile: Boolean,
+    profileMessage: String?,
+    profileError: String?,
     onToggleRecording: (HistoryCall) -> Unit,
     onSeekRecording: (Int) -> Unit,
     onPlaceCall: (String) -> Unit,
@@ -534,6 +565,8 @@ fun AuthenticatedScreen(
     onAcceptIncomingCall: () -> Unit,
     onRejectIncomingCall: () -> Unit,
     onPresenceChange: (String) -> Unit,
+    onUpdateProfile: (String, String, String?, ByteArray?, String?, String?) -> Unit,
+    onClearProfileFeedback: () -> Unit,
     themePreference: EagleThemePreference,
     onThemePreferenceChange: (EagleThemePreference) -> Unit,
     onLogout: () -> Unit
@@ -639,7 +672,12 @@ fun AuthenticatedScreen(
                                 maxLines = 1
                             )
                             Spacer(Modifier.width(6.dp))
-                            Text("⌄", color = EagleHeaderText, fontSize = 14.sp)
+                            Icon(
+                                imageVector = Icons.Filled.KeyboardArrowDown,
+                                contentDescription = "Abrir estados de presença",
+                                tint = EagleHeaderText,
+                                modifier = Modifier.size(18.dp)
+                            )
                         }
                     }
                     DropdownMenu(
@@ -744,16 +782,14 @@ fun AuthenticatedScreen(
                     .fillMaxWidth()
                     .weight(1f)
                     .then(
-                        if (selectedSection == MainSection.DIALER) {
-                            Modifier
+                        when (selectedSection) {
+                            MainSection.DIALER -> Modifier
                                 .background(EagleNavyLight)
                                 .padding(horizontal = 16.dp)
-                        } else {
-                            Modifier
-                                .padding(horizontal = 18.dp)
-                                .clip(RoundedCornerShape(22.dp))
+                            MainSection.CONTACTS -> Modifier
                                 .background(EagleNavyLight)
-                                .border(1.dp, EagleBorder, RoundedCornerShape(22.dp))
+                            MainSection.HISTORY -> Modifier
+                                .background(EagleNavyLight)
                         }
                     )
                     .padding(
@@ -764,6 +800,7 @@ fun AuthenticatedScreen(
             ) {
                 when (selectedSection) {
                     MainSection.DIALER -> DialerContent(
+                        contacts = contacts,
                         sipEngineStatus = sipEngineStatus,
                         sipCallStatus = sipCallStatus,
                         attendedTransferStatus = attendedTransferStatus,
@@ -858,7 +895,13 @@ fun AuthenticatedScreen(
     if (accountDialogOpen) {
         AccountDialog(
             user = user,
+            contact = userContact,
+            saving = savingProfile,
+            message = profileMessage,
+            error = profileError,
             onDismiss = { accountDialogOpen = false },
+            onSave = onUpdateProfile,
+            onClearFeedback = onClearProfileFeedback,
             onLogout = {
                 accountDialogOpen = false
                 onLogout()
@@ -975,13 +1018,21 @@ private fun ContactsContent(
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(
+                text = "AGENDA CORPORATIVA",
+                color = EagleBlue,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 1.6.sp
+            )
+            Spacer(Modifier.height(2.dp))
+            Text(
                 text = "Contatos",
                 color = EagleText,
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Bold
             )
             Text(
-                text = "${contacts.size} contato${if (contacts.size == 1) "" else "s"}",
+                text = "Sua equipe em um só lugar.",
                 color = EagleTextMuted,
                 fontSize = 12.sp
             )
@@ -1116,10 +1167,26 @@ private fun ContactCard(
                 fontSize = 12.sp
             )
         }
-        Text(
-            text = "☎",
-            color = if (contact.numbers.isEmpty()) EagleTextMuted else EagleSuccess,
-            fontSize = 20.sp
+        ContactCallIcon(enabled = contact.numbers.isNotEmpty())
+    }
+}
+
+@Composable
+private fun ContactCallIcon(enabled: Boolean = true) {
+    val iconColor = if (enabled) EagleSuccess else EagleTextMuted
+    Box(
+        modifier = Modifier
+            .size(42.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(iconColor.copy(alpha = 0.12f))
+            .border(1.dp, iconColor.copy(alpha = 0.35f), RoundedCornerShape(12.dp)),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            painter = painterResource(R.drawable.ic_phone),
+            contentDescription = if (enabled) "Ligar" else "Telefone indisponível",
+            tint = iconColor,
+            modifier = Modifier.size(21.dp)
         )
     }
 }
@@ -1206,7 +1273,7 @@ private fun ContactNumbersDialog(
                                     fontSize = 12.sp
                                 )
                             }
-                            Text("☎", color = EagleSuccess, fontSize = 19.sp)
+                            ContactCallIcon()
                         }
                     }
                 }
@@ -1248,6 +1315,14 @@ private fun HistoryContent(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = "ATIVIDADE",
+                color = EagleBlue,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 1.6.sp
+            )
+            Spacer(Modifier.height(2.dp))
             Text(
                 text = "Histórico",
                 color = EagleText,
@@ -1387,6 +1462,7 @@ private fun HistoryFilter(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun HistoryCard(
     call: HistoryCall,
@@ -1411,6 +1487,11 @@ private fun HistoryCard(
         call.missed -> EagleDanger
         call.direction == "in" -> EagleSuccess
         else -> EagleBlue
+    }
+    val seekFraction = if (playerDuration > 0) {
+        (position.toFloat() / playerDuration.toFloat()).coerceIn(0f, 1f)
+    } else {
+        0f
     }
 
     Column(
@@ -1498,8 +1579,41 @@ private fun HistoryCard(
                     onValueChange = { onSeek(it.toInt()) },
                     enabled = active && playerDuration > 0,
                     valueRange = 0f..playerDuration.coerceAtLeast(1).toFloat(),
+                    thumb = {
+                        Box(
+                            modifier = Modifier
+                                .size(10.dp)
+                                .clip(CircleShape)
+                                .background(
+                                    if (active && playerDuration > 0) {
+                                        EagleBlue
+                                    } else {
+                                        EagleTextMuted.copy(alpha = 0.58f)
+                                    }
+                                )
+                        )
+                    },
+                    track = {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(3.dp)
+                                .clip(CircleShape)
+                                .background(EagleTextMuted.copy(alpha = 0.22f))
+                        ) {
+                            if (seekFraction > 0f) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth(seekFraction)
+                                        .height(3.dp)
+                                        .background(EagleBlue.copy(alpha = 0.82f))
+                                )
+                            }
+                        }
+                    },
                     modifier = Modifier
                         .weight(1f)
+                        .height(18.dp)
                         .padding(horizontal = 7.dp)
                 )
                 Text(
@@ -1550,6 +1664,7 @@ private fun formatHistoryDate(value: String): String {
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun DialerContent(
+    contacts: List<EagleContact>,
     sipEngineStatus: SipEngineStatus,
     sipCallStatus: SipCallStatus,
     attendedTransferStatus: AttendedTransferStatus,
@@ -1579,6 +1694,10 @@ private fun DialerContent(
     var audioDialogOpen by rememberSaveable { mutableStateOf(false) }
     var transferDialogOpen by rememberSaveable { mutableStateOf(false) }
     var addCallDialogOpen by rememberSaveable { mutableStateOf(false) }
+    var callStartedAt by remember { mutableStateOf<Long?>(null) }
+    var elapsedCallSeconds by remember { mutableStateOf(0) }
+    var completedCallSeconds by remember { mutableStateOf<Int?>(null) }
+    var completedTimerVisible by remember { mutableStateOf(false) }
     val callActive = sipCallStatus in setOf(
         SipCallStatus.INCOMING,
         SipCallStatus.OUTGOING,
@@ -1594,12 +1713,66 @@ private fun DialerContent(
             dtmfDigits = ""
         }
     }
+    LaunchedEffect(sipCallStatus) {
+        when (sipCallStatus) {
+            SipCallStatus.CONNECTED,
+            SipCallStatus.HELD,
+            SipCallStatus.ENDING -> {
+                if (callStartedAt == null && sipCallStatus == SipCallStatus.CONNECTED) {
+                    callStartedAt = SystemClock.elapsedRealtime()
+                    elapsedCallSeconds = 0
+                    completedCallSeconds = null
+                    completedTimerVisible = false
+                }
+                while (callStartedAt != null) {
+                    elapsedCallSeconds = (
+                        (SystemClock.elapsedRealtime() - requireNotNull(callStartedAt)) / 1000L
+                    ).toInt()
+                    delay(250)
+                }
+            }
+            SipCallStatus.IDLE,
+            SipCallStatus.FAILED -> {
+                val startedAt = callStartedAt
+                if (startedAt != null) {
+                    completedCallSeconds = (
+                        (SystemClock.elapsedRealtime() - startedAt) / 1000L
+                    ).toInt()
+                    elapsedCallSeconds = completedCallSeconds ?: elapsedCallSeconds
+                    callStartedAt = null
+                    completedTimerVisible = true
+                    delay(2000)
+                    completedTimerVisible = false
+                    delay(500)
+                    completedCallSeconds = null
+                }
+            }
+            else -> Unit
+        }
+    }
     val keys = listOf(
         DialKey("1"), DialKey("2", "ABC"), DialKey("3", "DEF"),
         DialKey("4", "GHI"), DialKey("5", "JKL"), DialKey("6", "MNO"),
         DialKey("7", "PQRS"), DialKey("8", "TUV"), DialKey("9", "WXYZ"),
         DialKey("*"), DialKey("0", "+"), DialKey("#")
     )
+    val dialedDigits = number.filter(Char::isDigit)
+    val matchedContact = remember(contacts, dialedDigits) {
+        if (dialedDigits.isBlank()) {
+            null
+        } else {
+            contacts.firstOrNull { contact ->
+                contact.numbers.any { stored ->
+                    stored.number.filter(Char::isDigit) == dialedDigits
+                }
+            }
+        }
+    }
+    val matchedNumber = remember(matchedContact, dialedDigits) {
+        matchedContact?.numbers?.firstOrNull { stored ->
+            stored.number.filter(Char::isDigit) == dialedDigits
+        }
+    }
 
     Row(
         modifier = Modifier
@@ -1655,6 +1828,53 @@ private fun DialerContent(
                 text = "⌫",
                 color = if (number.isEmpty()) EagleTextMuted else EagleText,
                 fontSize = 24.sp
+            )
+        }
+    }
+    if (matchedContact != null) {
+        Spacer(Modifier.height(7.dp))
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(64.dp)
+                .clip(RoundedCornerShape(16.dp))
+                .background(EagleNavy)
+                .border(1.dp, EagleBorder, RoundedCornerShape(16.dp))
+                .clickable(
+                    enabled = sipEngineStatus == SipEngineStatus.REGISTERED && !callActive
+                ) { onPlaceCall(number) }
+                .padding(horizontal = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            ContactAvatar(matchedContact)
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(horizontal = 12.dp)
+            ) {
+                Text(
+                    text = matchedContact.name,
+                    color = EagleText,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1
+                )
+                Text(
+                    text = if (dialedDigits.length <= 5) {
+                        "Ramal ${matchedNumber?.number.orEmpty()}"
+                    } else {
+                        matchedNumber?.label
+                            ?.takeIf(String::isNotBlank)
+                            ?.let { "$it ${matchedNumber.number}" }
+                            ?: matchedNumber?.number.orEmpty()
+                    },
+                    color = EagleTextMuted,
+                    fontSize = 12.sp,
+                    maxLines = 1
+                )
+            }
+            ContactCallIcon(
+                enabled = sipEngineStatus == SipEngineStatus.REGISTERED && !callActive
             )
         }
     }
@@ -1763,25 +1983,51 @@ private fun DialerContent(
         )
     }
     Spacer(Modifier.height(7.dp))
-    if (sipCallStatus != SipCallStatus.IDLE) {
-        Text(
-            text = when (sipCallStatus) {
-                SipCallStatus.OUTGOING -> "Iniciando chamada..."
-                SipCallStatus.INCOMING -> "Chamada recebida"
-                SipCallStatus.RINGING -> "Chamando..."
-                SipCallStatus.CONNECTED -> "Em chamada"
-                SipCallStatus.HELD -> "Chamada em espera"
-                SipCallStatus.ENDING -> "Encerrando chamada..."
-                SipCallStatus.FAILED -> "Não foi possível completar a chamada"
-                SipCallStatus.IDLE -> ""
-            },
-            color = if (sipCallStatus == SipCallStatus.FAILED) {
-                EagleDanger
-            } else {
-                EagleSuccess
-            },
-            fontSize = 11.sp
-        )
+    val callStatusLabel = when {
+        completedCallSeconds != null -> "Chamada encerrada"
+        sipCallStatus == SipCallStatus.OUTGOING -> "Iniciando chamada..."
+        sipCallStatus == SipCallStatus.INCOMING -> "Chamada recebida"
+        sipCallStatus == SipCallStatus.RINGING -> "Chamando..."
+        sipCallStatus == SipCallStatus.CONNECTED -> "Chamada em andamento"
+        sipCallStatus == SipCallStatus.HELD -> "Chamada em espera"
+        sipCallStatus == SipCallStatus.ENDING -> "Chamada em andamento"
+        sipCallStatus == SipCallStatus.FAILED -> "Não foi possível completar a chamada"
+        else -> ""
+    }
+    val callStatusShowsDuration = completedCallSeconds != null || sipCallStatus in setOf(
+        SipCallStatus.CONNECTED,
+        SipCallStatus.HELD,
+        SipCallStatus.ENDING
+    )
+    AnimatedVisibility(
+        visible = (
+            sipCallStatus != SipCallStatus.IDLE && completedCallSeconds == null
+        ) || completedTimerVisible,
+        exit = fadeOut(animationSpec = tween(durationMillis = 500))
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = callStatusLabel,
+                color = if (
+                    sipCallStatus == SipCallStatus.FAILED && !completedTimerVisible
+                ) EagleDanger else EagleSuccess,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Bold
+            )
+            if (callStatusShowsDuration) {
+                Spacer(Modifier.width(10.dp))
+                Text(
+                    text = formatDuration(completedCallSeconds ?: elapsedCallSeconds),
+                    color = EagleText,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
         Spacer(Modifier.height(3.dp))
     }
     val technicalError = when {
@@ -1862,49 +2108,101 @@ private fun TransferDialog(
             onDismiss()
         }
     }
-    AlertDialog(
+    val consulting = status in setOf(
+        AttendedTransferStatus.CALLING,
+        AttendedTransferStatus.CONNECTED,
+        AttendedTransferStatus.COMPLETING
+    )
+    val canChooseTransfer = status in setOf(
+        AttendedTransferStatus.IDLE,
+        AttendedTransferStatus.FAILED
+    )
+
+    Dialog(
         onDismissRequest = {
-            if (status == AttendedTransferStatus.IDLE ||
-                status == AttendedTransferStatus.FAILED
-            ) onDismiss()
+            if (canChooseTransfer) onDismiss()
         },
-        title = {
-            Text(
-                if (status in setOf(
-                        AttendedTransferStatus.CALLING,
-                        AttendedTransferStatus.CONNECTED,
-                        AttendedTransferStatus.COMPLETING
+        properties = DialogProperties(
+            dismissOnBackPress = canChooseTransfer,
+            dismissOnClickOutside = canChooseTransfer,
+            usePlatformDefaultWidth = false
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth(0.92f)
+                .clip(RoundedCornerShape(24.dp))
+                .background(EagleNavyLight)
+                .border(1.dp, EagleBorder, RoundedCornerShape(24.dp))
+                .padding(24.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.Top
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "OPERAÇÃO TELEFÔNICA",
+                        color = EagleBlue,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.5.sp
                     )
-                ) "Transferência assistida" else "Transferir chamada",
-                color = EagleText
-            )
-        },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
-                val consulting = status in setOf(
-                    AttendedTransferStatus.CALLING,
-                    AttendedTransferStatus.CONNECTED,
-                    AttendedTransferStatus.COMPLETING
-                )
-                if (consulting) {
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = if (consulting) {
+                            "Transferência assistida"
+                        } else {
+                            "Transferir chamada"
+                        },
+                        color = EagleText,
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(Modifier.height(5.dp))
                     Text(
                         text = when (status) {
                             AttendedTransferStatus.CALLING ->
                                 "Consultando $destination. A chamada original está em espera."
                             AttendedTransferStatus.CONNECTED ->
-                                "Consulta estabelecida. Converse com o destino e escolha como continuar."
+                                "Consulta estabelecida. Converse com o destino antes de concluir."
                             AttendedTransferStatus.COMPLETING ->
                                 "Concluindo a transferência..."
-                            else -> ""
+                            else ->
+                                "Escolha transferência direta ou consulte o destino antes de transferir."
                         },
                         color = EagleTextMuted,
                         fontSize = 13.sp
                     )
-                } else Text(
-                        text = "Digite o ramal ou telefone de destino.",
-                        color = EagleTextMuted,
-                        fontSize = 13.sp
+                }
+                Box(
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .border(1.dp, EagleBorder, RoundedCornerShape(12.dp))
+                        .clickable(enabled = status != AttendedTransferStatus.COMPLETING) {
+                            if (consulting) onCancelAttended() else onDismiss()
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "×",
+                        color = EagleText,
+                        fontSize = 25.sp,
+                        fontWeight = FontWeight.Medium
                     )
+                }
+            }
+            if (!consulting) {
+                Spacer(Modifier.height(18.dp))
+                Text(
+                    text = "Ramal ou telefone",
+                    color = EagleText,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(Modifier.height(6.dp))
+                Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -1976,86 +2274,112 @@ private fun TransferDialog(
                         fontSize = 12.sp
                     )
                 }
-            }
-        },
-        confirmButton = {
-            Row {
-                TextButton(
-                    onClick = {
-                        if (destination.isNotBlank() &&
-                            status in setOf(
-                                AttendedTransferStatus.IDLE,
-                                AttendedTransferStatus.FAILED
-                            )
-                        ) {
-                            if (onTransferDirect(destination)) onDismiss()
-                            else error = "Não foi possível transferir a chamada."
-                        }
-                    }
-                ) {
-                    Text(
-                        "Direta",
-                        color = if (status in setOf(
-                                AttendedTransferStatus.IDLE,
-                                AttendedTransferStatus.FAILED
-                            )
-                        ) EagleTextMuted else Color.Transparent
-                    )
-                }
-                TextButton(
-                    onClick = {
-                        if (status == AttendedTransferStatus.CONNECTED) {
-                            if (onCompleteAttended()) onDismiss()
-                            else error = "Não foi possível concluir a transferência."
-                        } else if (destination.isNotBlank() &&
-                            status in setOf(
-                                AttendedTransferStatus.IDLE,
-                                AttendedTransferStatus.FAILED
-                            )
-                        ) {
-                            if (!onStartAttended(destination)) {
-                                error = "Não foi possível iniciar a consulta."
-                            }
-                        }
-                    }
-                ) {
-                    Text(
-                        if (status == AttendedTransferStatus.CONNECTED) {
-                            "Concluir transferência"
-                        } else {
-                            "Assistida"
-                        },
-                        color = EagleBlue
-                    )
                 }
             }
-        },
-        dismissButton = {
-            TextButton(
-                onClick = {
-                    if (status in setOf(
-                            AttendedTransferStatus.CALLING,
-                            AttendedTransferStatus.CONNECTED
+            Spacer(Modifier.height(20.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                if (consulting) {
+                    Button(
+                        onClick = { onCancelAttended() },
+                        enabled = status != AttendedTransferStatus.COMPLETING,
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(54.dp)
+                            .border(1.dp, EagleBorder, RoundedCornerShape(12.dp)),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = EagleNavyLight,
+                            contentColor = EagleTextMuted
                         )
                     ) {
-                        onCancelAttended()
-                    } else {
-                        onDismiss()
+                        Text("Cancelar consulta", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    }
+                    Button(
+                        onClick = {
+                            if (status == AttendedTransferStatus.CONNECTED) {
+                                if (onCompleteAttended()) onDismiss()
+                                else error = "Não foi possível concluir a transferência."
+                            }
+                        },
+                        enabled = status == AttendedTransferStatus.CONNECTED,
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(54.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = EagleBlue,
+                            contentColor = EagleText
+                        )
+                    ) {
+                        Text(
+                            if (status == AttendedTransferStatus.CALLING) {
+                                "Aguardando..."
+                            } else {
+                                "Concluir transferência"
+                            },
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                } else {
+                    Button(
+                        onClick = {
+                            if (destination.isNotBlank() && canChooseTransfer) {
+                                if (onTransferDirect(destination)) onDismiss()
+                                else error = "Não foi possível transferir a chamada."
+                            }
+                        },
+                        enabled = destination.isNotBlank() && canChooseTransfer,
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(56.dp)
+                            .border(1.dp, EagleBorder, RoundedCornerShape(12.dp)),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = EagleNavyLight,
+                            contentColor = EagleBlue
+                        )
+                    ) {
+                        Text(
+                            "Transferência direta",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                    Button(
+                        onClick = {
+                            if (destination.isNotBlank() && canChooseTransfer &&
+                                !onStartAttended(destination)
+                            ) {
+                                error = "Não foi possível iniciar a consulta."
+                            }
+                        },
+                        enabled = destination.isNotBlank() && canChooseTransfer,
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(56.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = EagleBlue,
+                            contentColor = EagleText
+                        )
+                    ) {
+                        Text(
+                            "Transferência assistida",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.Center
+                        )
                     }
                 }
-            ) {
-                Text(
-                    if (status in setOf(
-                            AttendedTransferStatus.CALLING,
-                            AttendedTransferStatus.CONNECTED
-                        )
-                    ) "Cancelar consulta" else "Cancelar",
-                    color = EagleTextMuted
-                )
             }
-        },
-        containerColor = EagleNavyLight
-    )
+        }
+    }
 }
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -2091,41 +2415,100 @@ private fun AddCallDialog(
             onDismiss()
         }
     }
-    AlertDialog(
+    val canChooseParticipant = status in setOf(
+        ConferenceSetupStatus.IDLE,
+        ConferenceSetupStatus.FAILED
+    )
+    Dialog(
         onDismissRequest = {
-            if (status in setOf(
-                    ConferenceSetupStatus.IDLE,
-                    ConferenceSetupStatus.FAILED
-                )
-            ) onDismiss()
+            if (canChooseParticipant) onDismiss()
         },
-        title = {
+        properties = DialogProperties(
+            dismissOnBackPress = canChooseParticipant,
+            dismissOnClickOutside = canChooseParticipant,
+            usePlatformDefaultWidth = false
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth(0.92f)
+                .clip(RoundedCornerShape(24.dp))
+                .background(EagleNavyLight)
+                .border(1.dp, EagleBorder, RoundedCornerShape(24.dp))
+                .padding(24.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.Top
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "OPERAÇÃO TELEFÔNICA",
+                        color = EagleBlue,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.5.sp
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = if (consulting) {
+                            "Adicionar participante"
+                        } else {
+                            "Adicionar chamada"
+                        },
+                        color = EagleText,
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(Modifier.height(5.dp))
+                    Text(
+                        text = when (status) {
+                            ConferenceSetupStatus.CALLING ->
+                                "Chamando $destination. O primeiro participante está em espera."
+                            ConferenceSetupStatus.CONNECTED ->
+                                "Segundo participante conectado. Forme a conferência ou cancele."
+                            ConferenceSetupStatus.JOINING -> "Formando conferência..."
+                            else ->
+                                "O contato atual será mantido enquanto o novo participante atende."
+                        },
+                        color = EagleTextMuted,
+                        fontSize = 13.sp
+                    )
+                }
+                Box(
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .border(1.dp, EagleBorder, RoundedCornerShape(12.dp))
+                        .clickable(enabled = status != ConferenceSetupStatus.JOINING) {
+                            if (consulting) onCancelCall() else onDismiss()
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "×",
+                        color = EagleText,
+                        fontSize = 25.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            }
+            Spacer(Modifier.height(18.dp))
             Text(
-                if (consulting) "Adicionar participante" else "Adicionar chamada",
-                color = EagleText
+                text = "Ramal ou telefone",
+                color = EagleText,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold
             )
-        },
-        text = {
+            Spacer(Modifier.height(6.dp))
             Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
-                Text(
-                    text = when (status) {
-                        ConferenceSetupStatus.CALLING ->
-                            "Chamando $destination. O primeiro participante está em espera."
-                        ConferenceSetupStatus.CONNECTED ->
-                            "Segundo participante conectado. Forme a conferência ou cancele."
-                        ConferenceSetupStatus.JOINING -> "Formando conferência..."
-                        else -> "Digite o ramal ou telefone do novo participante."
-                    },
-                    color = EagleTextMuted,
-                    fontSize = 13.sp
-                )
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(58.dp)
                         .clip(RoundedCornerShape(13.dp))
                         .border(1.dp, EagleBorder, RoundedCornerShape(13.dp))
-                        .padding(horizontal = 12.dp),
+                        .padding(start = 12.dp, end = 7.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
@@ -2135,21 +2518,24 @@ private fun AddCallDialog(
                         textAlign = TextAlign.Center,
                         modifier = Modifier.weight(1f)
                     )
-                    Text(
-                        text = "⌫",
-                        color = if (destination.isBlank()) EagleTextMuted else EagleText,
-                        fontSize = 22.sp,
-                        modifier = Modifier.combinedClickable(
-                            onClick = {
-                                if (destination.isNotBlank() && !consulting) {
-                                    destination = destination.dropLast(1)
-                                }
-                            },
-                            onLongClick = {
-                                if (!consulting) destination = ""
-                            }
+                    Box(
+                        modifier = Modifier
+                            .size(44.dp)
+                            .clip(RoundedCornerShape(11.dp))
+                            .border(1.dp, EagleBorder, RoundedCornerShape(11.dp))
+                            .combinedClickable(
+                                enabled = destination.isNotBlank() && !consulting,
+                                onClick = { destination = destination.dropLast(1) },
+                                onLongClick = { destination = "" }
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "⌫",
+                            color = if (destination.isBlank()) EagleTextMuted else EagleText,
+                            fontSize = 22.sp
                         )
-                    )
+                    }
                 }
                 keys.chunked(3).forEach { row ->
                     Row(
@@ -2189,55 +2575,69 @@ private fun AddCallDialog(
                     )
                 }
             }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = {
-                    if (status == ConferenceSetupStatus.CONNECTED) {
-                        if (onJoin()) onDismiss()
-                        else error = "Não foi possível formar a conferência."
-                    } else if (destination.isNotBlank() &&
-                        status in setOf(
-                            ConferenceSetupStatus.IDLE,
-                            ConferenceSetupStatus.FAILED
-                        )
-                    ) {
-                        if (!onStart(destination)) {
-                            error = "Não foi possível iniciar a nova chamada."
-                        }
-                    }
-                }
+            Spacer(Modifier.height(20.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                Text(
-                    if (status == ConferenceSetupStatus.CONNECTED) {
-                        "Formar conferência"
-                    } else if (status == ConferenceSetupStatus.CALLING) {
-                        "Aguardando atendimento..."
-                    } else {
-                        "Adicionar à chamada"
+                Button(
+                    onClick = {
+                        if (consulting) onCancelCall() else onDismiss()
                     },
-                    color = if (status == ConferenceSetupStatus.CALLING) {
-                        EagleTextMuted
-                    } else {
-                        EagleBlue
-                    }
-                )
-            }
-        },
-        dismissButton = {
-            TextButton(
-                onClick = {
-                    if (consulting) onCancelCall() else onDismiss()
+                    enabled = status != ConferenceSetupStatus.JOINING,
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(56.dp)
+                        .border(1.dp, EagleBorder, RoundedCornerShape(12.dp)),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = EagleNavyLight,
+                        contentColor = EagleBlue
+                    )
+                ) {
+                    Text(
+                        if (consulting) "Cancelar nova chamada" else "Cancelar",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center
+                    )
                 }
-            ) {
-                Text(
-                    if (consulting) "Cancelar nova chamada" else "Cancelar",
-                    color = EagleTextMuted
-                )
+                Button(
+                    onClick = {
+                        if (status == ConferenceSetupStatus.CONNECTED) {
+                            if (onJoin()) onDismiss()
+                            else error = "Não foi possível formar a conferência."
+                        } else if (destination.isNotBlank() && canChooseParticipant) {
+                            if (!onStart(destination)) {
+                                error = "Não foi possível iniciar a nova chamada."
+                            }
+                        }
+                    },
+                    enabled = status == ConferenceSetupStatus.CONNECTED ||
+                        (destination.isNotBlank() && canChooseParticipant),
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(56.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = EagleBlue,
+                        contentColor = EagleText
+                    )
+                ) {
+                    Text(
+                        when (status) {
+                            ConferenceSetupStatus.CONNECTED -> "Formar conferência"
+                            ConferenceSetupStatus.CALLING -> "Aguardando atendimento..."
+                            else -> "Adicionar à chamada"
+                        },
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center
+                    )
+                }
             }
-        },
-        containerColor = EagleNavyLight
-    )
+        }
+    }
 }
 
 @Composable
@@ -2246,57 +2646,120 @@ private fun AudioOutputDialog(
     onSelect: (String) -> Unit,
     onDismiss: () -> Unit
 ) {
-    AlertDialog(
+    Dialog(
         onDismissRequest = onDismiss,
-        title = { Text("Saída de áudio", color = EagleText) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(
-                    text = "Escolha onde deseja ouvir a chamada.",
-                    color = EagleTextMuted,
-                    fontSize = 13.sp
-                )
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth(0.9f)
+                .clip(RoundedCornerShape(24.dp))
+                .background(EagleNavyLight)
+                .border(1.dp, EagleBorder, RoundedCornerShape(24.dp))
+                .padding(24.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.Top
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "ÁUDIO DA CHAMADA",
+                        color = EagleBlue,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.5.sp
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = "Saída de áudio",
+                        color = EagleText,
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = "Escolha onde deseja ouvir a chamada.",
+                        color = EagleTextMuted,
+                        fontSize = 13.sp
+                    )
+                }
+                Box(
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .border(1.dp, EagleBorder, RoundedCornerShape(12.dp))
+                        .clickable(onClick = onDismiss),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "×",
+                        color = EagleText,
+                        fontSize = 25.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            }
+            Spacer(Modifier.height(20.dp))
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 if (outputs.isEmpty()) {
                     Text(
                         text = "Nenhuma saída disponível.",
                         color = EagleTextMuted,
                         fontSize = 13.sp
                     )
-                } else {
-                    outputs.forEach { output ->
-                        Row(
+                } else outputs.forEach { output ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(14.dp))
+                            .border(1.dp, EagleBorder, RoundedCornerShape(14.dp))
+                            .clickable { onSelect(output.id) }
+                            .padding(horizontal = 16.dp, vertical = 14.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(
                             modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(13.dp))
-                                .border(1.dp, EagleBorder, RoundedCornerShape(13.dp))
-                                .clickable { onSelect(output.id) }
-                                .padding(horizontal = 14.dp, vertical = 13.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                                .weight(1f)
+                                .padding(end = 12.dp)
                         ) {
                             Text(
                                 text = output.label,
                                 color = EagleText,
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                modifier = Modifier.weight(1f)
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Bold
                             )
                             Text(
-                                text = if (output.selected) "●" else "○",
-                                color = if (output.selected) EagleSuccess else EagleTextMuted,
-                                fontSize = 20.sp
+                                text = if (output.selected) "Saída selecionada" else "Selecionar saída",
+                                color = EagleTextMuted,
+                                fontSize = 12.sp
                             )
+                        }
+                        Box(
+                            modifier = Modifier
+                                .size(34.dp)
+                                .clip(CircleShape)
+                                .border(
+                                    2.dp,
+                                    if (output.selected) EagleSuccess else EagleTextMuted,
+                                    CircleShape
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (output.selected) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(14.dp)
+                                        .clip(CircleShape)
+                                        .background(EagleSuccess)
+                                )
+                            }
                         }
                     }
                 }
             }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Fechar", color = EagleBlue)
-            }
-        },
-        containerColor = EagleNavyLight
-    )
+        }
+    }
 }
 
 @Composable
@@ -2319,69 +2782,108 @@ private fun IncomingCallDialog(
         ?: call.displayName?.takeUnless { it == call.number }
         ?: "Chamada recebida"
 
-    AlertDialog(
+    Dialog(
         onDismissRequest = {},
-        containerColor = EagleNavyLight,
-        titleContentColor = EagleText,
-        textContentColor = EagleTextMuted,
-        title = {
+        properties = DialogProperties(
+            dismissOnBackPress = false,
+            dismissOnClickOutside = false,
+            usePlatformDefaultWidth = false
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth(0.88f)
+                .clip(RoundedCornerShape(24.dp))
+                .background(EagleNavyLight)
+                .border(3.dp, EagleBlue, RoundedCornerShape(24.dp))
+                .padding(horizontal = 24.dp, vertical = 28.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(1.dp)
+                    .background(EagleBlue)
+            )
             Text(
-                text = "Chamada recebida",
-                modifier = Modifier.fillMaxWidth(),
-                textAlign = TextAlign.Center,
+                text = "CHAMADA RECEBIDA",
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 11.dp),
+                color = EagleBlue,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 1.5.sp,
+                textAlign = TextAlign.Center
+            )
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(1.dp)
+                    .background(EagleBlue)
+            )
+            Spacer(Modifier.height(20.dp))
+            ContactAvatar(
+                contact ?: EagleContact(
+                    name = name,
+                    numbers = emptyList(),
+                    photo = null
+                )
+            )
+            Spacer(Modifier.height(16.dp))
+            Text(
+                text = name,
+                color = EagleText,
+                fontSize = 21.sp,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center
+            )
+            Text(
+                text = call.number,
+                color = EagleTextMuted,
+                fontSize = 16.sp
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = "Chamando...",
+                color = EagleBlue,
+                fontSize = 14.sp,
                 fontWeight = FontWeight.Bold
             )
-        },
-        text = {
-            Column(
+            Spacer(Modifier.height(24.dp))
+            Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                ContactAvatar(
-                    contact ?: EagleContact(
-                        name = name,
-                        numbers = emptyList(),
-                        photo = null
+                Button(
+                    onClick = onReject,
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(52.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = EagleDanger,
+                        contentColor = EagleText
                     )
-                )
-                Spacer(Modifier.height(12.dp))
-                Text(
-                    text = name,
-                    color = EagleText,
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                    textAlign = TextAlign.Center
-                )
-                Text(
-                    text = call.number,
-                    color = EagleTextMuted,
-                    fontSize = 16.sp
-                )
-            }
-        },
-        dismissButton = {
-            Button(
-                onClick = onReject,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = EagleDanger,
-                    contentColor = EagleText
-                )
-            ) {
-                Text("Recusar", fontWeight = FontWeight.Bold)
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = onAccept,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = EagleSuccess,
-                    contentColor = EagleNavy
-                )
-            ) {
-                Text("Atender", fontWeight = FontWeight.Bold)
+                ) {
+                    Text("Recusar", fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                }
+                Button(
+                    onClick = onAccept,
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(52.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = EagleSuccess,
+                        contentColor = EagleNavy
+                    )
+                ) {
+                    Text("Atender", fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                }
             }
         }
-    )
+    }
 }
 
 private data class DialKey(val digit: String, val letters: String = "")
@@ -2468,11 +2970,26 @@ private fun DialActionButton(
 }
 
 @Composable
-private fun AccountDialog(
+private fun LegacyAccountDialog(
     user: AuthenticatedUser,
+    contact: EagleContact?,
     onDismiss: () -> Unit,
     onLogout: () -> Unit
 ) {
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+    var notificationsEnabled by remember {
+        mutableStateOf(areCallNotificationsEnabled(context))
+    }
+    DisposableEffect(lifecycleOwner, context) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                notificationsEnabled = areCallNotificationsEnabled(context)
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
@@ -2505,6 +3022,103 @@ private fun AccountDialog(
                     fontSize = 13.sp,
                     fontWeight = FontWeight.SemiBold
                 )
+                Spacer(Modifier.height(18.dp))
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(EagleHeaderNavy)
+                        .border(1.dp, EagleBorder, RoundedCornerShape(16.dp))
+                        .padding(16.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.Top,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Notificações de chamada",
+                                color = EagleText,
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Spacer(Modifier.height(3.dp))
+                            Text(
+                                text = "Avisos do Android quando o aplicativo estiver em segundo plano.",
+                                color = EagleTextMuted,
+                                fontSize = 12.sp
+                            )
+                        }
+                        Text(
+                            text = if (notificationsEnabled) "Ativadas" else "Bloqueadas",
+                            color = if (notificationsEnabled) EagleSuccess else EagleDanger,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(9.dp))
+                                .background(
+                                    if (notificationsEnabled) {
+                                        EagleSuccess.copy(alpha = 0.12f)
+                                    } else {
+                                        EagleDanger.copy(alpha = 0.12f)
+                                    }
+                                )
+                                .border(
+                                    1.dp,
+                                    if (notificationsEnabled) EagleSuccess else EagleDanger,
+                                    RoundedCornerShape(9.dp)
+                                )
+                                .padding(horizontal = 9.dp, vertical = 6.dp)
+                        )
+                    }
+                    Spacer(Modifier.height(14.dp))
+                    Button(
+                        onClick = {
+                            if (notificationsEnabled) {
+                                sendCallNotificationTest(context)
+                            } else {
+                                openAndroidNotificationSettings(context)
+                            }
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(46.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = EagleNavyLight,
+                            contentColor = EagleBlue
+                        ),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, EagleBlue)
+                    ) {
+                        Text(
+                            text = if (notificationsEnabled) {
+                                "Enviar notificação de teste"
+                            } else {
+                                "Abrir configurações do Android"
+                            },
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                    Spacer(Modifier.height(12.dp))
+                    Text(
+                        text = if (notificationsEnabled) {
+                            "As chamadas podem gerar avisos nativos do Eagle PBX no Android."
+                        } else {
+                            "Libere as notificações do Eagle PBX nas configurações do Android."
+                        },
+                        color = EagleTextMuted,
+                        fontSize = 11.sp
+                    )
+                    Spacer(Modifier.height(5.dp))
+                    Text(
+                        text = "Para receber chamadas em segundo plano, mantenha o Eagle PBX sem restrições de bateria.",
+                        color = EagleTextMuted,
+                        fontSize = 11.sp
+                    )
+                }
             }
         },
         confirmButton = {
@@ -2520,6 +3134,473 @@ private fun AccountDialog(
         containerColor = EagleNavyLight,
         textContentColor = EagleText,
         titleContentColor = EagleText
+    )
+}
+
+@Composable
+private fun AccountDialog(
+    user: AuthenticatedUser,
+    contact: EagleContact?,
+    saving: Boolean,
+    message: String?,
+    error: String?,
+    onDismiss: () -> Unit,
+    onSave: (String, String, String?, ByteArray?, String?, String?) -> Unit,
+    onClearFeedback: () -> Unit,
+    onLogout: () -> Unit
+) {
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+    var name by remember(user.id) { mutableStateOf(user.name) }
+    var email by remember(user.id) { mutableStateOf(user.email) }
+    var password by remember(user.id) { mutableStateOf("") }
+    var avatarBytes by remember { mutableStateOf<ByteArray?>(null) }
+    var avatarName by remember { mutableStateOf<String?>(null) }
+    var avatarType by remember { mutableStateOf<String?>(null) }
+    var localError by remember { mutableStateOf<String?>(null) }
+    var notificationsEnabled by remember {
+        mutableStateOf(areCallNotificationsEnabled(context))
+    }
+    val avatarBitmap = remember(avatarBytes) {
+        avatarBytes?.let { bytes ->
+            BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.asImageBitmap()
+        }
+    }
+    val photoPicker = rememberLauncherForActivityResult(
+        ActivityResultContracts.GetContent()
+    ) { uri ->
+        if (uri != null) {
+            runCatching {
+                val type = context.contentResolver.getType(uri).orEmpty()
+                require(type in setOf("image/jpeg", "image/png", "image/webp")) {
+                    "Escolha uma foto JPG, PNG ou WebP."
+                }
+                val bytes = context.contentResolver.openInputStream(uri)
+                    ?.use { it.readBytes() }
+                    ?: error("Não foi possível ler a foto selecionada.")
+                require(bytes.size <= 5 * 1024 * 1024) {
+                    "A foto deve ter no máximo 5 MB."
+                }
+                Triple(
+                    bytes,
+                    uri.lastPathSegment?.substringAfterLast('/') ?: "avatar",
+                    type
+                )
+            }.onSuccess { selected ->
+                avatarBytes = selected.first
+                avatarName = selected.second
+                avatarType = selected.third
+                localError = null
+            }.onFailure { failure ->
+                localError = failure.message ?: "Não foi possível carregar a foto."
+            }
+        }
+    }
+    DisposableEffect(lifecycleOwner, context) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                notificationsEnabled = areCallNotificationsEnabled(context)
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+    LaunchedEffect(message) {
+        if (message == "Perfil atualizado.") password = ""
+    }
+
+    Dialog(
+        onDismissRequest = {
+            if (!saving) {
+                onClearFeedback()
+                onDismiss()
+            }
+        },
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 14.dp, vertical = 18.dp)
+                .clip(RoundedCornerShape(26.dp))
+                .background(EagleNavyLight)
+                .border(1.dp, EagleBorder, RoundedCornerShape(26.dp))
+                .verticalScroll(rememberScrollState())
+                .imePadding()
+                .padding(20.dp)
+        ) {
+            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        "MINHA CONTA",
+                        color = EagleBlue,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.8.sp
+                    )
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        "Perfil e segurança",
+                        color = EagleText,
+                        fontSize = 27.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        "Atualize seus dados pessoais.",
+                        color = EagleTextMuted,
+                        fontSize = 14.sp
+                    )
+                }
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(RoundedCornerShape(13.dp))
+                        .border(1.dp, EagleBorder, RoundedCornerShape(13.dp))
+                        .clickable(enabled = !saving) {
+                            onClearFeedback()
+                            onDismiss()
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Filled.Close, "Fechar", tint = EagleText)
+                }
+            }
+            Spacer(Modifier.height(20.dp))
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(EagleHeaderNavy)
+                    .border(1.dp, EagleBorder, RoundedCornerShape(16.dp))
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (avatarBitmap != null) {
+                    Image(
+                        bitmap = avatarBitmap,
+                        contentDescription = "Nova foto do perfil",
+                        modifier = Modifier.size(58.dp).clip(CircleShape),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    UserAvatar(user = user, contact = contact)
+                }
+                Spacer(Modifier.width(14.dp))
+                Column {
+                    Text(
+                        name.ifBlank { user.name },
+                        color = EagleText,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        "Ramal ${user.extension}",
+                        color = EagleTextMuted,
+                        fontSize = 14.sp
+                    )
+                }
+            }
+            Spacer(Modifier.height(20.dp))
+            AccountTextField(
+                label = "Nome",
+                value = name,
+                enabled = !saving,
+                onValueChange = { name = it; localError = null }
+            )
+            Spacer(Modifier.height(16.dp))
+            AccountTextField(
+                label = "E-mail",
+                value = email,
+                enabled = !saving,
+                keyboardType = KeyboardType.Email,
+                onValueChange = { email = it; localError = null }
+            )
+            Spacer(Modifier.height(16.dp))
+            Text("Foto do perfil", color = EagleText, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(7.dp))
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(58.dp)
+                    .clip(RoundedCornerShape(14.dp))
+                    .border(1.dp, EagleBorder, RoundedCornerShape(14.dp))
+                    .clickable(enabled = !saving) { photoPicker.launch("image/*") },
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .weight(0.42f)
+                        .fillMaxSize()
+                        .background(EagleBlue.copy(alpha = 0.10f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("Escolher foto", color = EagleBlue, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                }
+                Text(
+                    avatarName ?: "Nenhum arquivo selecionado",
+                    color = EagleTextMuted,
+                    fontSize = 11.sp,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.weight(0.58f).padding(horizontal = 8.dp)
+                )
+            }
+            Spacer(Modifier.height(7.dp))
+            Text(
+                "JPG, PNG ou WebP, com até 5 MB. A imagem será ajustada ao avatar.",
+                color = EagleTextMuted,
+                fontSize = 11.sp
+            )
+            Spacer(Modifier.height(16.dp))
+            AccountTextField(
+                label = "Nova senha",
+                value = password,
+                enabled = !saving,
+                placeholder = "Deixe vazio para manter",
+                password = true,
+                keyboardType = KeyboardType.Password,
+                onValueChange = { password = it; localError = null }
+            )
+            Spacer(Modifier.height(18.dp))
+            AccountNotificationCard(
+                enabled = notificationsEnabled,
+                onAction = {
+                    if (notificationsEnabled) sendCallNotificationTest(context)
+                    else openAndroidNotificationSettings(context)
+                }
+            )
+            Spacer(Modifier.height(16.dp))
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(EagleHeaderNavy)
+                    .border(1.dp, EagleBorder, RoundedCornerShape(14.dp))
+                    .padding(horizontal = 15.dp, vertical = 14.dp),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text("Versão do aplicativo", color = EagleTextMuted, fontSize = 12.sp)
+                Text(BuildConfig.VERSION_NAME, color = EagleText, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            }
+            val feedback = localError ?: error ?: message
+            if (!feedback.isNullOrBlank()) {
+                Spacer(Modifier.height(14.dp))
+                Text(
+                    feedback,
+                    color = if (localError != null || error != null) EagleDanger else EagleSuccess,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+            Spacer(Modifier.height(22.dp))
+            Button(
+                onClick = {
+                    localError = when {
+                        name.isBlank() -> "Informe o nome."
+                        !email.contains('@') -> "Informe um e-mail válido."
+                        password.isNotBlank() && password.length < 10 ->
+                            "A senha deve ter ao menos 10 caracteres."
+                        else -> null
+                    }
+                    if (localError == null) {
+                        onSave(
+                            name.trim(),
+                            email.trim(),
+                            password.takeIf(String::isNotBlank),
+                            avatarBytes,
+                            avatarName,
+                            avatarType
+                        )
+                    }
+                },
+                enabled = !saving,
+                modifier = Modifier.fillMaxWidth().height(54.dp),
+                shape = RoundedCornerShape(14.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = EagleBlue)
+            ) {
+                if (saving) CircularProgressIndicator(color = EagleText, modifier = Modifier.size(22.dp))
+                else Text("Salvar", color = EagleText, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            }
+            Spacer(Modifier.height(12.dp))
+            Button(
+                onClick = onLogout,
+                enabled = !saving,
+                modifier = Modifier.fillMaxWidth().height(54.dp),
+                shape = RoundedCornerShape(14.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = EagleDanger.copy(alpha = 0.16f),
+                    contentColor = EagleDanger
+                ),
+                border = androidx.compose.foundation.BorderStroke(1.dp, EagleDanger.copy(alpha = 0.65f))
+            ) {
+                Text("Logoff", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            }
+        }
+    }
+
+}
+
+@Composable
+private fun AccountTextField(
+    label: String,
+    value: String,
+    enabled: Boolean,
+    placeholder: String? = null,
+    password: Boolean = false,
+    keyboardType: KeyboardType = KeyboardType.Text,
+    onValueChange: (String) -> Unit
+) {
+    Text(label, color = EagleText, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+    Spacer(Modifier.height(7.dp))
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        modifier = Modifier.fillMaxWidth(),
+        enabled = enabled,
+        singleLine = true,
+        placeholder = if (placeholder == null) null else ({ Text(placeholder) }),
+        visualTransformation = if (password) PasswordVisualTransformation() else androidx.compose.ui.text.input.VisualTransformation.None,
+        keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
+        colors = TextFieldDefaults.colors(
+            focusedContainerColor = EagleNavyLight,
+            unfocusedContainerColor = EagleNavyLight,
+            focusedTextColor = EagleText,
+            unfocusedTextColor = EagleText,
+            focusedIndicatorColor = EagleBlue,
+            unfocusedIndicatorColor = EagleBorder,
+            cursorColor = EagleBlue,
+            focusedPlaceholderColor = EagleTextMuted,
+            unfocusedPlaceholderColor = EagleTextMuted
+        ),
+        shape = RoundedCornerShape(14.dp)
+    )
+}
+
+@Composable
+private fun AccountNotificationCard(enabled: Boolean, onAction: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(EagleHeaderNavy)
+            .border(1.dp, EagleBorder, RoundedCornerShape(16.dp))
+            .padding(16.dp)
+    ) {
+        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text("Notificações de chamada", color = EagleText, fontSize = 17.sp, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(3.dp))
+                Text("Avisos do Android quando o aplicativo estiver em segundo plano.", color = EagleTextMuted, fontSize = 12.sp)
+            }
+            Text(
+                if (enabled) "Ativadas" else "Bloqueadas",
+                color = if (enabled) EagleSuccess else EagleDanger,
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(9.dp))
+                    .background((if (enabled) EagleSuccess else EagleDanger).copy(alpha = 0.12f))
+                    .border(1.dp, if (enabled) EagleSuccess else EagleDanger, RoundedCornerShape(9.dp))
+                    .padding(horizontal = 8.dp, vertical = 6.dp)
+            )
+        }
+        Spacer(Modifier.height(13.dp))
+        Button(
+            onClick = onAction,
+            modifier = Modifier.fillMaxWidth().height(46.dp),
+            shape = RoundedCornerShape(12.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = EagleNavyLight, contentColor = EagleBlue),
+            border = androidx.compose.foundation.BorderStroke(1.dp, EagleBlue)
+        ) {
+            Text(
+                if (enabled) "Enviar notificação de teste" else "Abrir configurações do Android",
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center
+            )
+        }
+        Spacer(Modifier.height(11.dp))
+        Text(
+            if (enabled) "As chamadas podem gerar avisos nativos do Eagle PBX no Android."
+            else "Libere as notificações do Eagle PBX nas configurações do Android.",
+            color = EagleTextMuted,
+            fontSize = 11.sp
+        )
+        Spacer(Modifier.height(4.dp))
+        Text(
+            "Mantenha o Eagle PBX sem restrições de bateria para receber chamadas em segundo plano.",
+            color = EagleTextMuted,
+            fontSize = 11.sp
+        )
+    }
+}
+
+private const val CALL_NOTIFICATION_CHANNEL_ID = "eagle_pbx_incoming_calls_v2"
+private const val TEST_NOTIFICATION_ID = 1901
+
+private fun areCallNotificationsEnabled(context: Context): Boolean {
+    val runtimePermissionGranted = Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+        ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.POST_NOTIFICATIONS
+        ) == PackageManager.PERMISSION_GRANTED
+    if (!runtimePermissionGranted ||
+        !NotificationManagerCompat.from(context).areNotificationsEnabled()
+    ) {
+        return false
+    }
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        val channel = context.getSystemService(NotificationManager::class.java)
+            .getNotificationChannel(CALL_NOTIFICATION_CHANNEL_ID)
+        if (channel != null && channel.importance == NotificationManager.IMPORTANCE_NONE) {
+            return false
+        }
+    }
+    return true
+}
+
+private fun sendCallNotificationTest(context: Context) {
+    if (!areCallNotificationsEnabled(context)) return
+    val manager = context.getSystemService(NotificationManager::class.java)
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        manager.createNotificationChannel(
+            NotificationChannel(
+                CALL_NOTIFICATION_CHANNEL_ID,
+                "Chamadas recebidas",
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                description = "Avisa sobre novas chamadas do Eagle PBX."
+                setSound(null, null)
+                enableVibration(true)
+            }
+        )
+    }
+    val openApp = PendingIntent.getActivity(
+        context,
+        TEST_NOTIFICATION_ID,
+        Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+        },
+        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+    )
+    val notification = NotificationCompat.Builder(context, CALL_NOTIFICATION_CHANNEL_ID)
+        .setSmallIcon(R.drawable.ic_launcher_foreground)
+        .setContentTitle("Notificações ativadas")
+        .setContentText("O Eagle PBX está pronto para avisar sobre novas chamadas.")
+        .setContentIntent(openApp)
+        .setAutoCancel(true)
+        .setCategory(NotificationCompat.CATEGORY_STATUS)
+        .setPriority(NotificationCompat.PRIORITY_HIGH)
+        .build()
+    NotificationManagerCompat.from(context).notify(TEST_NOTIFICATION_ID, notification)
+}
+
+private fun openAndroidNotificationSettings(context: Context) {
+    context.startActivity(
+        Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+            putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
     )
 }
 

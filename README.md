@@ -9,7 +9,7 @@ com homologação operacional nos Samsung Galaxy A25 5G e validação complement
 no Samsung Galaxy S25 Ultra. O iOS será desenvolvido depois da homologação do
 fluxo Android.
 
-Versão de desenvolvimento atual: `0.1.34`. A identidade visual, o login nativo,
+Versão de desenvolvimento atual: `0.1.37`. A identidade visual, o login nativo,
 a restauração segura da sessão, o logoff, a navegação principal e a integração
 inicial de presença foram validados no emulador equivalente ao Galaxy A25 5G.
 A agenda corporativa, o histórico e o player autenticado de gravações também
@@ -66,6 +66,8 @@ será confirmado no Galaxy A25 físico.
 
 ## Decisões aprovadas
 
+- colaboradores não podem limpar nem ocultar o histórico de chamadas pelo
+  aplicativo;
 - identificador Android: `com.eaglesistemas.eaglepbx`;
 - distribuição inicial: APK assinado e instalado internamente;
 - SDK SIP candidato: Liblinphone;

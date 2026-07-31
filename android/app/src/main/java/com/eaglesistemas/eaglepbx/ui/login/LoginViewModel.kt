@@ -48,6 +48,9 @@ data class LoginUiState(
     val recordingPlaying: Boolean = false,
     val recordingPosition: Int = 0,
     val recordingDuration: Int = 0,
+    val savingProfile: Boolean = false,
+    val profileMessage: String? = null,
+    val profileError: String? = null,
     val sipEngineStatus: SipEngineStatus = SipEngineStatus.INITIALIZING,
     val sipCallStatus: SipCallStatus = SipCallStatus.IDLE,
     val attendedTransferStatus: AttendedTransferStatus = AttendedTransferStatus.IDLE,
@@ -461,6 +464,51 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
                 )
             }
         }
+    }
+
+    fun updateProfile(
+        name: String,
+        email: String,
+        password: String?,
+        avatarBytes: ByteArray?,
+        avatarFileName: String?,
+        avatarContentType: String?
+    ) {
+        if (mutableState.value.savingProfile || mutableState.value.user == null) return
+        mutableState.value = mutableState.value.copy(
+            savingProfile = true,
+            profileMessage = null,
+            profileError = null
+        )
+        viewModelScope.launch {
+            val result = runCatching {
+                withContext(Dispatchers.IO) {
+                    var updated = api.updateProfile(name, email, password)
+                    if (avatarBytes != null && avatarFileName != null && avatarContentType != null) {
+                        updated = api.uploadAvatar(
+                            avatarBytes,
+                            avatarFileName,
+                            avatarContentType
+                        )
+                    }
+                    updated
+                }
+            }
+            val error = result.exceptionOrNull()
+            mutableState.value = mutableState.value.copy(
+                savingProfile = false,
+                user = result.getOrNull() ?: mutableState.value.user,
+                profileMessage = if (result.isSuccess) "Perfil atualizado." else null,
+                profileError = error?.toFriendlyMessage()
+            )
+        }
+    }
+
+    fun clearProfileFeedback() {
+        mutableState.value = mutableState.value.copy(
+            profileMessage = null,
+            profileError = null
+        )
     }
 
     fun loadContacts(force: Boolean = false) {

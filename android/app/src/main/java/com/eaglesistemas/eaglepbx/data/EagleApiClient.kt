@@ -7,6 +7,7 @@ import java.net.HttpURLConnection
 import java.net.URI
 import java.net.URLEncoder
 import java.io.File
+import java.util.UUID
 import javax.net.ssl.HttpsURLConnection
 
 class EagleApiClient(
@@ -135,6 +136,53 @@ class EagleApiClient(
         require(presence in setOf("online", "offline", "dnd"))
         val payload = JSONObject().put("presence", presence).toString()
         return requestUser("/api/me", "PATCH", payload)
+    }
+
+    fun updateProfile(
+        name: String,
+        email: String,
+        password: String? = null
+    ): AuthenticatedUser {
+        val payload = JSONObject()
+            .put("name", name.trim())
+            .put("email", email.trim())
+            .apply {
+                if (!password.isNullOrBlank()) put("password", password)
+            }
+            .toString()
+        return requestUser("/api/me", "PATCH", payload)
+    }
+
+    fun uploadAvatar(
+        bytes: ByteArray,
+        fileName: String,
+        contentType: String
+    ): AuthenticatedUser {
+        require(bytes.isNotEmpty()) { "A foto selecionada está vazia." }
+        require(bytes.size <= 5 * 1024 * 1024) { "A foto deve ter no máximo 5 MB." }
+        val boundary = "EaglePBX-${UUID.randomUUID()}"
+        val safeName = fileName.replace(Regex("[^A-Za-z0-9._-]"), "_")
+            .ifBlank { "avatar" }
+        val prefix = buildString {
+            append("--$boundary\r\n")
+            append("Content-Disposition: form-data; name=\"avatar\"; filename=\"$safeName\"\r\n")
+            append("Content-Type: $contentType\r\n\r\n")
+        }.toByteArray(Charsets.UTF_8)
+        val suffix = "\r\n--$boundary--\r\n".toByteArray(Charsets.UTF_8)
+        val response = readResponse(
+            connection("/api/me/avatar", "POST").apply {
+                sessionStore.read()?.let { setRequestProperty("Cookie", it) }
+                setRequestProperty("Content-Type", "multipart/form-data; boundary=$boundary")
+                doOutput = true
+                setFixedLengthStreamingMode(prefix.size + bytes.size + suffix.size)
+                outputStream.use { output ->
+                    output.write(prefix)
+                    output.write(bytes)
+                    output.write(suffix)
+                }
+            }
+        )
+        return parseUser(JSONObject(response.body)).also(sessionStore::saveUser)
     }
 
     fun declineIncomingCall() {

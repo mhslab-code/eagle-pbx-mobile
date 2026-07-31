@@ -1,5 +1,13 @@
 # CODEX — Eagle PBX Mobile
 
+## Revisão 0.1.37
+
+- Removida de Minha conta a opção de limpar ou ocultar o histórico de chamadas.
+- O Android não envia mais solicitações de limpeza e sempre consulta o
+  histórico corporativo autorizado pelo servidor.
+- A política vale para todos os colaboradores: registros de chamadas não podem
+  ser ocultados ou apagados pelo aplicativo.
+
 ## Revisão 0.1.34
 
 - Iniciado o acabamento visual nativo com base na identidade homologada do
