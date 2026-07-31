@@ -36,6 +36,17 @@ dispositivo por canal autenticado. Bloqueio ou revogação deve invalidar a
 sessão do App e o endpoint correspondente sem afetar telefones físicos,
 Groundwire ou outros dispositivos do ramal.
 
+## Firebase
+
+- `google-services.json` real não pertence ao repositório público;
+- a credencial de serviço do FCM fica somente no backend Eagle PBX, com acesso
+  mínimo e permissões de arquivo restritas;
+- tokens FCM são identificadores de entrega e devem ser tratados como dados
+  operacionais protegidos, sem exposição em logs ou interfaces;
+- mensagens push não podem carregar senha SIP, cookie, token de sessão ou
+  credenciais de infraestrutura;
+- a revogação do dispositivo também deve invalidar seu token de push.
+
 ## Sessão Android
 
 - a senha do usuário é transmitida somente por HTTPS e nunca é persistida;

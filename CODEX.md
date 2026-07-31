@@ -1,5 +1,16 @@
 # CODEX — Eagle PBX Mobile
 
+## Decisão de infraestrutura push — 2026-07-31
+
+- O Android usará um projeto Firebase exclusivo denominado `Eagle PBX Mobile`.
+- O FCM será usado sem custo somente para despertar o fluxo de chamada quando
+  o processo tiver sido encerrado.
+- O backend existente enviará as mensagens; não dependeremos de serviços
+  computacionais pagos do Firebase.
+- Configurações e credenciais reais do Firebase permanecem fora do Git.
+- O planejamento anterior previa push, mas não explicitava o provedor, a
+  dependência operacional nem o custo; esta decisão corrige essa lacuna.
+
 ## Revisão 0.1.26
 
 - O retorno ao segundo plano é associado à abertura provocada pela notificação,

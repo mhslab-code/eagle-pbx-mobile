@@ -34,6 +34,41 @@ credenciais técnicas. Todos os dados passam pelas APIs autorizadas.
 - gerenciamento de áudio e Bluetooth;
 - cache local limitado de contatos e histórico.
 
+## Firebase Cloud Messaging
+
+Foi aprovado um projeto Firebase exclusivo, **Eagle PBX Mobile**, para o
+identificador Android `com.eaglesistemas.eaglepbx`.
+
+O FCM será usado somente como sinalização para despertar o aplicativo quando o
+processo não estiver disponível. A chamada, a autenticação, o provisionamento e
+a mídia continuam pertencendo à infraestrutura Eagle PBX; nenhuma credencial
+SIP será transportada no payload do push.
+
+```text
+PBX detecta a chamada
+        |
+        v
+Backend Eagle PBX -- FCM HTTP v1 --> Android
+        |                              |
+        |                              v
+        +----------------------> serviço de chamada
+                                       |
+                                       v
+                              SIP/TLS e mídia segura
+```
+
+Decisões operacionais:
+
+- Firebase Cloud Messaging é utilizado na modalidade sem custo;
+- o backend existente envia o push, sem Cloud Functions ou Cloud Run;
+- cada instalação associa seu token FCM à identidade revogável do dispositivo;
+- a API nunca devolve credenciais Firebase ao cliente;
+- a credencial de serviço e `google-services.json` real não são versionados;
+- tokens substituídos, inválidos ou pertencentes a dispositivos revogados são
+  removidos do cadastro;
+- o payload contém apenas identificadores mínimos da chamada, sem senha SIP,
+  cookie de sessão ou outro segredo.
+
 ## Identidade por dispositivo
 
 Cada instalação deve possuir:
@@ -112,7 +147,7 @@ operação.
 
 ### 4. Telefonia em segundo plano
 
-- FCM;
+- projeto Firebase exclusivo e FCM sem custo definidos; integração pendente;
 - proxy SIP/push;
 - Telecom Framework e `ConnectionService`;
 - chamada recebida com aplicativo suspenso e encerrado.

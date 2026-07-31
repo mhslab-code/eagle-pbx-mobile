@@ -72,6 +72,21 @@ será confirmado no Galaxy A25 físico.
 - Groundwire preservado como contingência durante a homologação;
 - código-fonte público, sem credenciais ou configurações internas.
 
+## Push Android
+
+O recebimento após o Android encerrar o processo utilizará um projeto Firebase
+exclusivo do produto, denominado **Eagle PBX Mobile**. O aplicativo usará
+somente o Firebase Cloud Messaging (FCM), serviço sem custo, para receber o
+evento que desperta o fluxo nativo de chamada.
+
+O backend já existente do Eagle PBX enviará as mensagens pelo protocolo HTTP v1
+do FCM. Não serão contratados Cloud Functions, Cloud Run, banco, hospedagem ou
+outros serviços pagos do Firebase para esse fluxo.
+
+O arquivo Android `google-services.json` de produção e a credencial de serviço
+usada pelo backend são segredos operacionais: permanecem fora do Git e devem ser
+armazenados exclusivamente nos respectivos servidores e ambientes autorizados.
+
 O protótipo utiliza Liblinphone `5.5.13`. Sua adoção definitiva somente
 ocorrerá depois da validação de registro, chamadas, push, segundo plano,
 Bluetooth e compatibilidade em aparelho físico com Android 16.
