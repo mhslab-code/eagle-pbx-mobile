@@ -27,7 +27,13 @@ class EagleFirebaseMessagingService : FirebaseMessagingService() {
     }
 
     override fun onMessageReceived(message: RemoteMessage) {
-        if (message.data["type"] != "incoming_call") return
+        val eventType = message.data["type"]
+        val callId = message.data["callId"].orEmpty().take(160)
+        if (eventType == "incoming_call_cancelled") {
+            SipForegroundService.cancelIncoming(applicationContext, callId)
+            return
+        }
+        if (eventType != "incoming_call") return
         val sessionStore = SecureSessionStore(applicationContext)
         if (sessionStore.read().isNullOrBlank()) return
 
@@ -39,7 +45,8 @@ class EagleFirebaseMessagingService : FirebaseMessagingService() {
         SipForegroundService.start(applicationContext)
         SipForegroundService.showIncoming(
             applicationContext,
-            IncomingSipCall(number = callerNumber, displayName = callerName)
+            IncomingSipCall(number = callerNumber, displayName = callerName),
+            callId = callId
         )
 
         // The native screen owns the SIP engine today. Bringing it forward

@@ -110,6 +110,8 @@ class SipForegroundService : Service() {
         private var incomingRingtone: Ringtone? = null
         private val incomingTimeoutHandler = Handler(Looper.getMainLooper())
         private var incomingGeneration = 0L
+        private var currentIncomingCallId = ""
+        private val cancelledCallIds = mutableMapOf<String, Long>()
 
         fun setRejectCallHandler(onReject: (() -> Unit)?) {
             onRejectIncoming = onReject
@@ -129,7 +131,17 @@ class SipForegroundService : Service() {
             )
         }
 
-        fun showIncoming(context: Context, call: IncomingSipCall) {
+        fun showIncoming(
+            context: Context,
+            call: IncomingSipCall,
+            callId: String = ""
+        ) {
+            val now = System.currentTimeMillis()
+            synchronized(cancelledCallIds) {
+                cancelledCallIds.entries.removeAll { now - it.value > 60_000L }
+                if (callId.isNotBlank() && cancelledCallIds.remove(callId) != null) return
+            }
+            currentIncomingCallId = callId
             val generation = ++incomingGeneration
             stopIncomingRingtone()
             incomingRingtone = RingtoneManager.getRingtone(
@@ -202,8 +214,17 @@ class SipForegroundService : Service() {
             }, 45_000L)
         }
 
-        fun cancelIncoming(context: Context) {
+        fun cancelIncoming(context: Context, callId: String = "") {
+            if (callId.isNotBlank()) {
+                synchronized(cancelledCallIds) {
+                    cancelledCallIds[callId] = System.currentTimeMillis()
+                }
+                if (currentIncomingCallId.isNotBlank() && currentIncomingCallId != callId) {
+                    return
+                }
+            }
             incomingGeneration += 1
+            currentIncomingCallId = ""
             stopIncomingRingtone()
             context.getSystemService(NotificationManager::class.java)
                 .cancel(INCOMING_NOTIFICATION_ID)

@@ -1,5 +1,12 @@
 # CODEX — Eagle PBX Mobile
 
+## Revisão 0.1.30
+
+- o push de cancelamento correlacionado encerra imediatamente toque e
+  notificação quando a origem abandona a chamada antes do registro SIP;
+- eventos de cancelamento recebidos antes do alerta também são lembrados por
+  uma janela curta, evitando toque órfão por inversão de entrega do FCM.
+
 ## Revisão 0.1.29
 
 - o serviço FCM processa somente eventos `incoming_call` em sessão autenticada;
