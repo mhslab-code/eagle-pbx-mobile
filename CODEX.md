@@ -1,5 +1,12 @@
 # CODEX — Eagle PBX Mobile
 
+## Revisão 0.1.32
+
+- o estado inicial vazio do motor SIP durante o despertar não encerra mais o
+  alerta preliminar recebido por FCM;
+- o encerramento pelo motor SIP ocorre somente depois de uma chamada SIP real
+  ter sido observada, preservando toque e notificação durante o registro.
+
 ## Revisão 0.1.31
 
 - o toque de chamada recebida usa reprodução assíncrona em loop e permanece

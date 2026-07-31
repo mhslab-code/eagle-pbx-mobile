@@ -73,6 +73,7 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
         DeviceIdentityStore(application)
     )
     private var linphoneEngine: LinphoneEngine? = null
+    private var sipIncomingWasActive = false
     private var mediaPlayer: MediaPlayer? = null
     private var playbackJob: Job? = null
     private val mutableState = MutableStateFlow(LoginUiState())
@@ -183,8 +184,12 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
                         incomingSipCall = call
                     )
                     if (call == null) {
-                        SipForegroundService.cancelIncoming(getApplication())
+                        if (sipIncomingWasActive) {
+                            sipIncomingWasActive = false
+                            SipForegroundService.cancelIncoming(getApplication())
+                        }
                     } else {
+                        sipIncomingWasActive = true
                         SipForegroundService.showIncoming(getApplication(), call)
                     }
                     if (call != null && !mutableState.value.contactsLoaded) {
