@@ -1,5 +1,6 @@
 package com.eaglesistemas.eaglepbx.data
 
+import android.util.Base64
 import com.eaglesistemas.eaglepbx.BuildConfig
 import org.json.JSONArray
 import org.json.JSONObject
@@ -32,6 +33,18 @@ class EagleApiClient(
 
     fun cachedUser(): AuthenticatedUser? = sessionStore.readUser()
 
+    fun cachedContacts(extension: String): List<EagleContact>? =
+        sessionStore.readContacts(extension)
+
+    fun cachedHistory(extension: String): List<HistoryCall>? =
+        sessionStore.readHistory(extension)
+
+    fun cacheContacts(extension: String, contacts: List<EagleContact>) =
+        sessionStore.saveContacts(extension, contacts)
+
+    fun cacheHistory(extension: String, calls: List<HistoryCall>) =
+        sessionStore.saveHistory(extension, calls)
+
     fun login(extension: String, password: String): AuthenticatedUser {
         val body = "username=${encode(extension)}&password=${encode(password)}"
         val response = readResponse(
@@ -62,8 +75,7 @@ class EagleApiClient(
             )
         }
         sessionStore.save(cookie)
-        sessionStore.saveUser(user)
-        return user
+        return hydrateProfileAvatar(user).also(sessionStore::saveUser)
     }
 
     fun logout() {
@@ -182,7 +194,8 @@ class EagleApiClient(
                 }
             }
         )
-        return parseUser(JSONObject(response.body)).also(sessionStore::saveUser)
+        return hydrateProfileAvatar(parseUser(JSONObject(response.body)))
+            .also(sessionStore::saveUser)
     }
 
     fun declineIncomingCall() {
@@ -327,7 +340,34 @@ class EagleApiClient(
                 }
             }
         )
-        return parseUser(JSONObject(response.body)).also(sessionStore::saveUser)
+        return hydrateProfileAvatar(parseUser(JSONObject(response.body)))
+            .also(sessionStore::saveUser)
+    }
+
+    private fun hydrateProfileAvatar(user: AuthenticatedUser): AuthenticatedUser {
+        val avatarPath = user.avatar
+            ?.takeIf { it.startsWith("/api/profile-avatar/") }
+            ?: return user
+        return runCatching {
+            val avatarConnection = connection(avatarPath, "GET").apply {
+                sessionStore.read()?.let { setRequestProperty("Cookie", it) }
+                setRequestProperty("Accept", "image/*")
+            }
+            try {
+                if (avatarConnection.responseCode !in 200..299) return@runCatching user
+                val contentType = avatarConnection.contentType
+                    ?.substringBefore(';')
+                    ?.takeIf { it.startsWith("image/") }
+                    ?: "image/webp"
+                val bytes = avatarConnection.inputStream.use { it.readBytes() }
+                if (bytes.isEmpty()) user else user.copy(
+                    avatar = "data:$contentType;base64," +
+                        Base64.encodeToString(bytes, Base64.NO_WRAP)
+                )
+            } finally {
+                avatarConnection.disconnect()
+            }
+        }.getOrDefault(user)
     }
 
     private fun bestEffortLogout(cookie: String) {

@@ -574,6 +574,7 @@ fun AuthenticatedScreen(
     var presenceMenuOpen by remember { mutableStateOf(false) }
     var accountDialogOpen by remember { mutableStateOf(false) }
     var selectedSection by remember { mutableStateOf(MainSection.DIALER) }
+    var externallyDialedNumber by rememberSaveable { mutableStateOf<String?>(null) }
     val presenceLabel = if (connectionError != null) "Sem conexão" else when (user.presence) {
         "dnd" -> "Não perturbe"
         "offline" -> "Offline"
@@ -714,7 +715,7 @@ fun AuthenticatedScreen(
                     .padding(horizontal = 18.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                UserAvatar(user = user, contact = userContact)
+                UserAvatar(user = user)
                 Column(
                     modifier = Modifier
                         .weight(1f)
@@ -801,6 +802,7 @@ fun AuthenticatedScreen(
                 when (selectedSection) {
                     MainSection.DIALER -> DialerContent(
                         contacts = contacts,
+                        externallyDialedNumber = externallyDialedNumber,
                         sipEngineStatus = sipEngineStatus,
                         sipCallStatus = sipCallStatus,
                         attendedTransferStatus = attendedTransferStatus,
@@ -829,7 +831,12 @@ fun AuthenticatedScreen(
                         contacts = contacts,
                         loading = loadingContacts,
                         error = contactsError,
-                        onRefresh = { onLoadContacts(true) }
+                        onRefresh = { onLoadContacts(true) },
+                        onPlaceCall = { number ->
+                            externallyDialedNumber = number
+                            selectedSection = MainSection.DIALER
+                            onPlaceCall(number)
+                        }
                     )
                     MainSection.HISTORY -> HistoryContent(
                         calls = history,
@@ -895,7 +902,6 @@ fun AuthenticatedScreen(
     if (accountDialogOpen) {
         AccountDialog(
             user = user,
-            contact = userContact,
             saving = savingProfile,
             message = profileMessage,
             error = profileError,
@@ -919,8 +925,8 @@ fun AuthenticatedScreen(
 }
 
 @Composable
-private fun UserAvatar(user: AuthenticatedUser, contact: EagleContact?) {
-    val photo = contact?.photo ?: user.avatar
+private fun UserAvatar(user: AuthenticatedUser) {
+    val photo = user.avatar
     val bitmap = remember(photo) {
         val encoded = photo
             ?.takeIf { it.startsWith("data:image/") && it.contains(",") }
@@ -993,7 +999,8 @@ private fun ContactsContent(
     contacts: List<EagleContact>,
     loading: Boolean,
     error: String?,
-    onRefresh: () -> Unit
+    onRefresh: () -> Unit,
+    onPlaceCall: (String) -> Unit
 ) {
     var search by rememberSaveable { mutableStateOf("") }
     var selectedContact by remember { mutableStateOf<EagleContact?>(null) }
@@ -1116,7 +1123,12 @@ private fun ContactsContent(
             items(filtered, key = { it.name.lowercase() }) { contact ->
                 ContactCard(
                     contact = contact,
-                    onClick = { selectedContact = contact }
+                    onClick = {
+                        when (contact.numbers.size) {
+                            1 -> onPlaceCall(contact.numbers.first().number)
+                            in 2..Int.MAX_VALUE -> selectedContact = contact
+                        }
+                    }
                 )
             }
         }
@@ -1125,7 +1137,11 @@ private fun ContactsContent(
     selectedContact?.let { contact ->
         ContactNumbersDialog(
             contact = contact,
-            onDismiss = { selectedContact = null }
+            onDismiss = { selectedContact = null },
+            onPlaceCall = { number ->
+                selectedContact = null
+                onPlaceCall(number)
+            }
         )
     }
 }
@@ -1237,7 +1253,8 @@ private fun ContactAvatar(contact: EagleContact) {
 @Composable
 private fun ContactNumbersDialog(
     contact: EagleContact,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    onPlaceCall: (String) -> Unit
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -1258,6 +1275,7 @@ private fun ContactNumbersDialog(
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(12.dp))
                                 .border(1.dp, EagleBorder, RoundedCornerShape(12.dp))
+                                .clickable { onPlaceCall(entry.number) }
                                 .padding(12.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
@@ -1665,6 +1683,7 @@ private fun formatHistoryDate(value: String): String {
 @Composable
 private fun DialerContent(
     contacts: List<EagleContact>,
+    externallyDialedNumber: String?,
     sipEngineStatus: SipEngineStatus,
     sipCallStatus: SipCallStatus,
     attendedTransferStatus: AttendedTransferStatus,
@@ -1698,6 +1717,11 @@ private fun DialerContent(
     var elapsedCallSeconds by remember { mutableStateOf(0) }
     var completedCallSeconds by remember { mutableStateOf<Int?>(null) }
     var completedTimerVisible by remember { mutableStateOf(false) }
+    LaunchedEffect(externallyDialedNumber) {
+        externallyDialedNumber
+            ?.takeIf(String::isNotBlank)
+            ?.let { number = it }
+    }
     val callActive = sipCallStatus in setOf(
         SipCallStatus.INCOMING,
         SipCallStatus.OUTGOING,
@@ -3140,7 +3164,6 @@ private fun LegacyAccountDialog(
 @Composable
 private fun AccountDialog(
     user: AuthenticatedUser,
-    contact: EagleContact?,
     saving: Boolean,
     message: String?,
     error: String?,
@@ -3284,7 +3307,7 @@ private fun AccountDialog(
                         contentScale = ContentScale.Crop
                     )
                 } else {
-                    UserAvatar(user = user, contact = contact)
+                    UserAvatar(user = user)
                 }
                 Spacer(Modifier.width(14.dp))
                 Column {

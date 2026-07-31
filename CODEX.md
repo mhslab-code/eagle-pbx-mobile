@@ -1,5 +1,23 @@
 # CODEX — Eagle PBX Mobile
 
+## Revisão 0.1.38
+
+- Contatos e histórico passam a abrir imediatamente pelo cache local cifrado,
+  com atualização posterior pela API autorizada.
+- A fotografia do cabeçalho vem do perfil do usuário; a agenda corporativa é
+  usada para identificar destinos e chamadores.
+- Chamadas iniciadas pelos contatos exibem o contato correspondente no
+  Discador durante todo o fluxo.
+- A notificação de chamada recebida apresenta ações nativas de atender e
+  recusar. Quando não há atendimento, uma notificação persistente registra a
+  chamada perdida com nome, número e fotografia disponíveis.
+- O ícone oficial do Eagle PBX foi aplicado ao launcher Android. Escala e
+  legibilidade finais serão conferidas no Galaxy A25 físico, pois a gaveta do
+  emulador aplica máscara e cache próprios.
+- O comportamento funcional da chamada perdida foi homologado no emulador. O
+  acabamento visual da notificação permanece sujeito a revisão futura no
+  aparelho físico.
+
 ## Revisão 0.1.37
 
 - Removida de Minha conta a opção de limpar ou ocultar o histórico de chamadas.

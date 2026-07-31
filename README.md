@@ -9,7 +9,7 @@ com homologação operacional nos Samsung Galaxy A25 5G e validação complement
 no Samsung Galaxy S25 Ultra. O iOS será desenvolvido depois da homologação do
 fluxo Android.
 
-Versão de desenvolvimento atual: `0.1.37`. A identidade visual, o login nativo,
+Versão de desenvolvimento atual: `0.1.38`. A identidade visual, o login nativo,
 a restauração segura da sessão, o logoff, a navegação principal e a integração
 inicial de presença foram validados no emulador equivalente ao Galaxy A25 5G.
 A agenda corporativa, o histórico e o player autenticado de gravações também
@@ -63,6 +63,13 @@ Ao encerrar uma chamada que despertou a tela, o aplicativo retorna ao segundo
 plano sem interromper o serviço SIP. Em aparelho sem bloqueio seguro, como o
 emulador atual, a tela permanece desbloqueada; o retorno ao PIN ou à biometria
 será confirmado no Galaxy A25 físico.
+
+A revisão `0.1.38` acrescenta cache local cifrado para contatos e histórico,
+identificação do contato no Discador e notificação persistente para chamadas
+perdidas. O ícone oficial também foi aplicado ao launcher Android. O fluxo de
+chamada perdida foi homologado no emulador; escala do ícone e acabamento visual
+da notificação serão reavaliados no Galaxy A25 físico, sem bloquear esta
+homologação funcional.
 
 ## Decisões aprovadas
 

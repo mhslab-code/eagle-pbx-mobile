@@ -4,6 +4,7 @@ import android.content.Context
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import android.util.Base64
+import org.json.JSONArray
 import org.json.JSONObject
 import java.security.KeyStore
 import javax.crypto.Cipher
@@ -57,6 +58,103 @@ class SecureSessionStore(context: Context) {
                     mustChangePassword = json.optBoolean("mustChangePassword")
                 )
             }
+        }.getOrNull()
+    }
+
+    fun saveContacts(extension: String, contacts: List<EagleContact>) {
+        val payload = JSONObject()
+            .put("extension", extension)
+            .put("items", JSONArray().apply {
+                contacts.forEach { contact ->
+                    put(JSONObject()
+                        .put("name", contact.name)
+                        .put("photo", contact.photo)
+                        .put("numbers", JSONArray().apply {
+                            contact.numbers.forEach { entry ->
+                                put(JSONObject()
+                                    .put("number", entry.number)
+                                    .put("label", entry.label))
+                            }
+                        }))
+                }
+            })
+            .toString()
+        saveEncrypted(KEY_CONTACTS, KEY_CONTACTS_IV, payload)
+    }
+
+    fun readContacts(extension: String): List<EagleContact>? {
+        val encoded = readEncrypted(KEY_CONTACTS, KEY_CONTACTS_IV) ?: return null
+        return runCatching {
+            val payload = JSONObject(encoded)
+            require(payload.optString("extension") == extension)
+            val items = payload.optJSONArray("items") ?: JSONArray()
+            val contacts = mutableListOf<EagleContact>()
+            for (index in 0 until items.length()) {
+                val item = items.optJSONObject(index) ?: continue
+                val numbersJson = item.optJSONArray("numbers") ?: JSONArray()
+                val numbers = mutableListOf<ContactNumber>()
+                for (numberIndex in 0 until numbersJson.length()) {
+                    val number = numbersJson.optJSONObject(numberIndex) ?: continue
+                    numbers += ContactNumber(
+                        number = number.optString("number"),
+                        label = number.optString("label", "Telefone")
+                    )
+                }
+                contacts += EagleContact(
+                    name = item.optString("name", "Contato"),
+                    photo = item.optString("photo")
+                        .takeUnless { it.isBlank() || it == "null" },
+                    numbers = numbers
+                )
+            }
+            contacts
+        }.getOrNull()
+    }
+
+    fun saveHistory(extension: String, calls: List<HistoryCall>) {
+        val payload = JSONObject()
+            .put("extension", extension)
+            .put("items", JSONArray().apply {
+                calls.take(MAX_CACHED_HISTORY).forEach { call ->
+                    put(JSONObject()
+                        .put("id", call.id)
+                        .put("direction", call.direction)
+                        .put("remoteNumber", call.remoteNumber)
+                        .put("remoteName", call.remoteName)
+                        .put("remoteAvatar", call.remoteAvatar)
+                        .put("startedAt", call.startedAt)
+                        .put("durationSeconds", call.durationSeconds)
+                        .put("result", call.result)
+                        .put("recording", call.recording))
+                }
+            })
+            .toString()
+        saveEncrypted(KEY_HISTORY, KEY_HISTORY_IV, payload)
+    }
+
+    fun readHistory(extension: String): List<HistoryCall>? {
+        val encoded = readEncrypted(KEY_HISTORY, KEY_HISTORY_IV) ?: return null
+        return runCatching {
+            val payload = JSONObject(encoded)
+            require(payload.optString("extension") == extension)
+            val items = payload.optJSONArray("items") ?: JSONArray()
+            val calls = mutableListOf<HistoryCall>()
+            for (index in 0 until items.length()) {
+                val item = items.optJSONObject(index) ?: continue
+                calls += HistoryCall(
+                    id = item.optString("id"),
+                    direction = item.optString("direction"),
+                    remoteNumber = item.optString("remoteNumber"),
+                    remoteName = item.optString("remoteName"),
+                    remoteAvatar = item.optString("remoteAvatar")
+                        .takeUnless { it.isBlank() || it == "null" },
+                    startedAt = item.optString("startedAt"),
+                    durationSeconds = item.optInt("durationSeconds"),
+                    result = item.optString("result"),
+                    recording = item.optBoolean("recording")
+                )
+            }
+            calls
         }.getOrNull()
     }
 
@@ -114,6 +212,11 @@ class SecureSessionStore(context: Context) {
         const val KEY_IV = "iv"
         const val KEY_USER = "user"
         const val KEY_USER_IV = "user_iv"
+        const val KEY_CONTACTS = "contacts"
+        const val KEY_CONTACTS_IV = "contacts_iv"
+        const val KEY_HISTORY = "history"
+        const val KEY_HISTORY_IV = "history_iv"
+        const val MAX_CACHED_HISTORY = 200
         const val KEY_ALIAS = "eagle_pbx_session_v1"
         const val KEYSTORE_PROVIDER = "AndroidKeyStore"
         const val TRANSFORMATION = "AES/GCM/NoPadding"

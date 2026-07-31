@@ -80,6 +80,8 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
     private var sipIncomingWasActive = false
     private var mediaPlayer: MediaPlayer? = null
     private var playbackJob: Job? = null
+    private var contactsRequestInFlight = false
+    private var historyRequestInFlight = false
     private val mutableState = MutableStateFlow(LoginUiState())
     val state: StateFlow<LoginUiState> = mutableState.asStateFlow()
 
@@ -103,6 +105,7 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
                     error = null,
                     connectionError = null
                 )
+                hydrateAndRefreshCachedData(restoredUser)
                 registerMobileDevice()
                 return
             }
@@ -114,6 +117,7 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
                     error = null,
                     connectionError = "Sem conexão"
                 )
+                hydrateCachedData(cachedUser)
                 delay(3_000L)
                 continue
             }
@@ -264,7 +268,10 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
                 user = result.getOrNull(),
                 error = result.exceptionOrNull()?.toFriendlyMessage()
             )
-            if (result.getOrNull() != null) registerMobileDevice()
+            result.getOrNull()?.let { user ->
+                hydrateAndRefreshCachedData(user)
+                registerMobileDevice()
+            }
         }
     }
 
@@ -396,6 +403,7 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
 
     fun acceptIncomingCall() {
         if (mutableState.value.sipCallStatus != SipCallStatus.INCOMING) return
+        SipForegroundService.markAnswered(getApplication())
         if (linphoneEngine?.acceptIncomingCall() != true) {
             mutableState.value = mutableState.value.copy(
                 sipCallStatus = SipCallStatus.FAILED,
@@ -406,6 +414,7 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
 
     fun rejectIncomingCall() {
         if (mutableState.value.sipCallStatus != SipCallStatus.INCOMING) return
+        SipForegroundService.markRejected(getApplication())
         linphoneEngine?.rejectIncomingCall()
         mutableState.value = mutableState.value.copy(
             sipCallStatus = SipCallStatus.ENDING,
@@ -511,13 +520,39 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
         )
     }
 
+    private fun hydrateCachedData(user: AuthenticatedUser) {
+        val contacts = api.cachedContacts(user.extension)
+        val history = api.cachedHistory(user.extension)
+        mutableState.value = mutableState.value.copy(
+            contacts = contacts ?: mutableState.value.contacts,
+            contactsLoaded = contacts != null,
+            history = history ?: mutableState.value.history,
+            historyLoaded = history != null
+        )
+    }
+
+    private fun hydrateAndRefreshCachedData(user: AuthenticatedUser) {
+        hydrateCachedData(user)
+        loadContactsInternal(force = false, silent = true, allowLoaded = true)
+        loadHistoryInternal(force = false, silent = true, allowLoaded = true)
+    }
+
     fun loadContacts(force: Boolean = false) {
+        loadContactsInternal(force = force, silent = false, allowLoaded = false)
+    }
+
+    private fun loadContactsInternal(
+        force: Boolean,
+        silent: Boolean,
+        allowLoaded: Boolean
+    ) {
         val current = mutableState.value
-        if (current.loadingContacts || current.user == null ||
-            (!force && current.contactsLoaded)
+        if (contactsRequestInFlight || current.user == null ||
+            (!force && current.contactsLoaded && !allowLoaded)
         ) return
+        contactsRequestInFlight = true
         mutableState.value = current.copy(
-            loadingContacts = true,
+            loadingContacts = !silent,
             contactsError = null
         )
         viewModelScope.launch {
@@ -525,11 +560,22 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
                 withContext(Dispatchers.IO) { api.contacts(force) }
             }
             val error = result.exceptionOrNull()
+            val contacts = result.getOrNull()
+            if (contacts != null) {
+                withContext(Dispatchers.IO) {
+                    runCatching {
+                        api.cacheContacts(current.user.extension, contacts)
+                    }
+                }
+            }
+            contactsRequestInFlight = false
             mutableState.value = mutableState.value.copy(
                 loadingContacts = false,
                 contactsLoaded = result.isSuccess,
-                contacts = result.getOrNull() ?: mutableState.value.contacts,
-                contactsError = error?.toFriendlyMessage()
+                contacts = contacts ?: mutableState.value.contacts,
+                contactsError = if (mutableState.value.contacts.isEmpty()) {
+                    error?.toFriendlyMessage()
+                } else null
             )
             if (error is ApiException && error.statusCode in listOf(401, 403)) {
                 withContext(Dispatchers.IO) { api.logout() }
@@ -543,12 +589,21 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun loadHistory(force: Boolean = false) {
+        loadHistoryInternal(force = force, silent = false, allowLoaded = false)
+    }
+
+    private fun loadHistoryInternal(
+        force: Boolean,
+        silent: Boolean,
+        allowLoaded: Boolean
+    ) {
         val current = mutableState.value
-        if (current.loadingHistory || current.user == null ||
-            (!force && current.historyLoaded)
+        if (historyRequestInFlight || current.user == null ||
+            (!force && current.historyLoaded && !allowLoaded)
         ) return
+        historyRequestInFlight = true
         mutableState.value = current.copy(
-            loadingHistory = true,
+            loadingHistory = !silent,
             historyError = null
         )
         viewModelScope.launch {
@@ -556,11 +611,22 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
                 withContext(Dispatchers.IO) { api.history(force) }
             }
             val error = result.exceptionOrNull()
+            val history = result.getOrNull()
+            if (history != null) {
+                withContext(Dispatchers.IO) {
+                    runCatching {
+                        api.cacheHistory(current.user.extension, history)
+                    }
+                }
+            }
+            historyRequestInFlight = false
             mutableState.value = mutableState.value.copy(
                 loadingHistory = false,
                 historyLoaded = result.isSuccess,
-                history = result.getOrNull() ?: mutableState.value.history,
-                historyError = error?.toFriendlyMessage()
+                history = history ?: mutableState.value.history,
+                historyError = if (mutableState.value.history.isEmpty()) {
+                    error?.toFriendlyMessage()
+                } else null
             )
             if (error is ApiException && error.statusCode in listOf(401, 403)) {
                 withContext(Dispatchers.IO) { api.logout() }
