@@ -61,6 +61,7 @@ data class LoginUiState(
     val mobileDeviceError: String? = null,
     val user: AuthenticatedUser? = null,
     val error: String? = null,
+    val connectionError: String? = null,
     val presenceError: String? = null,
     val contactsError: String? = null,
     val historyError: String? = null,
@@ -82,17 +83,44 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
     init {
         SipForegroundService.setRejectCallHandler(::rejectIncomingCall)
         initializeSipEngine()
-        viewModelScope.launch {
+        viewModelScope.launch { restoreSessionWithRetry() }
+    }
+
+    private suspend fun restoreSessionWithRetry() {
+        val cachedUser = withContext(Dispatchers.IO) { api.cachedUser() }
+        while (true) {
             val result = runCatching {
                 withContext(Dispatchers.IO) { api.restoreSession() }
             }
-            mutableState.value = LoginUiState(
+            val restoredUser = result.getOrNull()
+            if (restoredUser != null) {
+                mutableState.value = mutableState.value.copy(
+                    restoringSession = false,
+                    user = restoredUser,
+                    error = null,
+                    connectionError = null
+                )
+                registerMobileDevice()
+                return
+            }
+            val failure = result.exceptionOrNull()
+            if (failure is IOException && cachedUser != null) {
+                mutableState.value = mutableState.value.copy(
+                    restoringSession = false,
+                    user = cachedUser,
+                    error = null,
+                    connectionError = "Sem conexão"
+                )
+                delay(3_000L)
+                continue
+            }
+            mutableState.value = mutableState.value.copy(
                 restoringSession = false,
-                sipEngineStatus = mutableState.value.sipEngineStatus,
-                user = result.getOrNull(),
-                error = result.exceptionOrNull()?.toFriendlyMessage()
+                user = null,
+                error = failure?.toFriendlyMessage(),
+                connectionError = null
             )
-            if (result.getOrNull() != null) registerMobileDevice()
+            return
         }
     }
 

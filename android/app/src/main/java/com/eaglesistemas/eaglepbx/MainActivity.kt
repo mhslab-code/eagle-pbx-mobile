@@ -190,6 +190,7 @@ fun EaglePBXApp(viewModel: LoginViewModel = viewModel()) {
         state.restoringSession -> LoadingScreen()
         state.user != null -> AuthenticatedScreen(
             user = requireNotNull(state.user),
+            connectionError = state.connectionError,
             updatingPresence = state.updatingPresence,
             presenceError = state.presenceError,
             contacts = state.contacts,
@@ -434,6 +435,7 @@ fun LoadingScreen() {
 @Composable
 fun AuthenticatedScreen(
     user: AuthenticatedUser,
+    connectionError: String?,
     updatingPresence: Boolean,
     presenceError: String?,
     contacts: List<EagleContact>,
@@ -484,12 +486,12 @@ fun AuthenticatedScreen(
     var presenceMenuOpen by remember { mutableStateOf(false) }
     var accountDialogOpen by remember { mutableStateOf(false) }
     var selectedSection by remember { mutableStateOf(MainSection.DIALER) }
-    val presenceLabel = when (user.presence) {
+    val presenceLabel = if (connectionError != null) "Sem conexão" else when (user.presence) {
         "dnd" -> "Não perturbe"
         "offline" -> "Offline"
         else -> "Online"
     }
-    val presenceColor = when (user.presence) {
+    val presenceColor = if (connectionError != null) EagleDanger else when (user.presence) {
         "dnd" -> EagleDanger
         "offline" -> EagleTextMuted
         else -> EagleSuccess

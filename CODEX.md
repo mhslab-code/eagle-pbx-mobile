@@ -1,5 +1,13 @@
 # CODEX — Eagle PBX Mobile
 
+## Revisão 0.1.33
+
+- indisponibilidade de rede não apaga mais a sessão local nem retorna o usuário
+  para a tela de login;
+- a identidade da sessão é mantida cifrada pelo Android Keystore e a interface
+  informa `Sem conexão` enquanto tenta restaurar a comunicação a cada 3 segundos;
+- somente respostas explícitas `401/403` invalidam a sessão armazenada.
+
 ## Revisão 0.1.32
 
 - o estado inicial vazio do motor SIP durante o despertar não encerra mais o

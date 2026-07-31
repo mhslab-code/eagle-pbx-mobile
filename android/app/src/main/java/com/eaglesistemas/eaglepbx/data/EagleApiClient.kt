@@ -29,6 +29,8 @@ class EagleApiClient(
         }
     }
 
+    fun cachedUser(): AuthenticatedUser? = sessionStore.readUser()
+
     fun login(extension: String, password: String): AuthenticatedUser {
         val body = "username=${encode(extension)}&password=${encode(password)}"
         val response = readResponse(
@@ -59,6 +61,7 @@ class EagleApiClient(
             )
         }
         sessionStore.save(cookie)
+        sessionStore.saveUser(user)
         return user
     }
 
@@ -276,7 +279,7 @@ class EagleApiClient(
                 }
             }
         )
-        return parseUser(JSONObject(response.body))
+        return parseUser(JSONObject(response.body)).also(sessionStore::saveUser)
     }
 
     private fun bestEffortLogout(cookie: String) {

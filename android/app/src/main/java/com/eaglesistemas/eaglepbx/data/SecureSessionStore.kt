@@ -4,6 +4,7 @@ import android.content.Context
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import android.util.Base64
+import org.json.JSONObject
 import java.security.KeyStore
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
@@ -14,18 +15,68 @@ class SecureSessionStore(context: Context) {
     private val preferences = context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
 
     fun save(cookie: String) {
-        val cipher = Cipher.getInstance(TRANSFORMATION)
-        cipher.init(Cipher.ENCRYPT_MODE, getOrCreateKey())
-        val encrypted = cipher.doFinal(cookie.toByteArray(Charsets.UTF_8))
-        preferences.edit()
-            .putString(KEY_COOKIE, Base64.encodeToString(encrypted, Base64.NO_WRAP))
-            .putString(KEY_IV, Base64.encodeToString(cipher.iv, Base64.NO_WRAP))
-            .apply()
+        saveEncrypted(KEY_COOKIE, KEY_IV, cookie)
     }
 
     fun read(): String? {
-        val encryptedValue = preferences.getString(KEY_COOKIE, null) ?: return null
-        val ivValue = preferences.getString(KEY_IV, null) ?: return null
+        return readEncrypted(KEY_COOKIE, KEY_IV)
+    }
+
+    fun saveUser(user: AuthenticatedUser) {
+        saveEncrypted(
+            KEY_USER,
+            KEY_USER_IV,
+            JSONObject()
+                .put("id", user.id)
+                .put("username", user.username)
+                .put("name", user.name)
+                .put("email", user.email)
+                .put("extension", user.extension)
+                .put("avatar", user.avatar)
+                .put("presence", user.presence)
+                .put("role", user.role)
+                .put("active", user.active)
+                .put("mustChangePassword", user.mustChangePassword)
+                .toString()
+        )
+    }
+
+    fun readUser(): AuthenticatedUser? = readEncrypted(KEY_USER, KEY_USER_IV)?.let {
+        runCatching {
+            JSONObject(it).let { json ->
+                AuthenticatedUser(
+                    id = json.getLong("id"),
+                    username = json.getString("username"),
+                    name = json.getString("name"),
+                    email = json.optString("email"),
+                    extension = json.optString("extension"),
+                    avatar = json.optString("avatar").takeUnless(String::isBlank),
+                    presence = json.optString("presence", "online"),
+                    role = json.optString("role", "user"),
+                    active = json.optBoolean("active", true),
+                    mustChangePassword = json.optBoolean("mustChangePassword")
+                )
+            }
+        }.getOrNull()
+    }
+
+    fun clear() {
+        preferences.edit().clear().apply()
+    }
+
+    private fun saveEncrypted(valueKey: String, ivKey: String, value: String) {
+        val cipher = Cipher.getInstance(TRANSFORMATION)
+        cipher.init(Cipher.ENCRYPT_MODE, getOrCreateKey())
+        val encrypted = cipher.doFinal(value.toByteArray(Charsets.UTF_8))
+        preferences.edit()
+            .putString(valueKey, Base64.encodeToString(encrypted, Base64.NO_WRAP))
+            .putString(ivKey, Base64.encodeToString(cipher.iv, Base64.NO_WRAP))
+            .apply()
+    }
+
+    private fun readEncrypted(valueKey: String, ivKey: String): String? {
+        val encryptedValue = preferences.getString(valueKey, null) ?: return null
+        val ivValue = preferences.getString(ivKey, null) ?: return null
         return runCatching {
             val cipher = Cipher.getInstance(TRANSFORMATION)
             cipher.init(
@@ -35,14 +86,7 @@ class SecureSessionStore(context: Context) {
             )
             cipher.doFinal(Base64.decode(encryptedValue, Base64.NO_WRAP))
                 .toString(Charsets.UTF_8)
-        }.getOrElse {
-            clear()
-            null
-        }
-    }
-
-    fun clear() {
-        preferences.edit().clear().apply()
+        }.getOrNull()
     }
 
     private fun getOrCreateKey(): SecretKey {
@@ -68,6 +112,8 @@ class SecureSessionStore(context: Context) {
         const val PREFERENCES = "eagle_pbx_secure_session"
         const val KEY_COOKIE = "cookie"
         const val KEY_IV = "iv"
+        const val KEY_USER = "user"
+        const val KEY_USER_IV = "user_iv"
         const val KEY_ALIAS = "eagle_pbx_session_v1"
         const val KEYSTORE_PROVIDER = "AndroidKeyStore"
         const val TRANSFORMATION = "AES/GCM/NoPadding"
