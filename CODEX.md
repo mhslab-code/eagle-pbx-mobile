@@ -1,5 +1,23 @@
 # CODEX — Eagle PBX Mobile
 
+## Revisão 0.1.24
+
+- Atender diretamente pela notificação também traz o Eagle PBX ao primeiro
+  plano e exibe os controles da chamada ativa. Recusar continua encerrando a
+  chamada sem abrir o aplicativo.
+
+## Revisão 0.1.23
+
+- O toque de chamada recebida permanece em repetição até atender, recusar ou a
+  origem encerrar. A recusa SIP agora responde como `Declined`, evitando a
+  indicação incorreta de `Forbidden` no telefone originador.
+
+## Revisão 0.1.22
+
+- A notificação nativa de chamada recebida oferece as ações `Atender` e
+  `Recusar`, sem exigir a abertura prévia do aplicativo. O toque no corpo da
+  notificação continua abrindo o modal completo da chamada.
+
 ## Revisão 0.1.21
 
 - O serviço interno opcional do Linphone deixou de ser declarado pelo aplicativo.

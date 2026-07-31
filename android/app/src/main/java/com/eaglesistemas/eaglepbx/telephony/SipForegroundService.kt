@@ -8,6 +8,7 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.media.RingtoneManager
+import android.media.Ringtone
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
@@ -39,10 +40,7 @@ class SipForegroundService : Service() {
                     NotificationManager.IMPORTANCE_HIGH
                 ).apply {
                     description = "Avisa sobre novas chamadas do Eagle PBX."
-                    setSound(
-                        RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE),
-                        Notification.AUDIO_ATTRIBUTES_DEFAULT
-                    )
+                    setSound(null, null)
                     enableVibration(true)
                 }
             )
@@ -55,6 +53,12 @@ class SipForegroundService : Service() {
         startId: Int
     ): Int {
         startForeground(NOTIFICATION_ID, notification())
+        when (intent?.action) {
+            ACTION_REJECT -> {
+                onRejectIncoming?.invoke()
+                cancelIncoming(this)
+            }
+        }
         return START_NOT_STICKY
     }
 
@@ -88,9 +92,22 @@ class SipForegroundService : Service() {
 
     companion object {
         private const val CHANNEL_ID = "eagle_pbx_telephony"
-        private const val INCOMING_CHANNEL_ID = "eagle_pbx_incoming_calls"
+        private const val INCOMING_CHANNEL_ID = "eagle_pbx_incoming_calls_v2"
         private const val NOTIFICATION_ID = 101
         private const val INCOMING_NOTIFICATION_ID = 102
+        const val ACTION_ANSWER =
+            "com.eaglesistemas.eaglepbx.action.ANSWER_INCOMING_CALL"
+        private const val ACTION_REJECT =
+            "com.eaglesistemas.eaglepbx.action.REJECT_INCOMING_CALL"
+
+        @Volatile
+        private var onRejectIncoming: (() -> Unit)? = null
+
+        private var incomingRingtone: Ringtone? = null
+
+        fun setRejectCallHandler(onReject: (() -> Unit)?) {
+            onRejectIncoming = onReject
+        }
 
         fun start(context: Context) {
             ContextCompat.startForegroundService(
@@ -107,6 +124,14 @@ class SipForegroundService : Service() {
         }
 
         fun showIncoming(context: Context, call: IncomingSipCall) {
+            stopIncomingRingtone()
+            incomingRingtone = RingtoneManager.getRingtone(
+                context,
+                RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE)
+            )?.apply {
+                isLooping = true
+                play()
+            }
             val openApp = PendingIntent.getActivity(
                 context,
                 1,
@@ -114,6 +139,25 @@ class SipForegroundService : Service() {
                     flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or
                         Intent.FLAG_ACTIVITY_SINGLE_TOP or
                         Intent.FLAG_ACTIVITY_NEW_TASK
+                },
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            val answerCall = PendingIntent.getActivity(
+                context,
+                2,
+                Intent(context, MainActivity::class.java).apply {
+                    action = ACTION_ANSWER
+                    flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                        Intent.FLAG_ACTIVITY_SINGLE_TOP or
+                        Intent.FLAG_ACTIVITY_NEW_TASK
+                },
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            val rejectCall = PendingIntent.getService(
+                context,
+                3,
+                Intent(context, SipForegroundService::class.java).apply {
+                    action = ACTION_REJECT
                 },
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
@@ -132,14 +176,30 @@ class SipForegroundService : Service() {
                 .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
                 .setOngoing(true)
                 .setAutoCancel(false)
+                .addAction(
+                    R.drawable.ic_launcher_foreground,
+                    "Recusar",
+                    rejectCall
+                )
+                .addAction(
+                    R.drawable.ic_launcher_foreground,
+                    "Atender",
+                    answerCall
+                )
                 .build()
             context.getSystemService(NotificationManager::class.java)
                 .notify(INCOMING_NOTIFICATION_ID, notification)
         }
 
         fun cancelIncoming(context: Context) {
+            stopIncomingRingtone()
             context.getSystemService(NotificationManager::class.java)
                 .cancel(INCOMING_NOTIFICATION_ID)
+        }
+
+        private fun stopIncomingRingtone() {
+            incomingRingtone?.stop()
+            incomingRingtone = null
         }
     }
 }

@@ -11,6 +11,7 @@ import org.linphone.core.CoreListenerStub
 import org.linphone.core.Factory
 import org.linphone.core.MediaEncryption
 import org.linphone.core.RegistrationState
+import org.linphone.core.Reason
 import org.linphone.core.TransportType
 
 enum class SipEngineStatus {
@@ -619,7 +620,7 @@ class LinphoneEngine(
 
     fun rejectIncomingCall(): Boolean {
         val call = activeCall ?: return false
-        val accepted = call.terminate() == 0
+        val accepted = call.decline(Reason.Declined) == 0
         if (accepted) {
             onIncomingCallChanged(null)
             onCallStatusChanged(SipCallStatus.ENDING)

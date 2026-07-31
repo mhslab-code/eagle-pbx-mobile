@@ -1,6 +1,7 @@
 package com.eaglesistemas.eaglepbx
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.BitmapFactory
 import android.os.Build
@@ -94,6 +95,7 @@ import com.eaglesistemas.eaglepbx.telephony.ConferenceSetupStatus
 import com.eaglesistemas.eaglepbx.telephony.SipEngineStatus
 import com.eaglesistemas.eaglepbx.telephony.IncomingSipCall
 import com.eaglesistemas.eaglepbx.telephony.SipAudioOutput
+import com.eaglesistemas.eaglepbx.telephony.SipForegroundService
 import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -110,6 +112,7 @@ class MainActivity : ComponentActivity() {
         ) {
             requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1001)
         }
+        handleNotificationAction(intent)
         enableEdgeToEdge()
         setContent {
             EaglePBXTheme {
@@ -121,6 +124,19 @@ class MainActivity : ComponentActivity() {
     override fun onStart() {
         super.onStart()
         loginViewModel.setApplicationInBackground(false)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleNotificationAction(intent)
+    }
+
+    private fun handleNotificationAction(intent: Intent?) {
+        if (intent?.action == SipForegroundService.ACTION_ANSWER) {
+            loginViewModel.acceptIncomingCall()
+            intent.action = null
+        }
     }
 
     override fun onStop() {

@@ -78,6 +78,7 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
     val state: StateFlow<LoginUiState> = mutableState.asStateFlow()
 
     init {
+        SipForegroundService.setRejectCallHandler(::rejectIncomingCall)
         initializeSipEngine()
         viewModelScope.launch {
             val result = runCatching {
@@ -590,6 +591,7 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     override fun onCleared() {
+        SipForegroundService.setRejectCallHandler(null)
         releasePlayer()
         linphoneEngine?.stop()
         linphoneEngine = null
