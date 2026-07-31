@@ -97,6 +97,8 @@ class SipForegroundService : Service() {
         private const val INCOMING_NOTIFICATION_ID = 102
         const val ACTION_ANSWER =
             "com.eaglesistemas.eaglepbx.action.ANSWER_INCOMING_CALL"
+        const val ACTION_SHOW_INCOMING =
+            "com.eaglesistemas.eaglepbx.action.SHOW_INCOMING_CALL"
         private const val ACTION_REJECT =
             "com.eaglesistemas.eaglepbx.action.REJECT_INCOMING_CALL"
 
@@ -136,6 +138,7 @@ class SipForegroundService : Service() {
                 context,
                 1,
                 Intent(context, MainActivity::class.java).apply {
+                    action = ACTION_SHOW_INCOMING
                     flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or
                         Intent.FLAG_ACTIVITY_SINGLE_TOP or
                         Intent.FLAG_ACTIVITY_NEW_TASK

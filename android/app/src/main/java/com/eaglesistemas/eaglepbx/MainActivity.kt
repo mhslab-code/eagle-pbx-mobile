@@ -73,8 +73,14 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.activity.viewModels
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import com.eaglesistemas.eaglepbx.data.AuthenticatedUser
 import com.eaglesistemas.eaglepbx.data.EagleContact
 import com.eaglesistemas.eaglepbx.data.HistoryCall
@@ -102,6 +108,8 @@ import java.util.Locale
 
 class MainActivity : ComponentActivity() {
     private val loginViewModel: LoginViewModel by viewModels()
+    private var returnToLockScreenAfterCall = false
+    private var incomingCallObserved = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -113,6 +121,7 @@ class MainActivity : ComponentActivity() {
             requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1001)
         }
         handleNotificationAction(intent)
+        observeLockedScreenCallEnd()
         enableEdgeToEdge()
         setContent {
             EaglePBXTheme {
@@ -133,9 +142,38 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun handleNotificationAction(intent: Intent?) {
-        if (intent?.action == SipForegroundService.ACTION_ANSWER) {
-            loginViewModel.acceptIncomingCall()
-            intent.action = null
+        when (intent?.action) {
+            SipForegroundService.ACTION_SHOW_INCOMING -> {
+                returnToLockScreenAfterCall = true
+                intent.action = null
+            }
+            SipForegroundService.ACTION_ANSWER -> {
+                returnToLockScreenAfterCall = true
+                loginViewModel.acceptIncomingCall()
+                intent.action = null
+            }
+        }
+    }
+
+    private fun observeLockedScreenCallEnd() {
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                loginViewModel.state
+                    .map { it.sipCallStatus }
+                    .distinctUntilChanged()
+                    .collect { status ->
+                        if (status != SipCallStatus.IDLE) {
+                            incomingCallObserved = true
+                        } else if (
+                            returnToLockScreenAfterCall &&
+                            incomingCallObserved
+                        ) {
+                            returnToLockScreenAfterCall = false
+                            incomingCallObserved = false
+                            moveTaskToBack(true)
+                        }
+                    }
+            }
         }
     }
 

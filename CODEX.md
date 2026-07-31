@@ -1,5 +1,17 @@
 # CODEX — Eagle PBX Mobile
 
+## Revisão 0.1.26
+
+- O retorno ao segundo plano é associado à abertura provocada pela notificação,
+  inclusive em emuladores ou aparelhos sem PIN, cujo teclado não é reportado
+  pelo Android como bloqueado.
+
+## Revisão 0.1.25
+
+- Quando uma chamada abre o aplicativo sobre a tela bloqueada, recusar ou
+  encerrar devolve o Eagle PBX para trás da tela de bloqueio. A tarefa apenas
+  volta ao segundo plano; o serviço SIP permanece ativo.
+
 ## Revisão 0.1.24
 
 - Atender diretamente pela notificação também traz o Eagle PBX ao primeiro
