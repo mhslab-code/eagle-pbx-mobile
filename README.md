@@ -9,7 +9,7 @@ com homologação operacional nos Samsung Galaxy A25 5G e validação complement
 no Samsung Galaxy S25 Ultra. O iOS será desenvolvido depois da homologação do
 fluxo Android.
 
-Versão de desenvolvimento atual: `0.1.33`. A identidade visual, o login nativo,
+Versão de desenvolvimento atual: `0.1.34`. A identidade visual, o login nativo,
 a restauração segura da sessão, o logoff, a navegação principal e a integração
 inicial de presença foram validados no emulador equivalente ao Galaxy A25 5G.
 A agenda corporativa, o histórico e o player autenticado de gravações também
@@ -101,6 +101,13 @@ Nenhum identificador de instalação é exibido ou gravado em log.
 O protótipo utiliza Liblinphone `5.5.13`. Sua adoção definitiva somente
 ocorrerá depois da validação de registro, chamadas, push, segundo plano,
 Bluetooth e compatibilidade em aparelho físico com Android 16.
+
+A revisão `0.1.34` iniciou o acabamento visual nativo homologável. O cabeçalho
+agora separa a marca Eagle Sistemas do perfil do usuário, preserva o seletor de
+presença e aproxima a hierarquia visual do PWA/desktop. No Discador, mensagens
+técnicas de provisionamento bem-sucedido deixaram de ocupar a interface; apenas
+falhas acionáveis são apresentadas ao usuário. Nenhuma regra SIP ou fluxo de
+chamada foi alterado nesta revisão.
 
 ## Comportamento temporário do DND
 

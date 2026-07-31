@@ -514,36 +514,36 @@ fun AuthenticatedScreen(
                 .fillMaxSize()
                 .padding(horizontal = 18.dp)
         ) {
-            Spacer(Modifier.height(14.dp))
+            Spacer(Modifier.height(10.dp))
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 12.dp),
+                    .padding(vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Image(
                     painter = painterResource(R.drawable.eagle_pbx_logo),
                     contentDescription = "Eagle Sistemas",
                     modifier = Modifier
-                        .size(50.dp)
-                        .clip(RoundedCornerShape(13.dp))
+                        .size(42.dp)
+                        .clip(RoundedCornerShape(11.dp))
                 )
                 Column(
                     modifier = Modifier
                         .weight(1f)
-                        .padding(horizontal = 12.dp)
-                        .clickable { accountDialogOpen = true }
+                        .padding(start = 10.dp)
                 ) {
                     Text(
-                        text = user.name,
+                        text = "eagle sistemas",
                         color = EagleText,
-                        fontSize = 18.sp,
+                        fontSize = 17.sp,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = "Ramal ${user.extension}",
-                        color = EagleTextMuted,
-                        fontSize = 14.sp
+                        text = "tecnologia e segurança",
+                        color = EagleBlue,
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.SemiBold
                     )
                 }
                 Box {
@@ -589,6 +589,47 @@ fun AuthenticatedScreen(
                     }
                 }
             }
+            Spacer(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(1.dp)
+                    .background(EagleBorder.copy(alpha = 0.65f))
+            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { accountDialogOpen = true }
+                    .padding(vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                UserAvatar(user = user)
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(horizontal = 11.dp)
+                ) {
+                    Text(
+                        text = user.name,
+                        color = EagleText,
+                        fontSize = 17.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "Ramal ${user.extension}",
+                        color = EagleTextMuted,
+                        fontSize = 13.sp
+                    )
+                }
+                Box(
+                    modifier = Modifier
+                        .size(42.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .border(1.dp, EagleBorder, RoundedCornerShape(12.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("☰", color = EagleText, fontSize = 20.sp)
+                }
+            }
             if (!presenceError.isNullOrBlank()) {
                 Text(
                     text = presenceError,
@@ -608,8 +649,8 @@ fun AuthenticatedScreen(
                     .background(EagleNavyLight)
                     .border(1.dp, EagleBorder, RoundedCornerShape(22.dp))
                     .padding(
-                        horizontal = if (selectedSection == MainSection.DIALER) 14.dp else 22.dp,
-                        vertical = if (selectedSection == MainSection.DIALER) 14.dp else 22.dp
+                        horizontal = if (selectedSection == MainSection.DIALER) 12.dp else 22.dp,
+                        vertical = if (selectedSection == MainSection.DIALER) 12.dp else 22.dp
                     ),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
@@ -711,6 +752,50 @@ fun AuthenticatedScreen(
             onAccept = onAcceptIncomingCall,
             onReject = onRejectIncomingCall
         )
+    }
+}
+
+@Composable
+private fun UserAvatar(user: AuthenticatedUser) {
+    val bitmap = remember(user.avatar) {
+        val encoded = user.avatar
+            ?.takeIf { it.startsWith("data:image/") && it.contains(",") }
+            ?.substringAfter(',')
+        encoded?.let {
+            runCatching {
+                val bytes = Base64.decode(it, Base64.DEFAULT)
+                BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.asImageBitmap()
+            }.getOrNull()
+        }
+    }
+    Box(
+        modifier = Modifier
+            .size(48.dp)
+            .clip(CircleShape)
+            .background(EagleBlueDark),
+        contentAlignment = Alignment.Center
+    ) {
+        if (bitmap != null) {
+            Image(
+                bitmap = bitmap,
+                contentDescription = "Foto de ${user.name}",
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
+            )
+        } else {
+            Text(
+                text = user.name
+                    .split(' ')
+                    .filter(String::isNotBlank)
+                    .take(2)
+                    .mapNotNull { it.firstOrNull()?.uppercase() }
+                    .joinToString("")
+                    .ifBlank { "EP" },
+                color = EagleText,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
     }
 }
 
@@ -1449,7 +1534,7 @@ private fun DialerContent(
             )
         }
     }
-    Spacer(Modifier.height(8.dp))
+    Spacer(Modifier.height(7.dp))
     keys.chunked(3).forEach { row ->
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -1478,7 +1563,7 @@ private fun DialerContent(
                 )
             }
         }
-        Spacer(Modifier.height(7.dp))
+        Spacer(Modifier.height(6.dp))
     }
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -1524,7 +1609,7 @@ private fun DialerContent(
             modifier = Modifier.weight(1f)
         )
     }
-    Spacer(Modifier.height(7.dp))
+    Spacer(Modifier.height(6.dp))
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(7.dp)
@@ -1553,7 +1638,7 @@ private fun DialerContent(
             modifier = Modifier.weight(1f)
         )
     }
-    Spacer(Modifier.height(8.dp))
+    Spacer(Modifier.height(7.dp))
     if (sipCallStatus != SipCallStatus.IDLE) {
         Text(
             text = when (sipCallStatus) {
@@ -1575,43 +1660,20 @@ private fun DialerContent(
         )
         Spacer(Modifier.height(3.dp))
     }
-    Text(
-        text = when (sipEngineStatus) {
-            SipEngineStatus.INITIALIZING -> "Inicializando motor SIP..."
-            SipEngineStatus.READY -> "Motor SIP inicializado"
-            SipEngineStatus.REGISTERING -> "Registrando telefone..."
-            SipEngineStatus.REGISTERED -> "Telefone SIP registrado"
-            SipEngineStatus.REGISTRATION_FAILED -> "Falha no registro SIP"
-            SipEngineStatus.UNAVAILABLE -> "Motor SIP indisponível"
-        },
-        color = if (
-            sipEngineStatus == SipEngineStatus.READY ||
-            sipEngineStatus == SipEngineStatus.REGISTERED
-        ) {
-            EagleSuccess
-        } else if (sipEngineStatus == SipEngineStatus.REGISTRATION_FAILED) {
-            EagleDanger
-        } else {
-            EagleTextMuted
-        },
-        fontSize = 11.sp
-    )
-    Spacer(Modifier.height(3.dp))
-    Text(
-        text = when {
-            registeringMobileDevice -> "Registrando dispositivo..."
-            mobileDeviceStatus == "ready" -> "Dispositivo SIP provisionado"
-            mobileDeviceStatus == "pending" -> "Dispositivo registrado · SIP pendente"
-            !mobileDeviceError.isNullOrBlank() -> "Falha ao registrar dispositivo"
-            else -> "Identidade do dispositivo pendente"
-        },
-        color = when {
-            mobileDeviceStatus == "ready" -> EagleSuccess
-            !mobileDeviceError.isNullOrBlank() -> EagleDanger
-            else -> EagleTextMuted
-        },
-        fontSize = 11.sp
-    )
+    val technicalError = when {
+        sipEngineStatus == SipEngineStatus.REGISTRATION_FAILED -> "Telefone indisponível. Tentando reconectar..."
+        sipEngineStatus == SipEngineStatus.UNAVAILABLE -> "Telefonia indisponível neste dispositivo."
+        !mobileDeviceError.isNullOrBlank() -> "Não foi possível preparar a telefonia."
+        else -> null
+    }
+    if (technicalError != null) {
+        Text(
+            text = technicalError,
+            color = EagleDanger,
+            fontSize = 11.sp,
+            textAlign = TextAlign.Center
+        )
+    }
     if (audioDialogOpen) {
         AudioOutputDialog(
             outputs = audioOutputs,
@@ -2210,7 +2272,7 @@ private fun DialKeyButton(
 ) {
     Column(
         modifier = modifier
-            .height(52.dp)
+            .height(50.dp)
             .clip(RoundedCornerShape(15.dp))
             .border(1.dp, EagleBorder, RoundedCornerShape(15.dp))
             .combinedClickable(onClick = onClick, onLongClick = onLongClick),
@@ -2251,7 +2313,7 @@ private fun DialActionButton(
     }
     Row(
         modifier = modifier
-            .height(52.dp)
+            .height(50.dp)
             .clip(RoundedCornerShape(15.dp))
             .background(background)
             .border(

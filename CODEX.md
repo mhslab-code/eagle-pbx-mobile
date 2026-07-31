@@ -1,5 +1,15 @@
 # CODEX — Eagle PBX Mobile
 
+## Revisão 0.1.34
+
+- Iniciado o acabamento visual nativo com base na identidade homologada do
+  PWA e do aplicativo desktop.
+- O cabeçalho separa marca, presença e perfil do usuário em áreas próprias.
+- O Discador mantém os controles já validados e oculta mensagens técnicas de
+  sucesso, exibindo somente falhas que exigem atenção.
+- Esta revisão é exclusivamente visual; autenticação, SIP, FCM, contatos,
+  histórico e gravações mantêm o comportamento da revisão anterior.
+
 ## Revisão 0.1.33
 
 - indisponibilidade de rede não apaga mais a sessão local nem retorna o usuário
