@@ -1,6 +1,9 @@
 package com.eaglesistemas.eaglepbx
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.graphics.BitmapFactory
+import android.os.Build
 import android.os.Bundle
 import android.util.Base64
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -70,6 +73,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.activity.viewModels
 import com.eaglesistemas.eaglepbx.data.AuthenticatedUser
 import com.eaglesistemas.eaglepbx.data.EagleContact
 import com.eaglesistemas.eaglepbx.data.HistoryCall
@@ -95,14 +99,33 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 class MainActivity : ComponentActivity() {
+    private val loginViewModel: LoginViewModel by viewModels()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) !=
+                PackageManager.PERMISSION_GRANTED
+        ) {
+            requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1001)
+        }
         enableEdgeToEdge()
         setContent {
             EaglePBXTheme {
-                EaglePBXApp()
+                EaglePBXApp(loginViewModel)
             }
         }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        loginViewModel.setApplicationInBackground(false)
+    }
+
+    override fun onStop() {
+        loginViewModel.setApplicationInBackground(true)
+        super.onStop()
     }
 }
 

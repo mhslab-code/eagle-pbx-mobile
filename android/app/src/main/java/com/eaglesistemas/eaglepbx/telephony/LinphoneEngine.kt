@@ -289,7 +289,20 @@ class LinphoneEngine(
 
     fun start() {
         core.addListener(listener)
+        core.isKeepAliveEnabled = true
+        core.isAutoIterateEnabled = true
         core.start()
+    }
+
+    fun enterBackground() {
+        core.isKeepAliveEnabled = true
+        core.enterBackground()
+    }
+
+    fun enterForeground() {
+        core.enterForeground()
+        core.isNetworkReachable = true
+        core.refreshRegisters()
     }
 
     fun configure(provisioning: SipProvisioning) {

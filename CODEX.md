@@ -1,5 +1,27 @@
 # CODEX — Eagle PBX Mobile
 
+## Revisão 0.1.21
+
+- O serviço interno opcional do Linphone deixou de ser declarado pelo aplicativo.
+  O registro SIP em segundo plano permanece sob responsabilidade do serviço
+  foreground do Eagle PBX, evitando o encerramento do processo pelo Android após
+  a primeira chamada recebida.
+
+## Revisão 0.1.20
+
+- o registro SIP ativo inicia um serviço em primeiro plano de uso especial;
+- o serviço impede que o Android 16 congele o processo ao enviar a atividade
+  para segundo plano;
+- o Liblinphone entra explicitamente em modo de segundo plano, mantém o
+  transporte SIP ativo e renova o registro ao retornar à interface;
+- o serviço Android fornecido pelo SDK Liblinphone está declarado no manifesto;
+- chamadas recebidas em segundo plano geram alerta nativo de alta prioridade e
+  abrem a interface de atendimento;
+- a notificação persistente abre o Eagle PBX e desaparece no logoff ou quando
+  a tarefa é removida;
+- o motor SIP permanece no `LoginViewModel` nesta fase; recuperação após morte
+  do processo e chamadas com o aplicativo encerrado dependem da etapa de push.
+
 ## Escopo
 
 Este repositório contém exclusivamente os aplicativos mobile nativos do Eagle

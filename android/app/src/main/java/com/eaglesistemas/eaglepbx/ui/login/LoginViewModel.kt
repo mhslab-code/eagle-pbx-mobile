@@ -18,6 +18,7 @@ import com.eaglesistemas.eaglepbx.telephony.IncomingSipCall
 import com.eaglesistemas.eaglepbx.telephony.SipCallStatus
 import com.eaglesistemas.eaglepbx.telephony.SipEngineStatus
 import com.eaglesistemas.eaglepbx.telephony.SipAudioOutput
+import com.eaglesistemas.eaglepbx.telephony.SipForegroundService
 import com.eaglesistemas.eaglepbx.telephony.AttendedTransferStatus
 import com.eaglesistemas.eaglepbx.telephony.ConferenceSetupStatus
 import kotlinx.coroutines.Dispatchers
@@ -148,6 +149,9 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
                     mutableState.value = mutableState.value.copy(
                         sipEngineStatus = status
                     )
+                    if (status == SipEngineStatus.REGISTERED) {
+                        SipForegroundService.start(getApplication())
+                    }
                 },
                 onCallStatusChanged = { status ->
                     mutableState.value = mutableState.value.copy(
@@ -168,6 +172,11 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
                     mutableState.value = mutableState.value.copy(
                         incomingSipCall = call
                     )
+                    if (call == null) {
+                        SipForegroundService.cancelIncoming(getApplication())
+                    } else {
+                        SipForegroundService.showIncoming(getApplication(), call)
+                    }
                     if (call != null && !mutableState.value.contactsLoaded) {
                         loadContacts(false)
                     }
@@ -210,6 +219,14 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
                 error = result.exceptionOrNull()?.toFriendlyMessage()
             )
             if (result.getOrNull() != null) registerMobileDevice()
+        }
+    }
+
+    fun setApplicationInBackground(background: Boolean) {
+        if (background) {
+            linphoneEngine?.enterBackground()
+        } else {
+            linphoneEngine?.enterForeground()
         }
     }
 
@@ -364,6 +381,7 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
 
     fun logout() {
         viewModelScope.launch {
+            SipForegroundService.stop(getApplication())
             linphoneEngine?.clearAccount()
             withContext(Dispatchers.IO) { api.logout() }
             mutableState.value = LoginUiState(

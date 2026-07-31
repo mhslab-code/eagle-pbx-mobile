@@ -9,7 +9,7 @@ com homologação operacional nos Samsung Galaxy A25 5G e validação complement
 no Samsung Galaxy S25 Ultra. O iOS será desenvolvido depois da homologação do
 fluxo Android.
 
-Versão de desenvolvimento atual: `0.1.17`. A identidade visual, o login nativo,
+Versão de desenvolvimento atual: `0.1.21`. A identidade visual, o login nativo,
 a restauração segura da sessão, o logoff, a navegação principal e a integração
 inicial de presença foram validados no emulador equivalente ao Galaxy A25 5G.
 A agenda corporativa, o histórico e o player autenticado de gravações também
@@ -48,6 +48,14 @@ chamada original é retomada automaticamente. A conferência entre os ramais
 homologada.
 O botão `Atualizar` do histórico ignora respostas HTTP armazenadas e consulta
 novamente o servidor, mantendo as chamadas recentes sincronizadas.
+Enquanto o aplicativo permanece aberto em segundo plano, um serviço de
+telefonia mantém o processo SIP elegível para execução. O ciclo de vida do
+Liblinphone acompanha a passagem entre primeiro e segundo plano, mantém o
+transporte SIP ativo e renova o registro ao retornar. Push e recuperação após
+encerramento do processo permanecem nas fases seguintes.
+Em chamadas recebidas, o serviço nativo do Liblinphone mantém o ciclo da
+chamada e uma notificação de alta prioridade alerta e abre a interface de
+atendimento quando o aplicativo está em segundo plano.
 
 ## Decisões aprovadas
 
