@@ -17,6 +17,8 @@
 - O comportamento funcional da chamada perdida foi homologado no emulador. O
   acabamento visual da notificação permanece sujeito a revisão futura no
   aparelho físico.
+- A compilação limpa da revisão foi validada com o recurso vetorial de telefone
+  utilizado nos contatos, evitando dependência de artefatos residuais do Gradle.
 
 ## Revisão 0.1.37
 
