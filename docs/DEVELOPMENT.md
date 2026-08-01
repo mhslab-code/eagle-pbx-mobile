@@ -36,6 +36,16 @@ cd android
 O APK de depuração é gerado somente para desenvolvimento local. A chave
 definitiva de assinatura e suas senhas não pertencem ao repositório.
 
+## Distribuição interna de builds
+
+A VM Android publica os APKs de homologação em `http://10.20.20.148`, somente
+para clientes da rede `10.20.20.0/24`. O Nginx serve arquivos estáticos de
+`/srv/eagle-pbx-mobile-builds`; não há encaminhamento externo no firewall.
+
+Os arquivos versionados em `ops/downloads/` e `ops/nginx/` definem a página e
+a configuração do servidor. A cada nova revisão, o APK, versão, tamanho e
+SHA-256 exibidos na página devem ser atualizados juntos.
+
 ## Emuladores iniciais
 
 - Galaxy A25 5G equivalente: 1080 × 2340, 420 dpi, Android 16/API 36;

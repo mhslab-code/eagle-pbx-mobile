@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Eagle PBX Mobile — Builds internas</title>
+    <style>
+      :root { color-scheme: dark; font-family: Inter, system-ui, sans-serif; }
+      * { box-sizing: border-box; }
+      body { margin: 0; min-height: 100vh; background: #061b2e; color: #f5f8fc; }
+      main { width: min(720px, calc(100% - 32px)); margin: 0 auto; padding: 56px 0; }
+      header { display: flex; align-items: center; gap: 18px; margin-bottom: 36px; }
+      header img { width: 76px; height: 76px; border-radius: 22px; background: white; }
+      h1 { margin: 0; font-size: clamp(1.8rem, 6vw, 2.6rem); }
+      header p, .muted { margin: 6px 0 0; color: #a9bfd2; }
+      section { padding: 28px; border: 1px solid #285879; border-radius: 24px; background: #0c2b45; }
+      .tag { display: inline-flex; padding: 6px 12px; border-radius: 999px; background: #173f25; color: #55e69b; font-weight: 700; }
+      h2 { margin: 18px 0 4px; font-size: 1.55rem; }
+      dl { display: grid; grid-template-columns: auto 1fr; gap: 10px 18px; margin: 24px 0; }
+      dt { color: #a9bfd2; }
+      dd { margin: 0; overflow-wrap: anywhere; }
+      a.download { display: block; padding: 16px 20px; border-radius: 14px; background: #2387ee; color: white; text-align: center; text-decoration: none; font-weight: 800; }
+      footer { margin-top: 24px; color: #819bb1; font-size: .9rem; text-align: center; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <img src="eagle-pbx.png" alt="Eagle PBX">
+        <div>
+          <h1>Eagle PBX Mobile</h1>
+          <p>Distribuição interna de builds Android</p>
+        </div>
+      </header>
+      <section>
+        <span class="tag">Homologação</span>
+        <h2>Versão 0.1.40</h2>
+        <p class="muted">Fluxo de autorização administrativa por dispositivo.</p>
+        <dl>
+          <dt>Arquivo</dt><dd>Eagle-PBX-Mobile-0.1.40-debug.apk</dd>
+          <dt>Tipo</dt><dd>APK de depuração — uso interno</dd>
+          <dt>Tamanho</dt><dd>152 MB</dd>
+          <dt>SHA-256</dt><dd>67a11b3b892ed6eb9a895e7d0116d94efb77fcd69d57fd5667da0f64e9894865</dd>
+        </dl>
+        <a class="download" href="Eagle-PBX-Mobile-0.1.40-debug.apk" download>Baixar APK 0.1.40</a>
+      </section>
+      <footer>Acesso permitido somente pela rede interna Eagle Sistemas.</footer>
+    </main>
+  </body>
+</html>
