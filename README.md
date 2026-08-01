@@ -111,6 +111,11 @@ O protótipo utiliza Liblinphone `5.5.13`. Sua adoção definitiva somente
 ocorrerá depois da validação de registro, chamadas, push, segundo plano,
 Bluetooth e compatibilidade em aparelho físico com Android 16.
 
+A revisão `0.1.39` habilita no Android as permissões nativas de microfone e de
+controle de áudio usadas pelo motor SIP. O Discador também fornece retorno DTMF
+local em cada tecla. A homologação desta revisão exige teste em aparelho físico
+do som das teclas e do áudio bidirecional durante uma chamada.
+
 A revisão `0.1.34` iniciou o acabamento visual nativo homologável. O cabeçalho
 agora separa a marca Eagle Sistemas do perfil do usuário, preserva o seletor de
 presença e aproxima a hierarquia visual do PWA/desktop. No Discador, mensagens

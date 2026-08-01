@@ -1,5 +1,14 @@
 # CODEX — Eagle PBX Mobile
 
+## Revisão 0.1.39
+
+- O Android solicita explicitamente a permissão de microfone necessária ao
+  áudio das chamadas SIP em aparelhos físicos.
+- O aplicativo declara o controle de áudio exigido para o roteamento da mídia.
+- As teclas do Discador passam a emitir retorno DTMF local ao serem pressionadas.
+- A validação física deve confirmar separadamente o som das teclas e o áudio
+  bidirecional da chamada.
+
 ## Revisão 0.1.38
 
 - Contatos e histórico passam a abrir imediatamente pelo cache local cifrado,

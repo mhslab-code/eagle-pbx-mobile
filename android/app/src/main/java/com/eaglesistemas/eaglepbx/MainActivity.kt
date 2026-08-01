@@ -8,6 +8,8 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.BitmapFactory
+import android.media.AudioManager
+import android.media.ToneGenerator
 import android.os.Build
 import android.os.Bundle
 import android.os.SystemClock
@@ -164,6 +166,12 @@ class MainActivity : ComponentActivity() {
                 PackageManager.PERMISSION_GRANTED
         ) {
             requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1001)
+        }
+        if (
+            checkSelfPermission(Manifest.permission.RECORD_AUDIO) !=
+                PackageManager.PERMISSION_GRANTED
+        ) {
+            requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), 1002)
         }
         handleNotificationAction(intent)
         observeLockedScreenCallEnd()
@@ -1717,6 +1725,16 @@ private fun DialerContent(
     var elapsedCallSeconds by remember { mutableStateOf(0) }
     var completedCallSeconds by remember { mutableStateOf<Int?>(null) }
     var completedTimerVisible by remember { mutableStateOf(false) }
+    val dialToneGenerator = remember {
+        runCatching {
+            ToneGenerator(AudioManager.STREAM_DTMF, 70)
+        }.getOrNull()
+    }
+    DisposableEffect(dialToneGenerator) {
+        onDispose {
+            dialToneGenerator?.release()
+        }
+    }
     LaunchedEffect(externallyDialedNumber) {
         externallyDialedNumber
             ?.takeIf(String::isNotBlank)
@@ -1913,6 +1931,10 @@ private fun DialerContent(
                     key = key,
                     modifier = Modifier.weight(1f),
                     onClick = {
+                        dialToneGenerator?.startTone(
+                            dialToneFor(key.digit.first()),
+                            120
+                        )
                         if (sipCallStatus == SipCallStatus.CONNECTED) {
                             dtmfDigits = (dtmfDigits + key.digit).takeLast(32)
                             onSendDtmf(key.digit.first())
@@ -2097,6 +2119,22 @@ private fun DialerContent(
             onDismiss = { addCallDialogOpen = false }
         )
     }
+}
+
+private fun dialToneFor(digit: Char): Int = when (digit) {
+    '0' -> ToneGenerator.TONE_DTMF_0
+    '1' -> ToneGenerator.TONE_DTMF_1
+    '2' -> ToneGenerator.TONE_DTMF_2
+    '3' -> ToneGenerator.TONE_DTMF_3
+    '4' -> ToneGenerator.TONE_DTMF_4
+    '5' -> ToneGenerator.TONE_DTMF_5
+    '6' -> ToneGenerator.TONE_DTMF_6
+    '7' -> ToneGenerator.TONE_DTMF_7
+    '8' -> ToneGenerator.TONE_DTMF_8
+    '9' -> ToneGenerator.TONE_DTMF_9
+    '*' -> ToneGenerator.TONE_DTMF_S
+    '#' -> ToneGenerator.TONE_DTMF_P
+    else -> ToneGenerator.TONE_DTMF_0
 }
 
 @OptIn(ExperimentalFoundationApi::class)
