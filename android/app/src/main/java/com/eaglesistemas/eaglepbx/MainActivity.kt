@@ -126,6 +126,7 @@ import androidx.core.view.WindowCompat
 import com.eaglesistemas.eaglepbx.data.AuthenticatedUser
 import com.eaglesistemas.eaglepbx.data.EagleContact
 import com.eaglesistemas.eaglepbx.data.HistoryCall
+import com.eaglesistemas.eaglepbx.data.MobileDeviceRegistration
 import com.eaglesistemas.eaglepbx.ui.theme.EagleBlue
 import com.eaglesistemas.eaglepbx.ui.theme.EagleBlueDark
 import com.eaglesistemas.eaglepbx.ui.theme.EagleBorder
@@ -268,6 +269,17 @@ fun EaglePBXApp(
         state.restoringSession -> EaglePBXTheme(preference = EagleThemePreference.DARK) {
             LoadingScreen()
         }
+        state.user != null && state.mobileDevice?.status != "ready" ->
+            EaglePBXTheme(preference = EagleThemePreference.DARK) {
+                MobileApprovalScreen(
+                    user = requireNotNull(state.user),
+                    device = state.mobileDevice,
+                    refreshing = state.registeringMobileDevice,
+                    error = state.mobileDeviceError,
+                    onRefresh = viewModel::refreshMobileDevice,
+                    onLogout = viewModel::logout
+                )
+            }
         state.user != null -> AuthenticatedScreen(
             user = requireNotNull(state.user),
             connectionError = state.connectionError,
@@ -518,6 +530,156 @@ fun LoadingScreen() {
         contentAlignment = Alignment.Center
     ) {
         CircularProgressIndicator(color = EagleBlue)
+    }
+}
+
+@Composable
+fun MobileApprovalScreen(
+    user: AuthenticatedUser,
+    device: MobileDeviceRegistration?,
+    refreshing: Boolean,
+    error: String?,
+    onRefresh: () -> Unit,
+    onLogout: () -> Unit
+) {
+    val revoked = device?.status == "revoked"
+    val title = when {
+        revoked -> "Dispositivo desvinculado"
+        device?.status == "pending" -> "Aguardando liberação do gestor"
+        else -> "Verificando dispositivo"
+    }
+    val description = when {
+        revoked -> "O acesso deste aparelho foi removido. Solicite uma nova liberação para continuar."
+        device?.status == "pending" ->
+            "Este aparelho foi vinculado ao ramal ${user.extension} e aguarda a liberação do gestor."
+        else -> "Estamos verificando a autorização deste aparelho."
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(EagleNavy)
+            .statusBarsPadding()
+            .navigationBarsPadding()
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 24.dp, vertical = 28.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Image(
+                painter = painterResource(R.drawable.eagle_pbx_logo_official),
+                contentDescription = "Eagle Sistemas",
+                modifier = Modifier
+                    .size(86.dp)
+                    .clip(RoundedCornerShape(20.dp)),
+                contentScale = ContentScale.Fit
+            )
+            Spacer(Modifier.height(18.dp))
+            Text(
+                text = "Eagle PBX",
+                color = EagleText,
+                fontSize = 28.sp,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = "TELEFONIA CORPORATIVA",
+                color = EagleBlue,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 2.sp
+            )
+            Spacer(Modifier.height(30.dp))
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(24.dp))
+                    .background(EagleNavyLight)
+                    .border(1.dp, EagleBorder, RoundedCornerShape(24.dp))
+                    .padding(22.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = if (revoked) "ACESSO REMOVIDO" else "ACESSO MOBILE",
+                    color = if (revoked) EagleDanger else EagleBlue,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.6.sp
+                )
+                Spacer(Modifier.height(10.dp))
+                Text(
+                    text = title,
+                    color = EagleText,
+                    fontSize = 23.sp,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center
+                )
+                Spacer(Modifier.height(12.dp))
+                Text(
+                    text = description,
+                    color = EagleTextMuted,
+                    fontSize = 15.sp,
+                    lineHeight = 22.sp,
+                    textAlign = TextAlign.Center
+                )
+                Spacer(Modifier.height(18.dp))
+                Text(
+                    text = "${user.name} · Ramal ${user.extension}",
+                    color = EagleText,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    textAlign = TextAlign.Center
+                )
+                device?.deviceName?.takeIf { it.isNotBlank() }?.let { deviceName ->
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = deviceName,
+                        color = EagleTextMuted,
+                        fontSize = 13.sp,
+                        textAlign = TextAlign.Center
+                    )
+                }
+                if (error != null) {
+                    Spacer(Modifier.height(14.dp))
+                    Text(
+                        text = error,
+                        color = EagleDanger,
+                        fontSize = 13.sp,
+                        textAlign = TextAlign.Center
+                    )
+                }
+                Spacer(Modifier.height(22.dp))
+                Button(
+                    onClick = onRefresh,
+                    enabled = !refreshing,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp),
+                    shape = RoundedCornerShape(14.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = EagleBlue)
+                ) {
+                    if (refreshing) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(22.dp),
+                            color = Color.White,
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Text(
+                            text = if (revoked) "Solicitar nova liberação" else "Verificar liberação",
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
+            Spacer(Modifier.height(18.dp))
+            TextButton(onClick = onLogout) {
+                Text("Sair", color = EagleTextMuted, fontWeight = FontWeight.SemiBold)
+            }
+        }
     }
 }
 

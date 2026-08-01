@@ -9,7 +9,7 @@ com homologação operacional nos Samsung Galaxy A25 5G e validação complement
 no Samsung Galaxy S25 Ultra. O iOS será desenvolvido depois da homologação do
 fluxo Android.
 
-Versão de desenvolvimento atual: `0.1.38`. A identidade visual, o login nativo,
+Versão de desenvolvimento atual: `0.1.40`. A identidade visual, o login nativo,
 a restauração segura da sessão, o logoff, a navegação principal e a integração
 inicial de presença foram validados no emulador equivalente ao Galaxy A25 5G.
 A agenda corporativa, o histórico e o player autenticado de gravações também
@@ -70,6 +70,14 @@ perdidas. O ícone oficial também foi aplicado ao launcher Android. O fluxo de
 chamada perdida foi homologado no emulador; escala do ícone e acabamento visual
 da notificação serão reavaliados no Galaxy A25 físico, sem bloquear esta
 homologação funcional.
+
+A revisão `0.1.40` automatiza a autorização do aparelho. Uma instalação nova
+permanece em `Aguardando liberação do gestor.` e consulta seu estado sem expor
+credenciais. Depois da aprovação na aba administrativa Mobile, o evento FCM
+antecipa a atualização, a configuração SIP exclusiva é obtida pela API e o
+telefone é ativado sem novo login. Uma revogação interrompe o serviço SIP e
+remove a configuração em memória. A política inicial permite um dispositivo
+mobile ativo por ramal.
 
 ## Decisões aprovadas
 

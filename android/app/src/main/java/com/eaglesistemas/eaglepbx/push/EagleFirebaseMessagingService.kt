@@ -28,6 +28,16 @@ class EagleFirebaseMessagingService : FirebaseMessagingService() {
 
     override fun onMessageReceived(message: RemoteMessage) {
         val eventType = message.data["type"]
+        if (eventType == "mobile_device_approved" || eventType == "mobile_device_revoked") {
+            if (eventType == "mobile_device_revoked") {
+                SipForegroundService.stop(applicationContext)
+            }
+            MobileProvisioningEvents.publish(
+                type = eventType,
+                deviceId = message.data["deviceId"].orEmpty().take(64)
+            )
+            return
+        }
         val callId = message.data["callId"].orEmpty().take(160)
         if (eventType == "incoming_call_cancelled") {
             SipForegroundService.cancelIncoming(applicationContext, callId)

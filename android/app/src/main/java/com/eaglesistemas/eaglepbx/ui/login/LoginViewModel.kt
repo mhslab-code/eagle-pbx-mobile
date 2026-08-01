@@ -22,6 +22,7 @@ import com.eaglesistemas.eaglepbx.telephony.SipAudioOutput
 import com.eaglesistemas.eaglepbx.telephony.SipForegroundService
 import com.eaglesistemas.eaglepbx.telephony.AttendedTransferStatus
 import com.eaglesistemas.eaglepbx.telephony.ConferenceSetupStatus
+import com.eaglesistemas.eaglepbx.push.MobileProvisioningEvents
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -82,12 +83,36 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
     private var playbackJob: Job? = null
     private var contactsRequestInFlight = false
     private var historyRequestInFlight = false
+    private var mobileApprovalPollingJob: Job? = null
+    private var configuredMobileDeviceId: String? = null
     private val mutableState = MutableStateFlow(LoginUiState())
     val state: StateFlow<LoginUiState> = mutableState.asStateFlow()
 
     init {
         SipForegroundService.setRejectCallHandler(::rejectIncomingCall)
         initializeSipEngine()
+        viewModelScope.launch {
+            MobileProvisioningEvents.events.collect { event ->
+                val current = mutableState.value.mobileDevice
+                if (event.deviceId.isNotBlank() && current?.id != event.deviceId) return@collect
+                when (event.type) {
+                    "mobile_device_approved" -> registerMobileDevice()
+                    "mobile_device_revoked" -> {
+                        stopMobileApprovalPolling()
+                        configuredMobileDeviceId = null
+                        SipForegroundService.stop(getApplication())
+                        linphoneEngine?.clearAccount()
+                        mutableState.value = mutableState.value.copy(
+                            sipEngineStatus = SipEngineStatus.READY,
+                            mobileDevice = current?.copy(
+                                status = "revoked",
+                                reason = "Dispositivo desvinculado pelo gestor."
+                            )
+                        )
+                    }
+                }
+            }
+        }
         viewModelScope.launch { restoreSessionWithRetry() }
     }
 
@@ -153,11 +178,74 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
                 mobileDevice = result.getOrNull(),
                 mobileDeviceError = result.exceptionOrNull()?.toFriendlyMessage()
             )
-            result.getOrNull()?.let {
-                synchronizePushRegistration()
-                if (it.status == "ready") configureSipAccount()
+            result.getOrNull()?.let(::handleMobileDeviceRegistration)
+        }
+    }
+
+    fun refreshMobileDevice() = registerMobileDevice()
+
+    private fun handleMobileDeviceRegistration(device: MobileDeviceRegistration) {
+        synchronizePushRegistration()
+        when (device.status) {
+            "ready" -> {
+                stopMobileApprovalPolling()
+                if (configuredMobileDeviceId != device.id) {
+                    configuredMobileDeviceId = device.id
+                    configureSipAccount()
+                }
+            }
+            "pending" -> {
+                if (configuredMobileDeviceId != null) {
+                    configuredMobileDeviceId = null
+                    SipForegroundService.stop(getApplication())
+                    linphoneEngine?.clearAccount()
+                }
+                mutableState.value = mutableState.value.copy(
+                    sipEngineStatus = SipEngineStatus.READY
+                )
+                startMobileApprovalPolling()
+            }
+            "revoked" -> {
+                stopMobileApprovalPolling()
+                configuredMobileDeviceId = null
+                SipForegroundService.stop(getApplication())
+                linphoneEngine?.clearAccount()
+                mutableState.value = mutableState.value.copy(
+                    sipEngineStatus = SipEngineStatus.READY
+                )
             }
         }
+    }
+
+    private fun startMobileApprovalPolling() {
+        if (mobileApprovalPollingJob?.isActive == true) return
+        mobileApprovalPollingJob = viewModelScope.launch {
+            while (mutableState.value.user != null &&
+                mutableState.value.mobileDevice?.status == "pending"
+            ) {
+                delay(5_000L)
+                if (mutableState.value.registeringMobileDevice) continue
+                val result = runCatching {
+                    withContext(Dispatchers.IO) {
+                        api.registerMobileDevice(
+                            Build.MODEL.trim().ifBlank { "Dispositivo Android" }
+                        )
+                    }
+                }
+                result.getOrNull()?.let { device ->
+                    mutableState.value = mutableState.value.copy(
+                        mobileDevice = device,
+                        mobileDeviceError = null
+                    )
+                    handleMobileDeviceRegistration(device)
+                }
+            }
+        }
+    }
+
+    private fun stopMobileApprovalPolling() {
+        mobileApprovalPollingJob?.cancel()
+        mobileApprovalPollingJob = null
     }
 
     private fun synchronizePushRegistration() {
@@ -436,6 +524,8 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
 
     fun logout() {
         viewModelScope.launch {
+            stopMobileApprovalPolling()
+            configuredMobileDeviceId = null
             SipForegroundService.stop(getApplication())
             linphoneEngine?.clearAccount()
             withContext(Dispatchers.IO) { api.logout() }

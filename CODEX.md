@@ -1,5 +1,17 @@
 # CODEX — Eagle PBX Mobile
 
+## Revisão 0.1.40
+
+- instalações novas permanecem na tela `Aguardando liberação do gestor.` até
+  uma aprovação administrativa explícita;
+- o estado é renovado periodicamente e também por eventos FCM de aprovação e
+  revogação, sem exigir novo login ou reinicialização;
+- somente dispositivos aprovados solicitam a configuração SIP;
+- uma revogação encerra o serviço de telefonia e descarta a configuração SIP
+  mantida em memória;
+- a política inicial do ecossistema permite um dispositivo mobile ativo por
+  ramal.
+
 ## Revisão 0.1.39
 
 - O Android solicita explicitamente a permissão de microfone necessária ao

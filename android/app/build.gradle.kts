@@ -14,8 +14,8 @@ android {
         applicationId = "com.eaglesistemas.eaglepbx"
         minSdk = 28
         targetSdk = 36
-        versionCode = 40
-        versionName = "0.1.39"
+        versionCode = 41
+        versionName = "0.1.40"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         ndk {

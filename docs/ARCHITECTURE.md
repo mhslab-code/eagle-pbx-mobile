@@ -83,6 +83,12 @@ Cada instalação deve possuir:
 Um ramal pode possuir múltiplos dispositivos, mas uma credencial não deve ser
 compartilhada entre eles.
 
+Na implantação administrativa inicial, apenas um dispositivo mobile pode
+permanecer ativo por ramal. Instalações adicionais ficam em `pending` até o
+gestor desvincular o aparelho anterior e aprovar o novo. O backend sinaliza
+aprovação e revogação por FCM, mas o Android sempre confirma o estado pela API
+autenticada antes de iniciar o motor SIP.
+
 Desde a versão 0.1.6, o identificador é criado localmente e mantido em armazenamento
 privado separado da sessão. A API recebe esse valor por HTTPS, armazena somente
 seu hash e cria um registro idempotente com estado `pending`. Nenhuma credencial
@@ -133,7 +139,7 @@ operação.
 - contatos e fotografias;
 - histórico e gravações autorizadas;
 - cadastro do dispositivo concluído;
-- provisionamento SIP individual concluído; revogação administrativa pendente.
+- provisionamento e revogação administrativos por dispositivo concluídos.
 
 ### 3. Telefonia em primeiro plano
 

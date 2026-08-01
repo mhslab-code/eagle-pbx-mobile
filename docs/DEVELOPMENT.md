@@ -45,6 +45,15 @@ definitiva de assinatura e suas senhas não pertencem ao repositório.
 
 ## Marcos validados
 
+### 0.1.40
+
+- tela de espera para instalações ainda não autorizadas;
+- atualização automática do estado por consulta periódica e evento FCM;
+- ativação SIP somente após aprovação administrativa;
+- revogação removendo a configuração SIP em memória e interrompendo o serviço
+  de telefonia;
+- testes unitários e geração do APK de depuração aprovados na VM Android.
+
 ### 0.1.27
 
 - projeto Firebase exclusivo associado ao identificador Android aprovado;

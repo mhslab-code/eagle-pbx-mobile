@@ -14,8 +14,10 @@ data class AuthenticatedUser(
 )
 
 data class MobileDeviceRegistration(
+    val id: String,
     val status: String,
-    val reason: String
+    val reason: String,
+    val deviceName: String
 )
 
 data class SipProvisioning(

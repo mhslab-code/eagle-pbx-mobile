@@ -101,8 +101,10 @@ class EagleApiClient(
         )
         val device = JSONObject(response.body).getJSONObject("device")
         return MobileDeviceRegistration(
+            id = device.getString("id"),
             status = device.optString("status", "pending"),
-            reason = device.optString("reason")
+            reason = device.optString("reason"),
+            deviceName = device.optString("deviceName")
         )
     }
 
