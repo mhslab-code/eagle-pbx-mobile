@@ -29,6 +29,8 @@ registrada em comandos, logs ou commits.
 
 O logotipo e o APK são copiados dos artefatos do projeto durante a publicação.
 Atualize juntos a versão, o nome, o tamanho e o SHA-256 mostrados na página.
+Versões anteriores homologadas podem permanecer no catálogo para contingência,
+desde que cada APK tenha nome inequívoco e integridade validada separadamente.
 
 ## Validação obrigatória
 

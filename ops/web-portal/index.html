@@ -20,30 +20,44 @@
           radial-gradient(circle at 85% 5%, rgba(35, 135, 238, .22), transparent 32rem),
           linear-gradient(145deg, #041523, #08253d 65%, #061b2e);
       }
-      main { width: min(820px, calc(100% - 32px)); margin: 0 auto; padding: 52px 0; }
-      header { display: flex; align-items: center; gap: 20px; margin-bottom: 34px; }
-      header img { width: 82px; height: 82px; border-radius: 24px; background: #fff; }
-      h1 { margin: 0; font-size: clamp(2rem, 6vw, 3rem); letter-spacing: -.035em; }
-      header p, .muted { margin: 7px 0 0; color: #a9bfd2; }
-      .eyebrow { color: #4ba4ff; font-size: .78rem; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; }
-      .card { padding: clamp(24px, 5vw, 36px); border: 1px solid #2b5d7f; border-radius: 26px; background: rgba(12, 43, 69, .92); box-shadow: 0 28px 80px rgba(0, 0, 0, .28); }
-      .card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; }
-      .tag { display: inline-flex; padding: 7px 12px; border: 1px solid #258650; border-radius: 999px; background: #123d27; color: #58e59c; font-size: .82rem; font-weight: 800; }
-      h2 { margin: 15px 0 5px; font-size: 1.7rem; }
-      dl { display: grid; grid-template-columns: minmax(92px, auto) 1fr; gap: 12px 20px; margin: 28px 0; }
-      dt { color: #9eb5c9; }
-      dd { margin: 0; overflow-wrap: anywhere; }
-      .download { display: block; padding: 17px 22px; border-radius: 15px; background: linear-gradient(135deg, #1977df, #329df5); color: #fff; text-align: center; text-decoration: none; font-weight: 850; box-shadow: 0 12px 30px rgba(35, 135, 238, .28); }
-      .download:hover { filter: brightness(1.08); }
-      .help { margin-top: 24px; padding-top: 22px; border-top: 1px solid #28516e; color: #a9bfd2; font-size: .94rem; line-height: 1.55; }
-      footer { margin-top: 24px; color: #829caf; font-size: .88rem; text-align: center; }
+      main { width: min(980px, calc(100% - 32px)); margin: 0 auto; padding: 34px 0; }
+      header { display: flex; align-items: center; gap: 16px; margin-bottom: 24px; }
+      header img { width: 66px; height: 66px; border-radius: 19px; background: #fff; }
+      h1 { margin: 0; font-size: clamp(1.75rem, 5vw, 2.45rem); letter-spacing: -.035em; }
+      header p, .muted { margin: 5px 0 0; color: #a9bfd2; }
+      .eyebrow { color: #4ba4ff; font-size: .72rem; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; }
+      .intro { display: flex; justify-content: space-between; gap: 20px; align-items: end; margin-bottom: 16px; }
+      .intro h2 { margin: 5px 0 0; font-size: 1.45rem; }
+      .count { color: #8da9bd; font-size: .88rem; white-space: nowrap; }
+      .catalog { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+      .card {
+        padding: 20px;
+        border: 1px solid #2b5d7f;
+        border-radius: 20px;
+        background: rgba(12, 43, 69, .92);
+        box-shadow: 0 18px 45px rgba(0, 0, 0, .2);
+      }
+      .card.current { border-color: #318be2; box-shadow: 0 18px 45px rgba(31, 125, 220, .15); }
+      .card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+      .tag { display: inline-flex; padding: 5px 9px; border: 1px solid #49647a; border-radius: 999px; background: #17364e; color: #b6c7d5; font-size: .7rem; font-weight: 800; }
+      .current .tag { border-color: #258650; background: #123d27; color: #58e59c; }
+      h3 { margin: 5px 0 0; font-size: 1.42rem; }
+      dl { display: grid; grid-template-columns: auto 1fr; gap: 7px 10px; margin: 18px 0; font-size: .84rem; }
+      dt { color: #8fa9bd; }
+      dd { margin: 0; text-align: right; overflow-wrap: anywhere; }
+      .hash { display: block; margin: 0 0 16px; color: #7897ae; font: .7rem/1.45 ui-monospace, "Cascadia Mono", monospace; overflow-wrap: anywhere; }
+      .download { display: block; padding: 12px 14px; border-radius: 12px; border: 1px solid #398bd5; background: #123b5f; color: #9dccff; text-align: center; text-decoration: none; font-weight: 800; }
+      .current .download { border: 0; background: linear-gradient(135deg, #1977df, #329df5); color: #fff; }
+      .download:hover { filter: brightness(1.1); }
+      .help { margin-top: 18px; padding: 16px 18px; border: 1px solid #244e6b; border-radius: 15px; background: rgba(7, 30, 49, .65); color: #a9bfd2; font-size: .88rem; line-height: 1.5; }
+      footer { margin-top: 18px; color: #829caf; font-size: .82rem; text-align: center; }
+      @media (max-width: 780px) { .catalog { grid-template-columns: 1fr; } }
       @media (max-width: 520px) {
-        main { padding: 28px 0; }
+        main { padding: 24px 0; }
         header { align-items: flex-start; }
-        header img { width: 66px; height: 66px; border-radius: 19px; }
-        .card-top { display: block; }
-        dl { grid-template-columns: 1fr; gap: 4px; }
-        dd { margin-bottom: 10px; }
+        header img { width: 58px; height: 58px; border-radius: 17px; }
+        .intro { display: block; }
+        .count { display: block; margin-top: 5px; }
       }
     </style>
   </head>
@@ -58,29 +72,61 @@
         </div>
       </header>
 
-      <section class="card">
-        <div class="card-top">
-          <div>
-            <span class="eyebrow">Android</span>
-            <h2>Versão 0.1.40</h2>
-            <p class="muted">Fluxo de autorização administrativa por dispositivo.</p>
-          </div>
-          <span class="tag">Homologação interna</span>
+      <section class="intro">
+        <div>
+          <span class="eyebrow">Android</span>
+          <h2>Versões disponíveis</h2>
         </div>
-
-        <dl>
-          <dt>Arquivo</dt><dd>Eagle-PBX-Mobile-0.1.40-debug.apk</dd>
-          <dt>Compatibilidade</dt><dd>Android 9 ou superior</dd>
-          <dt>Tamanho</dt><dd>152 MB</dd>
-          <dt>SHA-256</dt><dd>67a11b3b892ed6eb9a895e7d0116d94efb77fcd69d57fd5667da0f64e9894865</dd>
-        </dl>
-
-        <a class="download" href="apk/download/Eagle-PBX-Mobile-0.1.40-debug.apk" download>Baixar Eagle PBX para Android</a>
-
-        <div class="help">
-          Após instalar, entre com seu ramal e senha. Um novo aparelho permanecerá aguardando a liberação do gestor antes de registrar a telefonia.
-        </div>
+        <span class="count">3 builds de homologação</span>
       </section>
+
+      <section class="catalog" aria-label="Versões do Eagle PBX Mobile">
+        <article class="card current">
+          <div class="card-top">
+            <div><span class="eyebrow">Versão</span><h3>0.1.40</h3></div>
+            <span class="tag">Atual</span>
+          </div>
+          <dl>
+            <dt>Android</dt><dd>9 ou superior</dd>
+            <dt>Pacote</dt><dd>Debug interno</dd>
+            <dt>Tamanho</dt><dd>152 MB</dd>
+          </dl>
+          <code class="hash">SHA-256: 67a11b3b892ed6eb9a895e7d0116d94efb77fcd69d57fd5667da0f64e9894865</code>
+          <a class="download" href="apk/download/Eagle-PBX-Mobile-0.1.40-debug.apk" download>Baixar versão 0.1.40</a>
+        </article>
+
+        <article class="card">
+          <div class="card-top">
+            <div><span class="eyebrow">Versão</span><h3>0.1.39</h3></div>
+            <span class="tag">Anterior</span>
+          </div>
+          <dl>
+            <dt>Android</dt><dd>9 ou superior</dd>
+            <dt>Pacote</dt><dd>Homologação</dd>
+            <dt>Tamanho</dt><dd>152 MB</dd>
+          </dl>
+          <code class="hash">SHA-256: 68b609fe4a6b23a58b23ddbf3dfc1e5dfc0b885974f2ecefbfead655686cad87</code>
+          <a class="download" href="apk/download/Eagle-PBX-Mobile-0.1.39-homologacao.apk" download>Baixar versão 0.1.39</a>
+        </article>
+
+        <article class="card">
+          <div class="card-top">
+            <div><span class="eyebrow">Versão</span><h3>0.1.38</h3></div>
+            <span class="tag">Anterior</span>
+          </div>
+          <dl>
+            <dt>Android</dt><dd>9 ou superior</dd>
+            <dt>Pacote</dt><dd>Homologação</dd>
+            <dt>Tamanho</dt><dd>152 MB</dd>
+          </dl>
+          <code class="hash">SHA-256: 72be5d6a8510b750c94f45acdc21b6833314ec595e85c19afd2a601fb559c31e</code>
+          <a class="download" href="apk/download/Eagle-PBX-Mobile-0.1.38-homologacao.apk" download>Baixar versão 0.1.38</a>
+        </article>
+      </section>
+
+      <div class="help">
+        Recomendamos instalar a versão marcada como <strong>Atual</strong>. Depois do login, um novo aparelho permanecerá aguardando a liberação do gestor antes de registrar a telefonia.
+      </div>
 
       <footer>Área restrita aos colaboradores da Eagle Sistemas.</footer>
     </main>
