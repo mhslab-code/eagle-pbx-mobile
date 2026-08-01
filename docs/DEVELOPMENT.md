@@ -46,6 +46,22 @@ Os arquivos versionados em `ops/downloads/` e `ops/nginx/` definem a página e
 a configuração do servidor. A cada nova revisão, o APK, versão, tamanho e
 SHA-256 exibidos na página devem ser atualizados juntos.
 
+## Portal de distribuição aos colaboradores
+
+O APK homologado também é publicado em uma área HTTPS autenticada:
+
+```text
+https://eaglesistemas.com/pbx/
+```
+
+O portal e todo o caminho `/pbx/`, inclusive os APKs, exigem autenticação HTTP
+Basic. A senha em texto puro não pertence ao Git nem ao diretório público; o
+Nginx recebe somente o hash no arquivo de autenticação.
+
+Os artefatos versionados em `ops/web-portal/` são a fonte da página, do bloco
+Nginx e do serviço Docker implantados no servidor de sites estáticos. Consulte
+o README desse diretório para publicação, validação e troca de senha.
+
 ## Emuladores iniciais
 
 - Galaxy A25 5G equivalente: 1080 × 2340, 420 dpi, Android 16/API 36;

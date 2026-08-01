@@ -1,0 +1,11 @@
+services:
+  static-sites:
+    image: nginx:alpine
+    container_name: web-files-server
+    restart: always
+    ports:
+      - "8081:80"
+    volumes:
+      - ./html:/usr/share/nginx/html
+      - ./vhost.conf:/etc/nginx/conf.d/default.conf
+      - ./auth/eagle-pbx.htpasswd:/etc/nginx/auth/eagle-pbx.htpasswd:ro
