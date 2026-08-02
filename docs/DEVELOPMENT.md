@@ -45,6 +45,15 @@ definitiva de assinatura e suas senhas não pertencem ao repositório.
 
 ## Marcos validados
 
+### 0.1.42
+
+- toque corporativo fornecido pela Eagle incorporado em `res/raw`;
+- reprodução de chamada centralizada no serviço SIP, sem toque nativo paralelo
+  do Liblinphone;
+- eventos repetidos de exibição da chamada não reiniciam o `MediaPlayer`;
+- testes automatizados e APK devem ser gerados na VM Android antes da
+  homologação física.
+
 ### 0.1.41
 
 - abertura imediata do modal de chamada ao tocar na notificação nativa;

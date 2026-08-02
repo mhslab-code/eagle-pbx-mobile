@@ -115,6 +115,13 @@ cache local complementa nome e fotografia e o modal é apresentado imediatamente
 Sessão, provisionamento e registro SIP avançam em segundo plano; a ação de
 atender pode ficar enfileirada até o telefone estar apto a processá-la.
 
+Na versão 0.1.42, o serviço SIP é o único proprietário do toque de chamada. O
+áudio corporativo é empacotado no APK, o toque nativo do Liblinphone permanece
+desativado e novas sinalizações da mesma chamada reutilizam a reprodução já
+ativa. Assim, abrir o aplicativo pelo heads-up não cria uma segunda camada de
+áudio. O serviço encerra a reprodução ao atender, recusar, receber cancelamento
+da origem ou finalizar a chamada.
+
 O estado de presença já utiliza a API existente do Eagle PBX. Temporariamente,
 o DND continua sendo aplicado ao ramal inteiro no Asterisk. A separação do DND
 por instalação — Android, PWA, desktop e softphones — fica prevista para a

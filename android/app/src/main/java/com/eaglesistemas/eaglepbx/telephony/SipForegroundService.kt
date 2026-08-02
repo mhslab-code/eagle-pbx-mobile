@@ -16,7 +16,6 @@ import android.graphics.Paint
 import android.graphics.Shader
 import android.media.AudioAttributes
 import android.media.MediaPlayer
-import android.media.RingtoneManager
 import android.os.IBinder
 import android.os.Handler
 import android.os.Looper
@@ -139,6 +138,7 @@ class SipForegroundService : Service() {
         @Volatile
         private var activeIncomingCall: IncomingSipCall? = null
 
+        private val incomingRingtoneLock = Any()
         private var incomingRingtone: MediaPlayer? = null
         private val incomingTimeoutHandler = Handler(Looper.getMainLooper())
         private var incomingGeneration = 0L
@@ -203,34 +203,7 @@ class SipForegroundService : Service() {
             incomingDisposition = IncomingDisposition.RINGING
             onIncomingNotificationChanged?.invoke(effectiveCall)
             val generation = ++incomingGeneration
-            stopIncomingRingtone()
-            val ringtoneUri =
-                RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE)
-            incomingRingtone = MediaPlayer().also { player ->
-                runCatching {
-                    player.setAudioAttributes(
-                        AudioAttributes.Builder()
-                            .setUsage(AudioAttributes.USAGE_NOTIFICATION_RINGTONE)
-                            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                            .build()
-                    )
-                    player.setDataSource(context, ringtoneUri)
-                    player.isLooping = true
-                    player.setOnPreparedListener { prepared ->
-                        if (incomingRingtone === prepared) prepared.start()
-                        else prepared.release()
-                    }
-                    player.setOnErrorListener { failed, _, _ ->
-                        if (incomingRingtone === failed) incomingRingtone = null
-                        failed.release()
-                        true
-                    }
-                    player.prepareAsync()
-                }.onFailure {
-                    if (incomingRingtone === player) incomingRingtone = null
-                    player.release()
-                }
-            }
+            ensureIncomingRingtone(context)
             val openApp = PendingIntent.getActivity(
                 context,
                 1,
@@ -313,6 +286,59 @@ class SipForegroundService : Service() {
                     cancelIncoming(context, showMissed = true)
                 }
             }, 45_000L)
+        }
+
+        private fun ensureIncomingRingtone(context: Context) {
+            synchronized(incomingRingtoneLock) {
+                if (incomingRingtone != null) return
+                val player = MediaPlayer()
+                incomingRingtone = player
+                runCatching {
+                    player.setAudioAttributes(
+                        AudioAttributes.Builder()
+                            .setUsage(AudioAttributes.USAGE_NOTIFICATION_RINGTONE)
+                            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                            .build()
+                    )
+                    context.resources.openRawResourceFd(R.raw.eagle_pbx_ringtone).use { sound ->
+                        player.setDataSource(
+                            sound.fileDescriptor,
+                            sound.startOffset,
+                            sound.length
+                        )
+                    }
+                    player.isLooping = true
+                    player.setOnPreparedListener { prepared ->
+                        val active = synchronized(incomingRingtoneLock) {
+                            incomingRingtone === prepared
+                        }
+                        if (active) {
+                            runCatching { prepared.start() }
+                                .onFailure {
+                                    synchronized(incomingRingtoneLock) {
+                                        if (incomingRingtone === prepared) {
+                                            incomingRingtone = null
+                                        }
+                                    }
+                                    prepared.release()
+                                }
+                        } else {
+                            prepared.release()
+                        }
+                    }
+                    player.setOnErrorListener { failed, _, _ ->
+                        synchronized(incomingRingtoneLock) {
+                            if (incomingRingtone === failed) incomingRingtone = null
+                        }
+                        failed.release()
+                        true
+                    }
+                    player.prepareAsync()
+                }.onFailure {
+                    if (incomingRingtone === player) incomingRingtone = null
+                    player.release()
+                }
+            }
         }
 
         fun markAnswered(context: Context) {
@@ -401,12 +427,14 @@ class SipForegroundService : Service() {
         }
 
         private fun stopIncomingRingtone() {
-            incomingRingtone?.runCatching {
+            val player = synchronized(incomingRingtoneLock) {
+                incomingRingtone.also { incomingRingtone = null }
+            }
+            player?.runCatching {
                 if (isPlaying) stop()
                 reset()
                 release()
             }
-            incomingRingtone = null
         }
 
         private fun cachedCaller(context: Context, number: String): EagleContact? {

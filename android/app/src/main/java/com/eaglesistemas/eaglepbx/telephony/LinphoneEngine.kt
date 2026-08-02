@@ -80,7 +80,9 @@ class LinphoneEngine(
         null,
         null,
         context.applicationContext
-    )
+    ).apply {
+        isNativeRingingEnabled = false
+    }
     private var account: Account? = null
     private var authInfo: AuthInfo? = null
     private var activeCall: Call? = null

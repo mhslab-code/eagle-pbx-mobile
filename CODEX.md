@@ -1,5 +1,16 @@
 # CODEX — Eagle PBX Mobile
 
+## Revisão 0.1.42
+
+- O toque corporativo `eagle_pbx_ringtone` passa a fazer parte do APK e não
+  depende do toque configurado no aparelho.
+- O aplicativo assume a reprodução como fonte única; o toque nativo paralelo
+  do Liblinphone foi desativado.
+- Eventos repetidos da mesma chamada, inclusive ao abrir a notificação, não
+  reiniciam nem sobrepõem o áudio em execução.
+- Atendimento, recusa, cancelamento na origem e término da chamada continuam
+  interrompendo o toque imediatamente.
+
 ## Revisão 0.1.41
 
 - Tocar na notificação de chamada recebida abre diretamente o modal de
