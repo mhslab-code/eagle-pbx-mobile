@@ -45,6 +45,15 @@ definitiva de assinatura e suas senhas não pertencem ao repositório.
 
 ## Marcos validados
 
+### 0.1.44
+
+- toque interno do Liblinphone explicitamente desativado após a criação e a
+  inicialização do core;
+- ringtone corporativo mantido como fonte única da chamada recebida, sem
+  alterar o ringback das chamadas efetuadas;
+- testes automatizados e APK devem ser gerados na VM Android antes da
+  homologação física.
+
 ### 0.1.43
 
 - novo canal de chamada silencioso, sem reaproveitar preferências persistidas

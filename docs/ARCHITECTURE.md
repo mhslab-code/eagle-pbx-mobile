@@ -128,6 +128,12 @@ alta prioridade. Ambos reutilizam o toque único do serviço SIP. O canal Androi
 `eagle_pbx_incoming_calls_v3` não possui som próprio e substitui o canal anterior,
 cuja configuração o sistema operacional poderia ter preservado entre versões.
 
+Na versão 0.1.44, além de desabilitar o toque nativo do sistema, o caminho de
+toque interno do Liblinphone é explicitamente limpo antes e depois da
+inicialização do core. Isso evita que o toque padrão do telefone seja reproduzido
+em paralelo com o MP3 corporativo, sem interferir no ringback das chamadas
+efetuadas.
+
 O estado de presença já utiliza a API existente do Eagle PBX. Temporariamente,
 o DND continua sendo aplicado ao ramal inteiro no Asterisk. A separação do DND
 por instalação — Android, PWA, desktop e softphones — fica prevista para a

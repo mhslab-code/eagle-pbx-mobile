@@ -82,6 +82,10 @@ class LinphoneEngine(
         context.applicationContext
     ).apply {
         isNativeRingingEnabled = false
+        // With native ringing disabled, Liblinphone otherwise uses its own
+        // cross-platform ringtone. The Eagle service is the sole owner of the
+        // incoming-call ringtone; keep outgoing ringback untouched.
+        ring = null
     }
     private var account: Account? = null
     private var authInfo: AuthInfo? = null
@@ -295,6 +299,10 @@ class LinphoneEngine(
         core.isKeepAliveEnabled = true
         core.isAutoIterateEnabled = true
         core.start()
+        // Reapply after startup because the core can load its default ring
+        // while initializing its sound configuration.
+        core.isNativeRingingEnabled = false
+        core.ring = null
     }
 
     fun enterBackground() {

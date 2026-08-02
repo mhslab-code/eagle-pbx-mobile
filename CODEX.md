@@ -1,5 +1,12 @@
 # CODEX — Eagle PBX Mobile
 
+## Revisão 0.1.44
+
+- O toque interno do Liblinphone foi explicitamente desativado com `ring = null`.
+- O ringtone corporativo do serviço Android passa a ser a única fonte sonora
+  para chamadas recebidas, tanto em primeiro quanto em segundo plano.
+- O tom de retorno das chamadas efetuadas permanece preservado.
+
 ## Revisão 0.1.43
 
 - O canal nativo de chamadas foi migrado para uma nova identidade silenciosa,
