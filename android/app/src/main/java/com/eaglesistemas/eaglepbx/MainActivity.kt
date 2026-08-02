@@ -1,6 +1,7 @@
 package com.eaglesistemas.eaglepbx
 
 import android.Manifest
+import android.app.KeyguardManager
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -220,17 +221,22 @@ class MainActivity : ComponentActivity() {
         val incomingCall = intent?.let(::incomingCallFromIntent)
         when (intent?.action) {
             SipForegroundService.ACTION_SHOW_INCOMING -> {
-                returnToLockScreenAfterCall = true
+                returnToLockScreenAfterCall = notificationOpenedWhileDeviceLocked()
                 loginViewModel.presentIncomingFromNotification(incomingCall)
                 intent.action = null
             }
             SipForegroundService.ACTION_ANSWER -> {
-                returnToLockScreenAfterCall = true
+                returnToLockScreenAfterCall = notificationOpenedWhileDeviceLocked()
                 loginViewModel.answerIncomingFromNotification(incomingCall)
                 intent.action = null
             }
         }
     }
+
+    private fun notificationOpenedWhileDeviceLocked(): Boolean =
+        shouldReturnToLockedScreenAfterNotificationOpen(
+            deviceLocked = getSystemService(KeyguardManager::class.java)?.isKeyguardLocked == true
+        )
 
     private fun incomingCallFromIntent(intent: Intent): IncomingSipCall? {
         val number = intent.getStringExtra(SipForegroundService.EXTRA_CALLER_NUMBER)
@@ -296,6 +302,9 @@ internal data class IncomingCallForegroundState(
     val callStatus: SipCallStatus,
     val uiIncomingCallActive: Boolean
 )
+
+internal fun shouldReturnToLockedScreenAfterNotificationOpen(deviceLocked: Boolean): Boolean =
+    deviceLocked
 
 internal fun shouldReturnIncomingCallActivityToBackground(
     returnRequested: Boolean,

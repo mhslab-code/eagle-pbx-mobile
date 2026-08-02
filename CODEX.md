@@ -1,5 +1,12 @@
 # CODEX — Eagle PBX Mobile
 
+## Revisão 0.1.46
+
+- A abertura de uma chamada pelo corpo do heads-up só solicita retorno
+  automático ao segundo plano quando o Android está realmente bloqueado.
+- Em aparelho desbloqueado, o modal permanece em primeiro plano até a chamada
+  ser atendida, recusada ou encerrada na origem.
+
 ## Revisão 0.1.45
 
 - Um estado `IDLE` transitório durante a abertura pelo heads-up não minimiza

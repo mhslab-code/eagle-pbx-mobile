@@ -7,6 +7,16 @@ import org.junit.Test
 
 class IncomingCallForegroundPolicyTest {
     @Test
+    fun notificationOpenedOnUnlockedDeviceStaysInForeground() {
+        assertFalse(shouldReturnToLockedScreenAfterNotificationOpen(deviceLocked = false))
+    }
+
+    @Test
+    fun notificationOpenedOnLockedDeviceMayReturnAfterCall() {
+        assertTrue(shouldReturnToLockedScreenAfterNotificationOpen(deviceLocked = true))
+    }
+
+    @Test
     fun transientIdleDoesNotMinimizeWhileServiceStillHasIncomingCall() {
         assertFalse(
             shouldReturnIncomingCallActivityToBackground(

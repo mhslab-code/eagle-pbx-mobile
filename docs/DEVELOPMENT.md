@@ -45,6 +45,13 @@ definitiva de assinatura e suas senhas não pertencem ao repositório.
 
 ## Marcos validados
 
+### 0.1.46
+
+- abertura pelo heads-up mantém o aplicativo em primeiro plano em aparelho
+  desbloqueado;
+- o retorno automático após a chamada fica restrito ao fluxo iniciado com o
+  `Keyguard` realmente bloqueado.
+
 ### 0.1.45
 
 - proteção contra `IDLE` transitório ao abrir uma chamada pelo heads-up;

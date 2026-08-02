@@ -139,6 +139,11 @@ conjunta da interface e do serviço SIP de que não existe mais chamada recebida
 Um estado `IDLE` intermediário, comum durante a restauração disparada pelo
 heads-up, não pode minimizar a Activity nem fazer a notificação reaparecer.
 
+Na versão 0.1.46, esse retorno também depende do estado real do `Keyguard` no
+momento em que a notificação é aberta. Em aparelho desbloqueado, o modal de
+chamada permanece em primeiro plano; o retorno automático fica reservado às
+chamadas abertas sobre a tela efetivamente bloqueada.
+
 O estado de presença já utiliza a API existente do Eagle PBX. Temporariamente,
 o DND continua sendo aplicado ao ramal inteiro no Asterisk. A separação do DND
 por instalação — Android, PWA, desktop e softphones — fica prevista para a
