@@ -78,6 +78,8 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
     )
     private var linphoneEngine: LinphoneEngine? = null
     private var sipIncomingWasActive = false
+    private var notificationIncomingCall: IncomingSipCall? = null
+    private var answerIncomingWhenReady = false
     private var mediaPlayer: MediaPlayer? = null
     private var playbackJob: Job? = null
     private var contactsRequestInFlight = false
@@ -87,6 +89,16 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
 
     init {
         SipForegroundService.setRejectCallHandler(::rejectIncomingCall)
+        SipForegroundService.setIncomingNotificationHandler(
+            ::onIncomingNotificationChanged
+        )
+        api.cachedUser()?.let { cachedUser ->
+            mutableState.value = mutableState.value.copy(
+                restoringSession = false,
+                user = cachedUser
+            )
+            hydrateCachedData(cachedUser)
+        }
         initializeSipEngine()
         viewModelScope.launch { restoreSessionWithRetry() }
     }
@@ -216,7 +228,7 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
                 },
                 onIncomingCallChanged = { call ->
                     mutableState.value = mutableState.value.copy(
-                        incomingSipCall = call
+                        incomingSipCall = call ?: notificationIncomingCall
                     )
                     if (call == null) {
                         if (sipIncomingWasActive) {
@@ -225,7 +237,14 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
                         }
                     } else {
                         sipIncomingWasActive = true
+                        notificationIncomingCall = call
                         SipForegroundService.showIncoming(getApplication(), call)
+                        if (answerIncomingWhenReady) {
+                            answerIncomingWhenReady = false
+                            if (linphoneEngine?.acceptIncomingCall() == true) {
+                                SipForegroundService.markAnswered(getApplication())
+                            }
+                        }
                     }
                     if (call != null && !mutableState.value.contactsLoaded) {
                         loadContacts(false)
@@ -408,6 +427,43 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
             mutableState.value = mutableState.value.copy(
                 sipCallStatus = SipCallStatus.FAILED,
                 incomingSipCall = null
+            )
+        }
+    }
+
+    fun presentIncomingFromNotification(call: IncomingSipCall?) {
+        val effectiveCall = call ?: SipForegroundService.currentIncomingCall() ?: return
+        notificationIncomingCall = effectiveCall
+        mutableState.value = mutableState.value.copy(
+            sipCallStatus = SipCallStatus.INCOMING,
+            incomingSipCall = effectiveCall,
+            sipCallError = null
+        )
+        if (!mutableState.value.contactsLoaded) loadContacts(false)
+    }
+
+    fun answerIncomingFromNotification(call: IncomingSipCall?) {
+        presentIncomingFromNotification(call)
+        if (linphoneEngine?.acceptIncomingCall() == true) {
+            answerIncomingWhenReady = false
+            SipForegroundService.markAnswered(getApplication())
+        } else {
+            answerIncomingWhenReady = true
+        }
+    }
+
+    private fun onIncomingNotificationChanged(call: IncomingSipCall?) {
+        if (call != null) {
+            presentIncomingFromNotification(call)
+            return
+        }
+        notificationIncomingCall = null
+        answerIncomingWhenReady = false
+        if (!sipIncomingWasActive) {
+            mutableState.value = mutableState.value.copy(
+                sipCallStatus = SipCallStatus.IDLE,
+                incomingSipCall = null,
+                sipCallError = null
             )
         }
     }
@@ -748,6 +804,7 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
 
     override fun onCleared() {
         SipForegroundService.setRejectCallHandler(null)
+        SipForegroundService.setIncomingNotificationHandler(null)
         releasePlayer()
         linphoneEngine?.stop()
         linphoneEngine = null

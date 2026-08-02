@@ -1,7 +1,5 @@
 package com.eaglesistemas.eaglepbx.push
 
-import android.content.Intent
-import com.eaglesistemas.eaglepbx.MainActivity
 import com.eaglesistemas.eaglepbx.data.DeviceIdentityStore
 import com.eaglesistemas.eaglepbx.data.EagleApiClient
 import com.eaglesistemas.eaglepbx.data.SecureSessionStore
@@ -49,19 +47,8 @@ class EagleFirebaseMessagingService : FirebaseMessagingService() {
             callId = callId
         )
 
-        // The native screen owns the SIP engine today. Bringing it forward
-        // lets the authenticated session restore and register before Asterisk
-        // performs the delayed mobile attempt.
-        runCatching {
-            startActivity(
-                Intent(applicationContext, MainActivity::class.java).apply {
-                    action = SipForegroundService.ACTION_SHOW_INCOMING
-                    flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or
-                        Intent.FLAG_ACTIVITY_SINGLE_TOP or
-                        Intent.FLAG_ACTIVITY_NEW_TASK
-                }
-            )
-        }
+        // A notificação controla quando a interface deve vir ao primeiro
+        // plano. O registro SIP continua sendo restaurado silenciosamente.
         FirebaseMessaging.getInstance().register()
     }
 }

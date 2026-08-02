@@ -1,5 +1,18 @@
 # CODEX — Eagle PBX Mobile
 
+## Revisão 0.1.41
+
+- Tocar na notificação de chamada recebida abre diretamente o modal de
+  atendimento, sem expor a tela intermediária de restauração da sessão.
+- Número, nome e fotografia do chamador são apresentados imediatamente a partir
+  do evento e do cache local de contatos; na ausência de contato, o número é
+  preservado com avatar neutro.
+- Sessão e SIP são restaurados silenciosamente. Uma solicitação de atendimento
+  feita durante o registro fica enfileirada e é concluída quando o telefone SIP
+  estiver pronto.
+- O fluxo preserva o cancelamento correlacionado e a notificação persistente de
+  chamada perdida das revisões anteriores.
+
 ## Revisão 0.1.39
 
 - O Android solicita explicitamente a permissão de microfone necessária ao

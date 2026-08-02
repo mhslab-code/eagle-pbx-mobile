@@ -45,6 +45,17 @@ definitiva de assinatura e suas senhas não pertencem ao repositório.
 
 ## Marcos validados
 
+### 0.1.41
+
+- abertura imediata do modal de chamada ao tocar na notificação nativa;
+- identidade do chamador recuperada do evento e do cache local enquanto a
+  sessão e o SIP são restaurados em segundo plano;
+- atendimento solicitado antes do registro SIP mantido em espera até o motor
+  estar pronto;
+- testes automatizados e geração do APK aprovados na VM Android;
+- comportamento completo em processo encerrado será homologado no aparelho
+  físico após a instalação desta revisão.
+
 ### 0.1.27
 
 - projeto Firebase exclusivo associado ao identificador Android aprovado;

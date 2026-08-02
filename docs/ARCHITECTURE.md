@@ -109,6 +109,12 @@ Na versão 0.1.10, as teclas do discador enviam DTMF pelo Liblinphone durante
 uma chamada conectada. O Asterisk confirmou a recepção e o encaminhamento dos
 eventos por RFC4733, independentemente do áudio redirecionado pelo RDP.
 
+Na versão 0.1.41, a abertura originada pela notificação não depende da conclusão
+da restauração autenticada. O evento fornece a identidade mínima da chamada, o
+cache local complementa nome e fotografia e o modal é apresentado imediatamente.
+Sessão, provisionamento e registro SIP avançam em segundo plano; a ação de
+atender pode ficar enfileirada até o telefone estar apto a processá-la.
+
 O estado de presença já utiliza a API existente do Eagle PBX. Temporariamente,
 o DND continua sendo aplicado ao ramal inteiro no Asterisk. A separação do DND
 por instalação — Android, PWA, desktop e softphones — fica prevista para a

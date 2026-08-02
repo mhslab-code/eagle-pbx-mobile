@@ -216,17 +216,33 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun handleNotificationAction(intent: Intent?) {
+        val incomingCall = intent?.let(::incomingCallFromIntent)
         when (intent?.action) {
             SipForegroundService.ACTION_SHOW_INCOMING -> {
                 returnToLockScreenAfterCall = true
+                loginViewModel.presentIncomingFromNotification(incomingCall)
                 intent.action = null
             }
             SipForegroundService.ACTION_ANSWER -> {
                 returnToLockScreenAfterCall = true
-                loginViewModel.acceptIncomingCall()
+                loginViewModel.answerIncomingFromNotification(incomingCall)
                 intent.action = null
             }
         }
+    }
+
+    private fun incomingCallFromIntent(intent: Intent): IncomingSipCall? {
+        val number = intent.getStringExtra(SipForegroundService.EXTRA_CALLER_NUMBER)
+            ?.trim()
+            ?.takeIf(String::isNotBlank)
+            ?: return SipForegroundService.currentIncomingCall()
+        return IncomingSipCall(
+            number = number,
+            displayName = intent
+                .getStringExtra(SipForegroundService.EXTRA_CALLER_NAME)
+                ?.trim()
+                ?.takeIf(String::isNotBlank)
+        )
     }
 
     private fun observeLockedScreenCallEnd() {
@@ -1716,15 +1732,6 @@ private fun DialerContent(
     onCancelAdditionalCall: () -> Boolean,
     onCompleteConference: () -> Boolean
 ) {
-    var number by rememberSaveable { mutableStateOf("") }
-    var dtmfDigits by rememberSaveable { mutableStateOf("") }
-    var audioDialogOpen by rememberSaveable { mutableStateOf(false) }
-    var transferDialogOpen by rememberSaveable { mutableStateOf(false) }
-    var addCallDialogOpen by rememberSaveable { mutableStateOf(false) }
-    var callStartedAt by remember { mutableStateOf<Long?>(null) }
-    var elapsedCallSeconds by remember { mutableStateOf(0) }
-    var completedCallSeconds by remember { mutableStateOf<Int?>(null) }
-    var completedTimerVisible by remember { mutableStateOf(false) }
     val dialToneGenerator = remember {
         runCatching {
             ToneGenerator(AudioManager.STREAM_DTMF, 70)
@@ -1735,6 +1742,15 @@ private fun DialerContent(
             dialToneGenerator?.release()
         }
     }
+    var number by rememberSaveable { mutableStateOf("") }
+    var dtmfDigits by rememberSaveable { mutableStateOf("") }
+    var audioDialogOpen by rememberSaveable { mutableStateOf(false) }
+    var transferDialogOpen by rememberSaveable { mutableStateOf(false) }
+    var addCallDialogOpen by rememberSaveable { mutableStateOf(false) }
+    var callStartedAt by remember { mutableStateOf<Long?>(null) }
+    var elapsedCallSeconds by remember { mutableStateOf(0) }
+    var completedCallSeconds by remember { mutableStateOf<Int?>(null) }
+    var completedTimerVisible by remember { mutableStateOf(false) }
     LaunchedEffect(externallyDialedNumber) {
         externallyDialedNumber
             ?.takeIf(String::isNotBlank)

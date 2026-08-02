@@ -124,17 +124,25 @@ class SipForegroundService : Service() {
             "com.eaglesistemas.eaglepbx.action.ANSWER_INCOMING_CALL"
         const val ACTION_SHOW_INCOMING =
             "com.eaglesistemas.eaglepbx.action.SHOW_INCOMING_CALL"
+        const val EXTRA_CALL_ID = "eagle_pbx_call_id"
+        const val EXTRA_CALLER_NUMBER = "eagle_pbx_caller_number"
+        const val EXTRA_CALLER_NAME = "eagle_pbx_caller_name"
         private const val ACTION_REJECT =
             "com.eaglesistemas.eaglepbx.action.REJECT_INCOMING_CALL"
 
         @Volatile
         private var onRejectIncoming: (() -> Unit)? = null
 
+        @Volatile
+        private var onIncomingNotificationChanged: ((IncomingSipCall?) -> Unit)? = null
+
+        @Volatile
+        private var activeIncomingCall: IncomingSipCall? = null
+
         private var incomingRingtone: MediaPlayer? = null
         private val incomingTimeoutHandler = Handler(Looper.getMainLooper())
         private var incomingGeneration = 0L
         private var currentIncomingCallId = ""
-        private var currentIncomingCall: IncomingSipCall? = null
         private var incomingDisposition = IncomingDisposition.NONE
         private val cancelledCallIds = mutableMapOf<String, Long>()
 
@@ -148,6 +156,15 @@ class SipForegroundService : Service() {
         fun setRejectCallHandler(onReject: (() -> Unit)?) {
             onRejectIncoming = onReject
         }
+
+        fun setIncomingNotificationHandler(
+            handler: ((IncomingSipCall?) -> Unit)?
+        ) {
+            onIncomingNotificationChanged = handler
+            handler?.invoke(activeIncomingCall)
+        }
+
+        fun currentIncomingCall(): IncomingSipCall? = activeIncomingCall
 
         fun start(context: Context) {
             ContextCompat.startForegroundService(
@@ -174,8 +191,17 @@ class SipForegroundService : Service() {
                 if (callId.isNotBlank() && cancelledCallIds.remove(callId) != null) return
             }
             currentIncomingCallId = callId
-            currentIncomingCall = call
+            val directory = cachedCaller(context, call.number)
+            val caller = directory?.name
+                ?: call.displayName?.takeIf(String::isNotBlank)
+                ?: formatPhoneNumber(call.number)
+            val effectiveCall = IncomingSipCall(
+                number = call.number,
+                displayName = caller
+            )
+            activeIncomingCall = effectiveCall
             incomingDisposition = IncomingDisposition.RINGING
+            onIncomingNotificationChanged?.invoke(effectiveCall)
             val generation = ++incomingGeneration
             stopIncomingRingtone()
             val ringtoneUri =
@@ -210,6 +236,9 @@ class SipForegroundService : Service() {
                 1,
                 Intent(context, MainActivity::class.java).apply {
                     action = ACTION_SHOW_INCOMING
+                    putExtra(EXTRA_CALL_ID, callId)
+                    putExtra(EXTRA_CALLER_NUMBER, effectiveCall.number)
+                    putExtra(EXTRA_CALLER_NAME, effectiveCall.displayName)
                     flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or
                         Intent.FLAG_ACTIVITY_SINGLE_TOP or
                         Intent.FLAG_ACTIVITY_NEW_TASK
@@ -221,6 +250,9 @@ class SipForegroundService : Service() {
                 2,
                 Intent(context, MainActivity::class.java).apply {
                     action = ACTION_ANSWER
+                    putExtra(EXTRA_CALL_ID, callId)
+                    putExtra(EXTRA_CALLER_NUMBER, effectiveCall.number)
+                    putExtra(EXTRA_CALLER_NAME, effectiveCall.displayName)
                     flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or
                         Intent.FLAG_ACTIVITY_SINGLE_TOP or
                         Intent.FLAG_ACTIVITY_NEW_TASK
@@ -235,10 +267,6 @@ class SipForegroundService : Service() {
                 },
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
-            val directory = cachedCaller(context, call.number)
-            val caller = directory?.name
-                ?: call.displayName?.takeIf(String::isNotBlank)
-                ?: formatPhoneNumber(call.number)
             val formattedNumber = formatPhoneNumber(call.number)
             val appIcon = BitmapFactory.decodeResource(
                 context.resources,
@@ -310,13 +338,14 @@ class SipForegroundService : Service() {
                     return
                 }
             }
-            val missedCall = currentIncomingCall
+            val missedCall = activeIncomingCall
             val shouldShowMissed = showMissed
                 ?: (incomingDisposition == IncomingDisposition.RINGING)
             incomingGeneration += 1
             currentIncomingCallId = ""
-            currentIncomingCall = null
+            activeIncomingCall = null
             incomingDisposition = IncomingDisposition.NONE
+            onIncomingNotificationChanged?.invoke(null)
             stopIncomingRingtone()
             val manager = context.getSystemService(NotificationManager::class.java)
             manager.cancel(INCOMING_NOTIFICATION_ID)
