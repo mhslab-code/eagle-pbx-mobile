@@ -250,14 +250,31 @@ class MainActivity : ComponentActivity() {
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 loginViewModel.state
-                    .map { it.sipCallStatus }
+                    .map { state ->
+                        IncomingCallForegroundState(
+                            callStatus = state.sipCallStatus,
+                            uiIncomingCallActive = state.incomingSipCall != null
+                        )
+                    }
                     .distinctUntilChanged()
-                    .collect { status ->
-                        if (status != SipCallStatus.IDLE) {
+                    .collect { state ->
+                        val serviceIncomingCallActive =
+                            SipForegroundService.currentIncomingCall() != null
+                        if (
+                            state.callStatus != SipCallStatus.IDLE ||
+                            state.uiIncomingCallActive ||
+                            serviceIncomingCallActive
+                        ) {
                             incomingCallObserved = true
-                        } else if (
-                            returnToLockScreenAfterCall &&
-                            incomingCallObserved
+                        }
+                        if (
+                            shouldReturnIncomingCallActivityToBackground(
+                                returnRequested = returnToLockScreenAfterCall,
+                                incomingCallObserved = incomingCallObserved,
+                                callStatus = state.callStatus,
+                                uiIncomingCallActive = state.uiIncomingCallActive,
+                                serviceIncomingCallActive = serviceIncomingCallActive
+                            )
                         ) {
                             returnToLockScreenAfterCall = false
                             incomingCallObserved = false
@@ -274,6 +291,24 @@ class MainActivity : ComponentActivity() {
         super.onStop()
     }
 }
+
+internal data class IncomingCallForegroundState(
+    val callStatus: SipCallStatus,
+    val uiIncomingCallActive: Boolean
+)
+
+internal fun shouldReturnIncomingCallActivityToBackground(
+    returnRequested: Boolean,
+    incomingCallObserved: Boolean,
+    callStatus: SipCallStatus,
+    uiIncomingCallActive: Boolean,
+    serviceIncomingCallActive: Boolean
+): Boolean =
+    returnRequested &&
+        incomingCallObserved &&
+        callStatus == SipCallStatus.IDLE &&
+        !uiIncomingCallActive &&
+        !serviceIncomingCallActive
 
 @Composable
 fun EaglePBXApp(

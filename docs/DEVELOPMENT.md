@@ -45,6 +45,14 @@ definitiva de assinatura e suas senhas não pertencem ao repositório.
 
 ## Marcos validados
 
+### 0.1.45
+
+- proteção contra `IDLE` transitório ao abrir uma chamada pelo heads-up;
+- permanência do modal no primeiro plano enquanto a chamada ainda existe na
+  interface ou no serviço SIP;
+- teste unitário da política de retorno ao segundo plano;
+- ringtone corporativo preservado sem alterações.
+
 ### 0.1.44
 
 - toque interno do Liblinphone explicitamente desativado após a criação e a

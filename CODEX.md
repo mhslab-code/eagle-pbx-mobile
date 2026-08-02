@@ -1,5 +1,13 @@
 # CODEX — Eagle PBX Mobile
 
+## Revisão 0.1.45
+
+- Um estado `IDLE` transitório durante a abertura pelo heads-up não minimiza
+  mais o aplicativo nem recria a notificação de chamada.
+- O retorno ao segundo plano somente ocorre após a interface e o serviço SIP
+  confirmarem que a chamada recebida terminou de fato.
+- O ringtone corporativo homologado permanece inalterado.
+
 ## Revisão 0.1.44
 
 - O toque interno do Liblinphone foi explicitamente desativado com `ring = null`.

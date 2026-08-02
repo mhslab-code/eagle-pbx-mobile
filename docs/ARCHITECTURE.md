@@ -134,6 +134,11 @@ inicialização do core. Isso evita que o toque padrão do telefone seja reprodu
 em paralelo com o MP3 corporativo, sem interferir no ringback das chamadas
 efetuadas.
 
+Na versão 0.1.45, o retorno automático ao segundo plano exige confirmação
+conjunta da interface e do serviço SIP de que não existe mais chamada recebida.
+Um estado `IDLE` intermediário, comum durante a restauração disparada pelo
+heads-up, não pode minimizar a Activity nem fazer a notificação reaparecer.
+
 O estado de presença já utiliza a API existente do Eagle PBX. Temporariamente,
 o DND continua sendo aplicado ao ramal inteiro no Asterisk. A separação do DND
 por instalação — Android, PWA, desktop e softphones — fica prevista para a
