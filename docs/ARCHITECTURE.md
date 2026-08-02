@@ -122,6 +122,12 @@ ativa. Assim, abrir o aplicativo pelo heads-up não cria uma segunda camada de
 áudio. O serviço encerra a reprodução ao atender, recusar, receber cancelamento
 da origem ou finalizar a chamada.
 
+Na versão 0.1.43, a apresentação acompanha a visibilidade do aplicativo. Em
+primeiro plano há somente o modal interno; em segundo plano há notificação de
+alta prioridade. Ambos reutilizam o toque único do serviço SIP. O canal Android
+`eagle_pbx_incoming_calls_v3` não possui som próprio e substitui o canal anterior,
+cuja configuração o sistema operacional poderia ter preservado entre versões.
+
 O estado de presença já utiliza a API existente do Eagle PBX. Temporariamente,
 o DND continua sendo aplicado ao ramal inteiro no Asterisk. A separação do DND
 por instalação — Android, PWA, desktop e softphones — fica prevista para a

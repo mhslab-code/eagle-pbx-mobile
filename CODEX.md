@@ -1,5 +1,16 @@
 # CODEX — Eagle PBX Mobile
 
+## Revisão 0.1.43
+
+- O canal nativo de chamadas foi migrado para uma nova identidade silenciosa,
+  descartando a configuração sonora persistida pelo Android no canal anterior.
+- Com o aplicativo visível, a chamada apresenta somente o modal interno e o
+  toque corporativo; nenhuma notificação de chamada é exibida em paralelo.
+- Em segundo plano, o heads-up continua disponível, enquanto o toque permanece
+  sob responsabilidade exclusiva do serviço SIP.
+- Abrir ou minimizar o aplicativo durante uma chamada apenas alterna a
+  apresentação do aviso, sem reiniciar nem sobrepor o áudio.
+
 ## Revisão 0.1.42
 
 - O toque corporativo `eagle_pbx_ringtone` passa a fazer parte do APK e não

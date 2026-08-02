@@ -206,6 +206,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onStart() {
         super.onStart()
+        SipForegroundService.setApplicationVisible(this, true)
         loginViewModel.setApplicationInBackground(false)
     }
 
@@ -268,6 +269,7 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onStop() {
+        SipForegroundService.setApplicationVisible(this, false)
         loginViewModel.setApplicationInBackground(true)
         super.onStop()
     }
@@ -3612,7 +3614,7 @@ private fun AccountNotificationCard(enabled: Boolean, onAction: () -> Unit) {
     }
 }
 
-private const val CALL_NOTIFICATION_CHANNEL_ID = "eagle_pbx_incoming_calls_v2"
+private const val CALL_NOTIFICATION_CHANNEL_ID = "eagle_pbx_incoming_calls_v3"
 private const val TEST_NOTIFICATION_ID = 1901
 
 private fun areCallNotificationsEnabled(context: Context): Boolean {

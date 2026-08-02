@@ -58,6 +58,7 @@ class SipForegroundService : Service() {
                     enableVibration(true)
                 }
             )
+            deleteNotificationChannel(LEGACY_INCOMING_CHANNEL_ID)
             createNotificationChannel(
                 NotificationChannel(
                     MISSED_CHANNEL_ID,
@@ -115,7 +116,8 @@ class SipForegroundService : Service() {
 
     companion object {
         private const val CHANNEL_ID = "eagle_pbx_telephony"
-        private const val INCOMING_CHANNEL_ID = "eagle_pbx_incoming_calls_v2"
+        private const val INCOMING_CHANNEL_ID = "eagle_pbx_incoming_calls_v3"
+        private const val LEGACY_INCOMING_CHANNEL_ID = "eagle_pbx_incoming_calls_v2"
         private const val MISSED_CHANNEL_ID = "eagle_pbx_missed_calls"
         private const val NOTIFICATION_ID = 101
         private const val INCOMING_NOTIFICATION_ID = 102
@@ -137,6 +139,9 @@ class SipForegroundService : Service() {
 
         @Volatile
         private var activeIncomingCall: IncomingSipCall? = null
+
+        @Volatile
+        private var applicationVisible = false
 
         private val incomingRingtoneLock = Any()
         private var incomingRingtone: MediaPlayer? = null
@@ -165,6 +170,19 @@ class SipForegroundService : Service() {
         }
 
         fun currentIncomingCall(): IncomingSipCall? = activeIncomingCall
+
+        fun setApplicationVisible(context: Context, visible: Boolean) {
+            applicationVisible = visible
+            val notificationManager =
+                context.getSystemService(NotificationManager::class.java)
+            if (visible) {
+                notificationManager.cancel(INCOMING_NOTIFICATION_ID)
+            } else {
+                activeIncomingCall?.let { call ->
+                    showIncomingNotification(context, call, currentIncomingCallId)
+                }
+            }
+        }
 
         fun start(context: Context) {
             ContextCompat.startForegroundService(
@@ -204,14 +222,34 @@ class SipForegroundService : Service() {
             onIncomingNotificationChanged?.invoke(effectiveCall)
             val generation = ++incomingGeneration
             ensureIncomingRingtone(context)
+            if (!applicationVisible) {
+                showIncomingNotification(context, effectiveCall, callId)
+            }
+            incomingTimeoutHandler.postDelayed({
+                if (generation == incomingGeneration) {
+                    cancelIncoming(context, showMissed = true)
+                }
+            }, 45_000L)
+        }
+
+        private fun showIncomingNotification(
+            context: Context,
+            call: IncomingSipCall,
+            callId: String
+        ) {
+            val directory = cachedCaller(context, call.number)
+            val caller = call.displayName
+                ?.takeIf(String::isNotBlank)
+                ?: directory?.name
+                ?: formatPhoneNumber(call.number)
             val openApp = PendingIntent.getActivity(
                 context,
                 1,
                 Intent(context, MainActivity::class.java).apply {
                     action = ACTION_SHOW_INCOMING
                     putExtra(EXTRA_CALL_ID, callId)
-                    putExtra(EXTRA_CALLER_NUMBER, effectiveCall.number)
-                    putExtra(EXTRA_CALLER_NAME, effectiveCall.displayName)
+                    putExtra(EXTRA_CALLER_NUMBER, call.number)
+                    putExtra(EXTRA_CALLER_NAME, caller)
                     flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or
                         Intent.FLAG_ACTIVITY_SINGLE_TOP or
                         Intent.FLAG_ACTIVITY_NEW_TASK
@@ -224,8 +262,8 @@ class SipForegroundService : Service() {
                 Intent(context, MainActivity::class.java).apply {
                     action = ACTION_ANSWER
                     putExtra(EXTRA_CALL_ID, callId)
-                    putExtra(EXTRA_CALLER_NUMBER, effectiveCall.number)
-                    putExtra(EXTRA_CALLER_NAME, effectiveCall.displayName)
+                    putExtra(EXTRA_CALLER_NUMBER, call.number)
+                    putExtra(EXTRA_CALLER_NAME, caller)
                     flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or
                         Intent.FLAG_ACTIVITY_SINGLE_TOP or
                         Intent.FLAG_ACTIVITY_NEW_TASK
@@ -281,11 +319,6 @@ class SipForegroundService : Service() {
                 .build()
             context.getSystemService(NotificationManager::class.java)
                 .notify(INCOMING_NOTIFICATION_ID, notification)
-            incomingTimeoutHandler.postDelayed({
-                if (generation == incomingGeneration) {
-                    cancelIncoming(context, showMissed = true)
-                }
-            }, 45_000L)
         }
 
         private fun ensureIncomingRingtone(context: Context) {

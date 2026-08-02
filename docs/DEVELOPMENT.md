@@ -45,6 +45,18 @@ definitiva de assinatura e suas senhas não pertencem ao repositório.
 
 ## Marcos validados
 
+### 0.1.43
+
+- novo canal de chamada silencioso, sem reaproveitar preferências persistidas
+  pelo Android no canal anterior;
+- aplicativo visível apresenta apenas modal e toque corporativo, sem heads-up
+  duplicado;
+- segundo plano mantém heads-up e toque controlado exclusivamente pelo serviço
+  SIP;
+- abertura e minimização durante a chamada não reiniciam o `MediaPlayer`;
+- testes automatizados e APK devem ser gerados na VM Android antes da
+  homologação física.
+
 ### 0.1.42
 
 - toque corporativo fornecido pela Eagle incorporado em `res/raw`;

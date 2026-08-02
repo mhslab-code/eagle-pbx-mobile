@@ -9,7 +9,7 @@ com homologação operacional nos Samsung Galaxy A25 5G e validação complement
 no Samsung Galaxy S25 Ultra. O iOS será desenvolvido depois da homologação do
 fluxo Android.
 
-Versão de desenvolvimento atual: `0.1.42`. A identidade visual, o login nativo,
+Versão de desenvolvimento atual: `0.1.43`. A identidade visual, o login nativo,
 a restauração segura da sessão, o logoff, a navegação principal e a integração
 inicial de presença foram validados no emulador equivalente ao Galaxy A25 5G.
 A agenda corporativa, o histórico e o player autenticado de gravações também
@@ -35,6 +35,9 @@ ser encerrada.
 O toque de chamada recebido é um recurso corporativo incorporado ao APK. O
 aplicativo mantém uma única reprodução contínua por chamada, mesmo quando a
 notificação abre a interface, e desativa o toque nativo paralelo do motor SIP.
+Com o aplicativo visível, somente o modal interno e esse toque são apresentados;
+o aviso nativo fica reservado ao segundo plano. O canal de chamadas do Android
+é silencioso e não disputa a reprodução controlada pelo serviço de telefonia.
 A transferência direta utiliza um modal com visor e teclado, entrega a chamada
 ao destino escolhido e remove o Android da sessão depois da aceitação pelo
 PBX. O fluxo completo foi homologado entre os ramais 104 e 105.
