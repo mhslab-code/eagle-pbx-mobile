@@ -31,6 +31,7 @@ import androidx.core.app.Person
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.drawable.IconCompat
 import com.eaglesistemas.eaglepbx.MainActivity
+import com.eaglesistemas.eaglepbx.IncomingCallActivity
 import com.eaglesistemas.eaglepbx.R
 import com.eaglesistemas.eaglepbx.data.EagleContact
 import com.eaglesistemas.eaglepbx.data.SecureSessionStore
@@ -150,7 +151,8 @@ class SipForegroundService : Service() {
         const val EXTRA_CALL_ID = "eagle_pbx_call_id"
         const val EXTRA_CALLER_NUMBER = "eagle_pbx_caller_number"
         const val EXTRA_CALLER_NAME = "eagle_pbx_caller_name"
-        private const val ACTION_REJECT =
+        const val EXTRA_CALLER_PHOTO = "eagle_pbx_caller_photo"
+        const val ACTION_REJECT =
             "com.eaglesistemas.eaglepbx.action.REJECT_INCOMING_CALL"
 
         @Volatile
@@ -272,11 +274,12 @@ class SipForegroundService : Service() {
             val openApp = PendingIntent.getActivity(
                 context,
                 1,
-                Intent(context, MainActivity::class.java).apply {
+                Intent(context, IncomingCallActivity::class.java).apply {
                     action = ACTION_SHOW_INCOMING
                     putExtra(EXTRA_CALL_ID, callId)
                     putExtra(EXTRA_CALLER_NUMBER, call.number)
                     putExtra(EXTRA_CALLER_NAME, caller)
+                    putExtra(EXTRA_CALLER_PHOTO, directory?.photo)
                     flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or
                         Intent.FLAG_ACTIVITY_SINGLE_TOP or
                         Intent.FLAG_ACTIVITY_NEW_TASK

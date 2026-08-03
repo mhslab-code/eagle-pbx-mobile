@@ -1,5 +1,12 @@
 # CODEX — Eagle PBX Mobile
 
+## Revisão 0.1.50
+
+- A chamada recebida passou a abrir uma atividade nativa exclusiva em tela
+  cheia sobre o bloqueio, com foto, nome, número, **Recusar** e **Atender**.
+- O fluxo não atravessa a restauração da sessão nem exibe o discador antes da
+  decisão do usuário; ao encerrar a chamada, a atividade fecha automaticamente.
+
 ## Revisão 0.1.49
 
 - Chamadas recebidas em segundo plano passam a solicitar um despertar curto e
