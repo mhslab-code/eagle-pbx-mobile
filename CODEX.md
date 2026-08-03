@@ -274,6 +274,28 @@ administrativo ou aplicativo desktop.
 - instalações previstas: aproximadamente seis;
 - limite operacional inicial: dez ramais.
 
+## Publicação de APK no portal
+
+O portal protegido não entrega os APKs diretamente pelo caminho físico. Toda
+publicação deve cumprir esta sequência antes de anunciar o link ao usuário:
+
+1. Copiar o APK para
+   `/home/dsmiranda/web-projects/html/eaglesistemas/pbx/apk/download/` no
+   servidor web.
+2. Cadastrar o nome exato do arquivo em `FILES`, no serviço
+   `/home/dsmiranda/web-projects/counter/server.py`.
+3. Reiniciar `eagle-pbx-download-counter` e atualizar o card da versão em
+   `/home/dsmiranda/web-projects/html/eaglesistemas/pbx/index.html`.
+4. Confirmar que o contador responde `302` para `/download/<arquivo>` e aponta
+   para `/pbx/apk/download/<arquivo>`.
+5. Confirmar que o APK existe e não está vazio dentro de `web-files-server` e
+   que o `nginx -t` passa.
+6. Somente depois dessas validações divulgar o endereço público
+   `https://eaglesistemas.com/pbx/download/<arquivo>`.
+
+Não considerar a publicação concluída apenas porque o arquivo existe no
+diretório: se ele não estiver cadastrado no contador, o portal responderá 404.
+
 ## Licenciamento
 
 O aplicativo será compatível com as condições da AGPLv3. Caso o Liblinphone
