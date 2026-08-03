@@ -144,6 +144,13 @@ momento em que a notificação é aberta. Em aparelho desbloqueado, o modal de
 chamada permanece em primeiro plano; o retorno automático fica reservado às
 chamadas abertas sobre a tela efetivamente bloqueada.
 
+Na versão 0.1.51, a atividade dedicada recebe flags de janela para aparecer e
+acender sobre o bloqueio, e o serviço SIP pode iniciá-la diretamente quando o
+`Keyguard` estiver ativo. A ação **Atender** interrompe a sinalização local, mas
+o estado visual somente passa a atendido após o Liblinphone confirmar
+`CONNECTED`; assim, a interface não confunde uma solicitação de atendimento
+com uma chamada já estabelecida.
+
 O estado de presença já utiliza a API existente do Eagle PBX. Temporariamente,
 o DND continua sendo aplicado ao ramal inteiro no Asterisk. A separação do DND
 por instalação — Android, PWA, desktop e softphones — fica prevista para a

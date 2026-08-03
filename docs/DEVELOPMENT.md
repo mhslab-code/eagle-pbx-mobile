@@ -45,6 +45,16 @@ definitiva de assinatura e suas senhas não pertencem ao repositório.
 
 ## Marcos validados
 
+### 0.1.51
+
+- atividade de chamada preparada explicitamente para aparecer e acender sobre
+  o bloqueio do Android;
+- transição visual para chamada atendida condicionada à confirmação
+  `CONNECTED` do motor SIP;
+- testes unitários e APK de depuração gerados com sucesso na VM Android;
+- exibição real sobre o bloqueio e atendimento no S25 Ultra permanecem como
+  testes físicos obrigatórios desta revisão.
+
 ### 0.1.46
 
 - abertura pelo heads-up mantém o aplicativo em primeiro plano em aparelho

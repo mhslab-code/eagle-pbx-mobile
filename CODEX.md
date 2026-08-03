@@ -1,5 +1,14 @@
 # CODEX — Eagle PBX Mobile
 
+## Revisão 0.1.51
+
+- A atividade de chamada recebida solicita explicitamente exibição e despertar
+  sobre a tela bloqueada, inclusive quando iniciada pelo serviço SIP.
+- O toque e a vibração são interrompidos ao aceitar, mas a interface somente
+  confirma o atendimento depois do estado `CONNECTED` real do Liblinphone.
+- Falhas ou atrasos no aceite preservam a chamada recebida e permitem nova
+  tentativa, sem apresentar uma falsa chamada conectada ou tela de espera.
+
 ## Revisão 0.1.50
 
 - A chamada recebida passou a abrir uma atividade nativa exclusiva em tela

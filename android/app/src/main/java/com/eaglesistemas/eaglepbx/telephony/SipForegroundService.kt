@@ -3,6 +3,7 @@ package com.eaglesistemas.eaglepbx.telephony
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.KeyguardManager
 import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
@@ -349,6 +350,9 @@ class SipForegroundService : Service() {
                 .build()
             context.getSystemService(NotificationManager::class.java)
                 .notify(INCOMING_NOTIFICATION_ID, notification)
+            if (context.getSystemService(KeyguardManager::class.java)?.isKeyguardLocked == true) {
+                runCatching { openApp.send() }
+            }
         }
 
         private fun ensureIncomingRingtone(context: Context) {
@@ -487,6 +491,17 @@ class SipForegroundService : Service() {
         fun markAnswered(context: Context) {
             incomingDisposition = IncomingDisposition.ANSWERED
             cancelIncoming(context, showMissed = false)
+        }
+
+        /**
+         * Stops the user-facing alert while Linphone negotiates the answer, but keeps the
+         * incoming call available until the SIP state actually changes to CONNECTED.
+         */
+        fun prepareForAnswer(context: Context) {
+            incomingDisposition = IncomingDisposition.ANSWERED
+            stopIncomingAlert()
+            context.getSystemService(NotificationManager::class.java)
+                .cancel(INCOMING_NOTIFICATION_ID)
         }
 
         fun markRejected(context: Context) {

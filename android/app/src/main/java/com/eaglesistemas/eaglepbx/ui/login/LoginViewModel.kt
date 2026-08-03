@@ -212,8 +212,18 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
                     }
                 },
                 onCallStatusChanged = { status ->
+                    if (status == SipCallStatus.CONNECTED) {
+                        answerIncomingWhenReady = false
+                        notificationIncomingCall = null
+                        SipForegroundService.markAnswered(getApplication())
+                    }
                     mutableState.value = mutableState.value.copy(
                         sipCallStatus = status,
+                        incomingSipCall = if (status == SipCallStatus.CONNECTED) {
+                            null
+                        } else {
+                            mutableState.value.incomingSipCall
+                        },
                         microphoneMuted = if (status == SipCallStatus.IDLE) {
                             false
                         } else {
@@ -242,7 +252,9 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
                         if (answerIncomingWhenReady) {
                             answerIncomingWhenReady = false
                             if (linphoneEngine?.acceptIncomingCall() == true) {
-                                SipForegroundService.markAnswered(getApplication())
+                                SipForegroundService.prepareForAnswer(getApplication())
+                            } else {
+                                answerIncomingWhenReady = true
                             }
                         }
                     }
@@ -422,8 +434,9 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
 
     fun acceptIncomingCall() {
         if (mutableState.value.sipCallStatus != SipCallStatus.INCOMING) return
-        SipForegroundService.markAnswered(getApplication())
-        if (linphoneEngine?.acceptIncomingCall() != true) {
+        if (linphoneEngine?.acceptIncomingCall() == true) {
+            SipForegroundService.prepareForAnswer(getApplication())
+        } else {
             mutableState.value = mutableState.value.copy(
                 sipCallStatus = SipCallStatus.FAILED,
                 incomingSipCall = null
@@ -446,7 +459,7 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
         presentIncomingFromNotification(call)
         if (linphoneEngine?.acceptIncomingCall() == true) {
             answerIncomingWhenReady = false
-            SipForegroundService.markAnswered(getApplication())
+            SipForegroundService.prepareForAnswer(getApplication())
         } else {
             answerIncomingWhenReady = true
         }
