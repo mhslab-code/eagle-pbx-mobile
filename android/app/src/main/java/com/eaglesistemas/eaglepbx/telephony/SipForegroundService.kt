@@ -75,6 +75,7 @@ class SipForegroundService : Service() {
                     enableVibration(false)
                 }
             )
+            deleteNotificationChannel(LEGACY_INCOMING_CHANNEL_ID_V4)
             deleteNotificationChannel(LEGACY_INCOMING_CHANNEL_ID)
             deleteNotificationChannel(LEGACY_INCOMING_CHANNEL_ID_V2)
             createNotificationChannel(
@@ -134,7 +135,8 @@ class SipForegroundService : Service() {
 
     companion object {
         private const val CHANNEL_ID = "eagle_pbx_telephony"
-        private const val INCOMING_CHANNEL_ID = "eagle_pbx_incoming_calls_v4"
+        const val INCOMING_CHANNEL_ID = "eagle_pbx_incoming_calls_v5"
+        private const val LEGACY_INCOMING_CHANNEL_ID_V4 = "eagle_pbx_incoming_calls_v4"
         private const val LEGACY_INCOMING_CHANNEL_ID = "eagle_pbx_incoming_calls_v3"
         private const val LEGACY_INCOMING_CHANNEL_ID_V2 = "eagle_pbx_incoming_calls_v2"
         private const val MISSED_CHANNEL_ID = "eagle_pbx_missed_calls"

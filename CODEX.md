@@ -1,5 +1,15 @@
 # CODEX — Eagle PBX Mobile
 
+## Revisão 0.1.48
+
+- O canal consultado em `Minha conta` e o canal realmente usado nas chamadas
+  recebidas passam a ser o mesmo.
+- O canal de chamadas foi migrado para uma nova identidade de alta prioridade,
+  removendo configurações antigas persistidas pelo Android que impediam a
+  apresentação sobre a tela bloqueada.
+- A Activity principal usa instância única ao ser aberta pelo alerta de chamada,
+  preservando corretamente o modal e o estado da ligação.
+
 ## Revisão 0.1.47
 
 - A tela de chamada recebida pode acender e ser apresentada sobre a tela

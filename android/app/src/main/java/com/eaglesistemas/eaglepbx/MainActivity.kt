@@ -3727,7 +3727,6 @@ private fun AccountNotificationCard(
     }
 }
 
-private const val CALL_NOTIFICATION_CHANNEL_ID = "eagle_pbx_incoming_calls_v3"
 private const val TEST_NOTIFICATION_ID = 1901
 
 private fun areCallNotificationsEnabled(context: Context): Boolean {
@@ -3743,7 +3742,7 @@ private fun areCallNotificationsEnabled(context: Context): Boolean {
     }
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
         val channel = context.getSystemService(NotificationManager::class.java)
-            .getNotificationChannel(CALL_NOTIFICATION_CHANNEL_ID)
+            .getNotificationChannel(SipForegroundService.INCOMING_CHANNEL_ID)
         if (channel != null && channel.importance == NotificationManager.IMPORTANCE_NONE) {
             return false
         }
@@ -3768,11 +3767,19 @@ private fun openIncomingCallFullScreenSettings(context: Context) {
 
 private fun sendCallNotificationTest(context: Context) {
     if (!areCallNotificationsEnabled(context)) return
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+        ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.POST_NOTIFICATIONS
+        ) != PackageManager.PERMISSION_GRANTED
+    ) {
+        return
+    }
     val manager = context.getSystemService(NotificationManager::class.java)
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
         manager.createNotificationChannel(
             NotificationChannel(
-                CALL_NOTIFICATION_CHANNEL_ID,
+                SipForegroundService.INCOMING_CHANNEL_ID,
                 "Chamadas recebidas",
                 NotificationManager.IMPORTANCE_HIGH
             ).apply {
@@ -3790,7 +3797,7 @@ private fun sendCallNotificationTest(context: Context) {
         },
         PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
     )
-    val notification = NotificationCompat.Builder(context, CALL_NOTIFICATION_CHANNEL_ID)
+    val notification = NotificationCompat.Builder(context, SipForegroundService.INCOMING_CHANNEL_ID)
         .setSmallIcon(R.drawable.ic_launcher_foreground)
         .setContentTitle("Notificações ativadas")
         .setContentText("O Eagle PBX está pronto para avisar sobre novas chamadas.")
@@ -3799,7 +3806,9 @@ private fun sendCallNotificationTest(context: Context) {
         .setCategory(NotificationCompat.CATEGORY_STATUS)
         .setPriority(NotificationCompat.PRIORITY_HIGH)
         .build()
-    NotificationManagerCompat.from(context).notify(TEST_NOTIFICATION_ID, notification)
+    runCatching {
+        NotificationManagerCompat.from(context).notify(TEST_NOTIFICATION_ID, notification)
+    }
 }
 
 private fun openAndroidNotificationSettings(context: Context) {
