@@ -1,5 +1,14 @@
 # CODEX — Eagle PBX Mobile
 
+## Revisão 0.1.49
+
+- Chamadas recebidas em segundo plano passam a solicitar um despertar curto e
+  controlado da tela quando o aparelho estiver bloqueado.
+- O bloqueio do Android permanece ativo: o mecanismo apenas acende a tela e a
+  Activity autorizada continua responsável por apresentar a chamada.
+- O recurso de despertar é liberado ao atender, recusar ou encerrar a chamada e
+  possui expiração automática de segurança.
+
 ## Revisão 0.1.48
 
 - O canal consultado em `Minha conta` e o canal realmente usado nas chamadas

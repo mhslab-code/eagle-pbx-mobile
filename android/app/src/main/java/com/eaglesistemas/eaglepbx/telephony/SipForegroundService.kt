@@ -21,6 +21,7 @@ import android.os.Build
 import android.os.IBinder
 import android.os.Handler
 import android.os.Looper
+import android.os.PowerManager
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
@@ -168,6 +169,8 @@ class SipForegroundService : Service() {
         private var incomingRingtone: MediaPlayer? = null
         private val incomingVibrationLock = Any()
         private var incomingVibrator: Vibrator? = null
+        private val incomingWakeLockLock = Any()
+        private var incomingWakeLock: PowerManager.WakeLock? = null
         private val incomingTimeoutHandler = Handler(Looper.getMainLooper())
         private var incomingGeneration = 0L
         private var currentIncomingCallId = ""
@@ -246,6 +249,7 @@ class SipForegroundService : Service() {
             val generation = ++incomingGeneration
             ensureIncomingAlert(context)
             if (!applicationVisible) {
+                wakeScreenForIncomingCall(context)
                 showIncomingNotification(context, effectiveCall, callId)
             }
             incomingTimeoutHandler.postDelayed({
@@ -445,6 +449,36 @@ class SipForegroundService : Service() {
         private fun stopIncomingAlert() {
             stopIncomingRingtone()
             stopIncomingVibration()
+            releaseIncomingWakeLock()
+        }
+
+        @Suppress("DEPRECATION")
+        private fun wakeScreenForIncomingCall(context: Context) {
+            val powerManager = context.getSystemService(PowerManager::class.java)
+                ?: return
+            if (powerManager.isInteractive) return
+            synchronized(incomingWakeLockLock) {
+                incomingWakeLock?.let { wakeLock ->
+                    if (wakeLock.isHeld) wakeLock.release()
+                }
+                incomingWakeLock = powerManager.newWakeLock(
+                    PowerManager.SCREEN_BRIGHT_WAKE_LOCK or
+                        PowerManager.ACQUIRE_CAUSES_WAKEUP,
+                    "EaglePBX:IncomingCall"
+                ).apply {
+                    setReferenceCounted(false)
+                    acquire(15_000L)
+                }
+            }
+        }
+
+        private fun releaseIncomingWakeLock() {
+            synchronized(incomingWakeLockLock) {
+                incomingWakeLock?.let { wakeLock ->
+                    if (wakeLock.isHeld) wakeLock.release()
+                }
+                incomingWakeLock = null
+            }
         }
 
         fun markAnswered(context: Context) {
