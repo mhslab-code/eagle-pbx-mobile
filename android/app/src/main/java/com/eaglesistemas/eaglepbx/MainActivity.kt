@@ -11,11 +11,13 @@ import android.content.pm.PackageManager
 import android.graphics.BitmapFactory
 import android.media.AudioManager
 import android.media.ToneGenerator
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.SystemClock
 import android.provider.Settings
 import android.util.Base64
+import android.view.WindowManager
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeOut
@@ -222,11 +224,13 @@ class MainActivity : ComponentActivity() {
         when (intent?.action) {
             SipForegroundService.ACTION_SHOW_INCOMING -> {
                 returnToLockScreenAfterCall = notificationOpenedWhileDeviceLocked()
+                showIncomingOverLockScreen()
                 loginViewModel.presentIncomingFromNotification(incomingCall)
                 intent.action = null
             }
             SipForegroundService.ACTION_ANSWER -> {
                 returnToLockScreenAfterCall = notificationOpenedWhileDeviceLocked()
+                showIncomingOverLockScreen()
                 loginViewModel.answerIncomingFromNotification(incomingCall)
                 intent.action = null
             }
@@ -284,10 +288,37 @@ class MainActivity : ComponentActivity() {
                         ) {
                             returnToLockScreenAfterCall = false
                             incomingCallObserved = false
+                            clearIncomingLockScreenPresentation()
                             moveTaskToBack(true)
                         }
                     }
             }
+        }
+    }
+
+    private fun showIncomingOverLockScreen() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+            setShowWhenLocked(true)
+            setTurnScreenOn(true)
+        } else {
+            @Suppress("DEPRECATION")
+            window.addFlags(
+                WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
+                    WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON
+            )
+        }
+    }
+
+    private fun clearIncomingLockScreenPresentation() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+            setShowWhenLocked(false)
+            setTurnScreenOn(false)
+        } else {
+            @Suppress("DEPRECATION")
+            window.clearFlags(
+                WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
+                    WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON
+            )
         }
     }
 
@@ -3105,10 +3136,14 @@ private fun LegacyAccountDialog(
     var notificationsEnabled by remember {
         mutableStateOf(areCallNotificationsEnabled(context))
     }
+    var fullScreenCallsEnabled by remember {
+        mutableStateOf(canUseIncomingCallFullScreenIntent(context))
+    }
     DisposableEffect(lifecycleOwner, context) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
                 notificationsEnabled = areCallNotificationsEnabled(context)
+                fullScreenCallsEnabled = canUseIncomingCallFullScreenIntent(context)
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -3175,14 +3210,18 @@ private fun LegacyAccountDialog(
                             )
                         }
                         Text(
-                            text = if (notificationsEnabled) "Ativadas" else "Bloqueadas",
-                            color = if (notificationsEnabled) EagleSuccess else EagleDanger,
+                            text = when {
+                                !notificationsEnabled -> "Bloqueadas"
+                                !fullScreenCallsEnabled -> "Ação necessária"
+                                else -> "Ativadas"
+                            },
+                            color = if (notificationsEnabled && fullScreenCallsEnabled) EagleSuccess else EagleDanger,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
                             modifier = Modifier
                                 .clip(RoundedCornerShape(9.dp))
                                 .background(
-                                    if (notificationsEnabled) {
+                                    if (notificationsEnabled && fullScreenCallsEnabled) {
                                         EagleSuccess.copy(alpha = 0.12f)
                                     } else {
                                         EagleDanger.copy(alpha = 0.12f)
@@ -3190,7 +3229,7 @@ private fun LegacyAccountDialog(
                                 )
                                 .border(
                                     1.dp,
-                                    if (notificationsEnabled) EagleSuccess else EagleDanger,
+                                    if (notificationsEnabled && fullScreenCallsEnabled) EagleSuccess else EagleDanger,
                                     RoundedCornerShape(9.dp)
                                 )
                                 .padding(horizontal = 9.dp, vertical = 6.dp)
@@ -3199,10 +3238,12 @@ private fun LegacyAccountDialog(
                     Spacer(Modifier.height(14.dp))
                     Button(
                         onClick = {
-                            if (notificationsEnabled) {
-                                sendCallNotificationTest(context)
-                            } else {
+                            if (!notificationsEnabled) {
                                 openAndroidNotificationSettings(context)
+                            } else if (!fullScreenCallsEnabled) {
+                                openIncomingCallFullScreenSettings(context)
+                            } else {
+                                sendCallNotificationTest(context)
                             }
                         },
                         modifier = Modifier
@@ -3216,10 +3257,12 @@ private fun LegacyAccountDialog(
                         border = androidx.compose.foundation.BorderStroke(1.dp, EagleBlue)
                     ) {
                         Text(
-                            text = if (notificationsEnabled) {
-                                "Enviar notificação de teste"
-                            } else {
+                            text = if (!notificationsEnabled) {
                                 "Abrir configurações do Android"
+                            } else if (!fullScreenCallsEnabled) {
+                                "Permitir chamadas na tela bloqueada"
+                            } else {
+                                "Enviar notificação de teste"
                             },
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
@@ -3228,10 +3271,12 @@ private fun LegacyAccountDialog(
                     }
                     Spacer(Modifier.height(12.dp))
                     Text(
-                        text = if (notificationsEnabled) {
-                            "As chamadas podem gerar avisos nativos do Eagle PBX no Android."
-                        } else {
+                        text = if (!notificationsEnabled) {
                             "Libere as notificações do Eagle PBX nas configurações do Android."
+                        } else if (!fullScreenCallsEnabled) {
+                            "Autorize chamadas em tela cheia para receber o modal sobre a tela bloqueada."
+                        } else {
+                            "As chamadas podem gerar avisos nativos do Eagle PBX no Android."
                         },
                         color = EagleTextMuted,
                         fontSize = 11.sp
@@ -3284,6 +3329,9 @@ private fun AccountDialog(
     var notificationsEnabled by remember {
         mutableStateOf(areCallNotificationsEnabled(context))
     }
+    var fullScreenCallsEnabled by remember {
+        mutableStateOf(canUseIncomingCallFullScreenIntent(context))
+    }
     val avatarBitmap = remember(avatarBytes) {
         avatarBytes?.let { bytes ->
             BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.asImageBitmap()
@@ -3323,6 +3371,7 @@ private fun AccountDialog(
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
                 notificationsEnabled = areCallNotificationsEnabled(context)
+                fullScreenCallsEnabled = canUseIncomingCallFullScreenIntent(context)
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -3487,9 +3536,13 @@ private fun AccountDialog(
             Spacer(Modifier.height(18.dp))
             AccountNotificationCard(
                 enabled = notificationsEnabled,
+                fullScreenEnabled = fullScreenCallsEnabled,
                 onAction = {
-                    if (notificationsEnabled) sendCallNotificationTest(context)
-                    else openAndroidNotificationSettings(context)
+                    when {
+                        !notificationsEnabled -> openAndroidNotificationSettings(context)
+                        !fullScreenCallsEnabled -> openIncomingCallFullScreenSettings(context)
+                        else -> sendCallNotificationTest(context)
+                    }
                 }
             )
             Spacer(Modifier.height(16.dp))
@@ -3600,7 +3653,12 @@ private fun AccountTextField(
 }
 
 @Composable
-private fun AccountNotificationCard(enabled: Boolean, onAction: () -> Unit) {
+private fun AccountNotificationCard(
+    enabled: Boolean,
+    fullScreenEnabled: Boolean,
+    onAction: () -> Unit
+) {
+    val completelyEnabled = enabled && fullScreenEnabled
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -3616,14 +3674,18 @@ private fun AccountNotificationCard(enabled: Boolean, onAction: () -> Unit) {
                 Text("Avisos do Android quando o aplicativo estiver em segundo plano.", color = EagleTextMuted, fontSize = 12.sp)
             }
             Text(
-                if (enabled) "Ativadas" else "Bloqueadas",
-                color = if (enabled) EagleSuccess else EagleDanger,
+                when {
+                    !enabled -> "Bloqueadas"
+                    !fullScreenEnabled -> "Ação necessária"
+                    else -> "Ativadas"
+                },
+                color = if (completelyEnabled) EagleSuccess else EagleDanger,
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier
                     .clip(RoundedCornerShape(9.dp))
-                    .background((if (enabled) EagleSuccess else EagleDanger).copy(alpha = 0.12f))
-                    .border(1.dp, if (enabled) EagleSuccess else EagleDanger, RoundedCornerShape(9.dp))
+                    .background((if (completelyEnabled) EagleSuccess else EagleDanger).copy(alpha = 0.12f))
+                    .border(1.dp, if (completelyEnabled) EagleSuccess else EagleDanger, RoundedCornerShape(9.dp))
                     .padding(horizontal = 8.dp, vertical = 6.dp)
             )
         }
@@ -3636,7 +3698,11 @@ private fun AccountNotificationCard(enabled: Boolean, onAction: () -> Unit) {
             border = androidx.compose.foundation.BorderStroke(1.dp, EagleBlue)
         ) {
             Text(
-                if (enabled) "Enviar notificação de teste" else "Abrir configurações do Android",
+                when {
+                    !enabled -> "Abrir configurações do Android"
+                    !fullScreenEnabled -> "Permitir chamadas na tela bloqueada"
+                    else -> "Enviar notificação de teste"
+                },
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center
@@ -3644,8 +3710,11 @@ private fun AccountNotificationCard(enabled: Boolean, onAction: () -> Unit) {
         }
         Spacer(Modifier.height(11.dp))
         Text(
-            if (enabled) "As chamadas podem gerar avisos nativos do Eagle PBX no Android."
-            else "Libere as notificações do Eagle PBX nas configurações do Android.",
+            when {
+                !enabled -> "Libere as notificações do Eagle PBX nas configurações do Android."
+                !fullScreenEnabled -> "Autorize chamadas em tela cheia para exibir o modal sobre a tela bloqueada."
+                else -> "As chamadas podem gerar avisos nativos do Eagle PBX no Android."
+            },
             color = EagleTextMuted,
             fontSize = 11.sp
         )
@@ -3680,6 +3749,21 @@ private fun areCallNotificationsEnabled(context: Context): Boolean {
         }
     }
     return true
+}
+
+private fun canUseIncomingCallFullScreenIntent(context: Context): Boolean {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) return true
+    return context.getSystemService(NotificationManager::class.java).canUseFullScreenIntent()
+}
+
+private fun openIncomingCallFullScreenSettings(context: Context) {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) return
+    val intent = Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT).apply {
+        data = Uri.parse("package:${context.packageName}")
+        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    }
+    runCatching { context.startActivity(intent) }
+        .onFailure { openAndroidNotificationSettings(context) }
 }
 
 private fun sendCallNotificationTest(context: Context) {

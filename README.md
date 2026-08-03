@@ -9,7 +9,7 @@ com homologação operacional nos Samsung Galaxy A25 5G e validação complement
 no Samsung Galaxy S25 Ultra. O iOS será desenvolvido depois da homologação do
 fluxo Android.
 
-Versão de desenvolvimento atual: `0.1.46`. A identidade visual, o login nativo,
+Versão de desenvolvimento atual: `0.1.47`. A identidade visual, o login nativo,
 a restauração segura da sessão, o logoff, a navegação principal e a integração
 inicial de presença foram validados no emulador equivalente ao Galaxy A25 5G.
 A agenda corporativa, o histórico e o player autenticado de gravações também
@@ -35,6 +35,13 @@ ser encerrada.
 O toque de chamada recebido é um recurso corporativo incorporado ao APK. O
 aplicativo mantém uma única reprodução contínua por chamada, mesmo quando a
 notificação abre a interface, e desativa o toque nativo paralelo do motor SIP.
+O alerta respeita o perfil sonoro do Android: em modo Som reproduz o toque
+corporativo, em modo Vibrar utiliza somente a vibração nativa contínua durante a chamada
+e em modo Silencioso não produz som nem vibração. A Activity de atendimento
+pode acender e aparecer sobre a tela bloqueada enquanto a chamada estiver ativa.
+No Android 14 ou superior, o card de notificações em `Minha conta` também
+identifica e abre a autorização específica de chamadas em tela cheia quando ela
+ainda não foi concedida pelo sistema.
 Com o aplicativo visível, somente o modal interno e esse toque são apresentados;
 o aviso nativo fica reservado ao segundo plano. O canal de chamadas do Android
 é silencioso e não disputa a reprodução controlada pelo serviço de telefonia.

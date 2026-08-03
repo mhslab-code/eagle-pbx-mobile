@@ -15,10 +15,15 @@ import android.graphics.Matrix
 import android.graphics.Paint
 import android.graphics.Shader
 import android.media.AudioAttributes
+import android.media.AudioManager
 import android.media.MediaPlayer
+import android.os.Build
 import android.os.IBinder
 import android.os.Handler
 import android.os.Looper
+import android.os.VibrationEffect
+import android.os.Vibrator
+import android.os.VibratorManager
 import android.util.Base64
 import androidx.core.app.NotificationCompat
 import androidx.core.app.Person
@@ -28,6 +33,18 @@ import com.eaglesistemas.eaglepbx.MainActivity
 import com.eaglesistemas.eaglepbx.R
 import com.eaglesistemas.eaglepbx.data.EagleContact
 import com.eaglesistemas.eaglepbx.data.SecureSessionStore
+
+internal enum class IncomingAlertMode {
+    SOUND,
+    VIBRATE,
+    SILENT
+}
+
+internal fun incomingAlertMode(ringerMode: Int?): IncomingAlertMode = when (ringerMode) {
+    AudioManager.RINGER_MODE_NORMAL -> IncomingAlertMode.SOUND
+    AudioManager.RINGER_MODE_VIBRATE -> IncomingAlertMode.VIBRATE
+    else -> IncomingAlertMode.SILENT
+}
 
 /**
  * Keeps the authenticated SIP process eligible to run while the activity is
@@ -55,10 +72,11 @@ class SipForegroundService : Service() {
                 ).apply {
                     description = "Avisa sobre novas chamadas do Eagle PBX."
                     setSound(null, null)
-                    enableVibration(true)
+                    enableVibration(false)
                 }
             )
             deleteNotificationChannel(LEGACY_INCOMING_CHANNEL_ID)
+            deleteNotificationChannel(LEGACY_INCOMING_CHANNEL_ID_V2)
             createNotificationChannel(
                 NotificationChannel(
                     MISSED_CHANNEL_ID,
@@ -116,8 +134,9 @@ class SipForegroundService : Service() {
 
     companion object {
         private const val CHANNEL_ID = "eagle_pbx_telephony"
-        private const val INCOMING_CHANNEL_ID = "eagle_pbx_incoming_calls_v3"
-        private const val LEGACY_INCOMING_CHANNEL_ID = "eagle_pbx_incoming_calls_v2"
+        private const val INCOMING_CHANNEL_ID = "eagle_pbx_incoming_calls_v4"
+        private const val LEGACY_INCOMING_CHANNEL_ID = "eagle_pbx_incoming_calls_v3"
+        private const val LEGACY_INCOMING_CHANNEL_ID_V2 = "eagle_pbx_incoming_calls_v2"
         private const val MISSED_CHANNEL_ID = "eagle_pbx_missed_calls"
         private const val NOTIFICATION_ID = 101
         private const val INCOMING_NOTIFICATION_ID = 102
@@ -145,6 +164,8 @@ class SipForegroundService : Service() {
 
         private val incomingRingtoneLock = Any()
         private var incomingRingtone: MediaPlayer? = null
+        private val incomingVibrationLock = Any()
+        private var incomingVibrator: Vibrator? = null
         private val incomingTimeoutHandler = Handler(Looper.getMainLooper())
         private var incomingGeneration = 0L
         private var currentIncomingCallId = ""
@@ -221,7 +242,7 @@ class SipForegroundService : Service() {
             incomingDisposition = IncomingDisposition.RINGING
             onIncomingNotificationChanged?.invoke(effectiveCall)
             val generation = ++incomingGeneration
-            ensureIncomingRingtone(context)
+            ensureIncomingAlert(context)
             if (!applicationVisible) {
                 showIncomingNotification(context, effectiveCall, callId)
             }
@@ -374,6 +395,56 @@ class SipForegroundService : Service() {
             }
         }
 
+        private fun ensureIncomingAlert(context: Context) {
+            val audioManager = context.getSystemService(AudioManager::class.java)
+            when (incomingAlertMode(audioManager?.ringerMode)) {
+                IncomingAlertMode.SOUND -> {
+                    stopIncomingVibration()
+                    ensureIncomingRingtone(context)
+                }
+                IncomingAlertMode.VIBRATE -> {
+                    stopIncomingRingtone()
+                    ensureIncomingVibration(context)
+                }
+                IncomingAlertMode.SILENT -> {
+                    stopIncomingRingtone()
+                    stopIncomingVibration()
+                }
+            }
+        }
+
+        private fun ensureIncomingVibration(context: Context) {
+            val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                context.getSystemService(VibratorManager::class.java)?.defaultVibrator
+            } else {
+                @Suppress("DEPRECATION")
+                context.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
+            } ?: return
+            if (!vibrator.hasVibrator()) return
+            synchronized(incomingVibrationLock) {
+                if (incomingVibrator != null) return
+                incomingVibrator = vibrator
+            }
+            vibrator.vibrate(
+                VibrationEffect.createWaveform(
+                    longArrayOf(0L, 650L, 350L, 650L, 1_200L),
+                    0
+                )
+            )
+        }
+
+        private fun stopIncomingVibration() {
+            val vibrator = synchronized(incomingVibrationLock) {
+                incomingVibrator.also { incomingVibrator = null }
+            }
+            vibrator?.cancel()
+        }
+
+        private fun stopIncomingAlert() {
+            stopIncomingRingtone()
+            stopIncomingVibration()
+        }
+
         fun markAnswered(context: Context) {
             incomingDisposition = IncomingDisposition.ANSWERED
             cancelIncoming(context, showMissed = false)
@@ -405,7 +476,7 @@ class SipForegroundService : Service() {
             activeIncomingCall = null
             incomingDisposition = IncomingDisposition.NONE
             onIncomingNotificationChanged?.invoke(null)
-            stopIncomingRingtone()
+            stopIncomingAlert()
             val manager = context.getSystemService(NotificationManager::class.java)
             manager.cancel(INCOMING_NOTIFICATION_ID)
             if (shouldShowMissed && missedCall != null) {

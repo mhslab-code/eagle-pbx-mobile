@@ -1,5 +1,17 @@
 # CODEX — Eagle PBX Mobile
 
+## Revisão 0.1.47
+
+- A tela de chamada recebida pode acender e ser apresentada sobre a tela
+  bloqueada, preservando o encerramento e o retorno ao bloqueio já existentes.
+- Em Android 14 ou superior, `Minha conta` informa quando falta a autorização
+  especial de chamadas em tela cheia e abre diretamente a configuração do app.
+- O alerta passa a respeitar o perfil sonoro do Android: toque corporativo em
+  modo Som, vibração nativa contínua em modo Vibrar e nenhum alerta em modo
+  Silencioso.
+- O canal Android permanece sem som e sem vibração próprios, evitando que a
+  notificação duplique o alerta controlado pelo serviço de telefonia.
+
 ## Revisão 0.1.46
 
 - A abertura de uma chamada pelo corpo do heads-up só solicita retorno
