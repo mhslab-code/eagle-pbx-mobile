@@ -6,6 +6,7 @@ Atualizado em: 2026-08-04 06:22 -03
 
 - Branch: `codex/ringtone-corporativo`.
 - Base confirmada antes do ajuste: `c4df0a3`.
+- Commit da correção: `7fd6335`.
 - Versão candidata: `0.1.53` (`versionCode 54`).
 - Motivo: permitir explicitamente a abertura da tela de chamada em segundo
   plano no Android 15/16, inclusive no Galaxy S25 Ultra bloqueado.
@@ -29,6 +30,9 @@ Atualizado em: 2026-08-04 06:22 -03
 - Assinatura: compatível com o APK de depuração anterior disponível na VM.
 - APK: `Eagle-PBX-Mobile-0.1.53-debug.apk`.
 - SHA-256: `d2ae8c96fc74b4043359bac986ac15f61df158798fe4cc3c3e693ae02adb8528`.
+- Publicação: `https://eaglesistemas.com/pbx/download/Eagle-PBX-Mobile-0.1.53-debug.apk`.
+- Portal: contador cadastrado e redirecionamento `302` validado; APK visível
+  no servidor de arquivos e configuração Nginx aprovada.
 
 ## Próximos passos
 
