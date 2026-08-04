@@ -39,6 +39,10 @@ Atualizado em: 2026-08-04 07:01 -03
 - Assinatura: compatível com o APK de depuração anterior disponível na VM.
 - APK: `Eagle-PBX-Mobile-0.1.55-debug.apk`.
 - SHA-256: `23ae4b7525cc83897c1368c023999b08aecd82bb15746e57113d1b55b6cfce96`.
+- Correção: commit `7fd7830`.
+- Publicação: `https://eaglesistemas.com/pbx/download/Eagle-PBX-Mobile-0.1.55-debug.apk`.
+- Portal: contador cadastrado, redirecionamento `302`, arquivo visível e Nginx
+  validados.
 
 ## Próximos passos
 
