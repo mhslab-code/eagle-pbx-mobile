@@ -68,6 +68,14 @@ internal fun terminalEventOwnsActiveCall(
     terminalCallKey: String
 ): Boolean = activeCallKey != null && activeCallKey == terminalCallKey
 
+internal fun stableCallCorrelationId(
+    existingId: String?,
+    sipCallId: String?,
+    ownerKey: String
+): String = existingId
+    ?: sipCallId?.trim()?.takeIf(String::isNotBlank)
+    ?: ownerKey
+
 /**
  * Owns the native SIP core and the authenticated per-device account.
  *
@@ -99,6 +107,7 @@ class LinphoneEngine(
     private var activeCall: Call? = null
     private var activeCallKey: String? = null
     private val finalizedPrimaryCalls = LinkedHashSet<String>()
+    private val primaryCallCorrelationIds = mutableMapOf<String, String>()
     private var originalTransferCall: Call? = null
     private var consultationCall: Call? = null
     private var releasedConsultationCall: Call? = null
@@ -296,12 +305,25 @@ class LinphoneEngine(
         }
     }
 
+    /**
+     * The SIP Call-ID may still be empty on IncomingReceived and become available
+     * before End/Released. It therefore cannot own the native call lifecycle.
+     */
     private fun callKey(call: Call): String = runCatching {
-        call.callLog.callId
+        call.nativePointer
     }.getOrNull()
-        ?.trim()
-        ?.takeIf(String::isNotBlank)
-        ?: "native:${System.identityHashCode(call)}"
+        ?.takeIf { it != 0L }
+        ?.let { "native:$it" }
+        ?: "wrapper:${System.identityHashCode(call)}"
+
+    private fun callCorrelationId(call: Call, ownerKey: String): String {
+        val sipCallId = runCatching { call.callLog.callId }.getOrNull()
+        return stableCallCorrelationId(
+            existingId = primaryCallCorrelationIds[ownerKey],
+            sipCallId = sipCallId,
+            ownerKey = ownerKey
+        ).also { primaryCallCorrelationIds[ownerKey] = it }
+    }
 
     private fun setActiveCall(call: Call?) {
         activeCall = call
@@ -313,7 +335,7 @@ class LinphoneEngine(
         finalizedPrimaryCalls.remove(key)
         activeCall = call
         activeCallKey = key
-        return key
+        return callCorrelationId(call, key)
     }
 
     private fun finishPrimaryCall(call: Call, failed: Boolean) {
@@ -322,6 +344,7 @@ class LinphoneEngine(
         while (finalizedPrimaryCalls.size > 32) {
             finalizedPrimaryCalls.remove(finalizedPrimaryCalls.first())
         }
+        val correlationId = callCorrelationId(call, key)
         if (terminalEventOwnsActiveCall(activeCallKey, key)) {
             setActiveCall(null)
             onIncomingCallChanged(null)
@@ -329,7 +352,8 @@ class LinphoneEngine(
                 if (failed) SipCallStatus.FAILED else SipCallStatus.IDLE
             )
         }
-        onCallTerminated(key, failed)
+        onCallTerminated(correlationId, failed)
+        primaryCallCorrelationIds.remove(key)
     }
 
     fun start() {
@@ -352,6 +376,18 @@ class LinphoneEngine(
         core.enterForeground()
         core.isNetworkReachable = true
         core.refreshRegisters()
+    }
+
+    /**
+     * Restores registration after the custom FCM wake-up. The PBX push identifier
+     * is an Asterisk lifecycle ID rather than the SIP INVITE Call-ID, so the
+     * nullable Liblinphone path is intentionally used here.
+     */
+    fun processIncomingPush(): Boolean {
+        if (account == null) return false
+        core.isNetworkReachable = true
+        core.processPushNotification(null)
+        return true
     }
 
     fun configure(provisioning: SipProvisioning) {
@@ -663,11 +699,21 @@ class LinphoneEngine(
 
     fun acceptIncomingCall(): Boolean {
         val call = activeCall ?: return false
+        if (call.state !in setOf(
+                Call.State.IncomingReceived,
+                Call.State.IncomingEarlyMedia
+            )
+        ) return false
         return call.accept() == 0
     }
 
     fun rejectIncomingCall(): Boolean {
         val call = activeCall ?: return false
+        if (call.state !in setOf(
+                Call.State.IncomingReceived,
+                Call.State.IncomingEarlyMedia
+            )
+        ) return false
         val accepted = call.decline(Reason.Declined) == 0
         if (accepted) {
             onIncomingCallChanged(null)
@@ -694,6 +740,7 @@ class LinphoneEngine(
         activeCall?.terminate()
         setActiveCall(null)
         finalizedPrimaryCalls.clear()
+        primaryCallCorrelationIds.clear()
         account?.let { core.removeAccount(it) }
         authInfo?.let { core.removeAuthInfo(it) }
         account = null

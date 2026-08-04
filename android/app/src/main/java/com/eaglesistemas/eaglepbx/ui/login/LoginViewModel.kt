@@ -91,6 +91,7 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
     private var sipIncomingWasActive = false
     private var notificationIncomingCall: IncomingSipCall? = null
     private var answerIncomingWhenReady = false
+    private var pendingIncomingPushWake = false
     private var mediaPlayer: MediaPlayer? = null
     private var playbackJob: Job? = null
     private var contactsRequestInFlight = false
@@ -202,6 +203,7 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
                 runCatching {
                     linphoneEngine?.configure(provisioning)
                         ?: error("Motor SIP indisponível")
+                    processPendingIncomingPush()
                 }.onFailure {
                     mutableState.value = mutableState.value.copy(
                         sipEngineStatus = SipEngineStatus.REGISTRATION_FAILED
@@ -229,9 +231,13 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
                 },
                 onCallStatusChanged = { status ->
                     if (status == SipCallStatus.CONNECTED) {
+                        val connectedIncomingCall = notificationIncomingCall != null ||
+                            SipForegroundService.currentIncomingCall() != null
                         answerIncomingWhenReady = false
                         notificationIncomingCall = null
-                        SipForegroundService.markAnswered(getApplication())
+                        if (connectedIncomingCall) {
+                            SipForegroundService.markAnswered(getApplication())
+                        }
                         telecomController()?.markActive()
                     } else if (status in setOf(SipCallStatus.IDLE, SipCallStatus.FAILED)) {
                         SipForegroundService.finishOngoingCall(getApplication())
@@ -342,6 +348,18 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
             linphoneEngine?.enterBackground()
         } else {
             linphoneEngine?.enterForeground()
+        }
+    }
+
+    fun processIncomingPush() {
+        pendingIncomingPushWake = true
+        processPendingIncomingPush()
+    }
+
+    private fun processPendingIncomingPush() {
+        if (!pendingIncomingPushWake) return
+        if (linphoneEngine?.processIncomingPush() == true) {
+            pendingIncomingPushWake = false
         }
     }
 

@@ -1,5 +1,6 @@
 package com.eaglesistemas.eaglepbx.push
 
+import com.eaglesistemas.eaglepbx.EaglePbxApplication
 import com.eaglesistemas.eaglepbx.data.DeviceIdentityStore
 import com.eaglesistemas.eaglepbx.data.EagleApiClient
 import com.eaglesistemas.eaglepbx.data.SecureSessionStore
@@ -35,6 +36,9 @@ class EagleFirebaseMessagingService : FirebaseMessagingService() {
         val sessionStore = SecureSessionStore(applicationContext)
         if (sessionStore.read().isNullOrBlank()) return
 
+        (applicationContext as? EaglePbxApplication)
+            ?.loginViewModel
+            ?.processIncomingPush()
         val callerNumber = message.data["callerNumber"].orEmpty().take(64)
         val callerName = message.data["callerName"]
             ?.trim()

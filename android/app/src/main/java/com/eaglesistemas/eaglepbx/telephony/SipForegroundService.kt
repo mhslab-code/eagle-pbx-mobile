@@ -667,6 +667,7 @@ class SipForegroundService : Service() {
         }
 
         fun markAnswered(context: Context) {
+            if (activeIncomingCall == null && incomingAnswerConfirmed) return
             val answeredCall = activeIncomingCall
             incomingDisposition = IncomingDisposition.ANSWERED
             incomingAnswerConfirmed = true

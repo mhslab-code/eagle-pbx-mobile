@@ -127,4 +127,34 @@ class IncomingFullScreenPolicyTest {
             )
         )
     }
+
+    @Test
+    fun correlationRemainsStableWhenSipCallIdAppearsAfterIncomingEvent() {
+        val ownerKey = "native:2002"
+        val incomingCorrelation = stableCallCorrelationId(
+            existingId = null,
+            sipCallId = null,
+            ownerKey = ownerKey
+        )
+        val terminalCorrelation = stableCallCorrelationId(
+            existingId = incomingCorrelation,
+            sipCallId = "late-sip-call-id",
+            ownerKey = ownerKey
+        )
+
+        assertEquals(ownerKey, incomingCorrelation)
+        assertEquals(incomingCorrelation, terminalCorrelation)
+    }
+
+    @Test
+    fun correlationPreservesSipCallIdAvailableAtFirstEvent() {
+        assertEquals(
+            "sip-call-2",
+            stableCallCorrelationId(
+                existingId = null,
+                sipCallId = " sip-call-2 ",
+                ownerKey = "native:2002"
+            )
+        )
+    }
 }
