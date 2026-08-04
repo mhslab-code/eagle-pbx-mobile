@@ -476,11 +476,13 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
         if (linphoneEngine?.acceptIncomingCall() == true) {
             answerIncomingWhenReady = false
             SipForegroundService.prepareForAnswer(getApplication())
+            mutableState.value = mutableState.value.copy(incomingSipCall = null)
         } else if (
             SipForegroundService.currentIncomingCall() != null &&
             mutableState.value.sipCallStatus == SipCallStatus.INCOMING
         ) {
             answerIncomingWhenReady = true
+            mutableState.value = mutableState.value.copy(incomingSipCall = null)
         }
     }
 

@@ -167,6 +167,11 @@ pelo Android e a autorização do remetente é aplicada apenas no envio manual d
 contingência. A criação das opções possui fallback seguro para preservar toque
 e vibração mesmo que uma implementação do fabricante rejeite a opção.
 
+Na versão 0.1.55, a solicitação de atendimento originada na atividade dedicada
+remove imediatamente as ações de chamada recebida do estado da interface
+principal. A atividade dedicada acompanha `Conectando...` até a confirmação
+SIP, evitando um segundo modal antes da tela de chamada ativa.
+
 O estado de presença já utiliza a API existente do Eagle PBX. Temporariamente,
 o DND continua sendo aplicado ao ramal inteiro no Asterisk. A separação do DND
 por instalação — Android, PWA, desktop e softphones — fica prevista para a

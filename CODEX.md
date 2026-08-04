@@ -1,5 +1,15 @@
 # CODEX — Eagle PBX Mobile
 
+## Revisão 0.1.55
+
+- Atender pela atividade de tela cheia oculta imediatamente as ações de
+  chamada recebida da interface principal, evitando que o modal com
+  **Recusar** e **Atender** seja apresentado uma segunda vez.
+- A atividade dedicada permanece em `Conectando...` até a confirmação SIP e,
+  então, entrega diretamente a interface de chamada ativa.
+- Recusar continua encerrando a atividade dedicada e retornando ao bloqueio.
+- O pacote passa a usar `versionCode 56` e `versionName 0.1.55`.
+
 ## Revisão 0.1.54
 
 - Corrige a regressão da `0.1.53` que encerrava o processo ao iniciar o alerta

@@ -45,6 +45,15 @@ definitiva de assinatura e suas senhas não pertencem ao repositório.
 
 ## Marcos validados
 
+### 0.1.55
+
+- atendimento pela tela cheia não reapresenta as ações de chamada recebida na
+  atividade principal;
+- confirmação visual de chamada ativa continua condicionada ao estado SIP
+  `CONNECTED`;
+- atendimento e recusa permanecem pendentes de homologação física no S25
+  Ultra.
+
 ### 0.1.54
 
 - corrigida a regressão de encerramento do processo observada fisicamente na
