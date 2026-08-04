@@ -45,6 +45,19 @@ definitiva de assinatura e suas senhas não pertencem ao repositório.
 
 ## Marcos validados
 
+### 0.1.61
+
+- configuração SIP cifrada por AES-GCM com chave do Android Keystore;
+- restauração local da conta antes das chamadas de rede no arranque frio;
+- consulta direta de configuração quando o primeiro push chega sem cache;
+- reconciliação idempotente que não recria uma conta SIP já ativa;
+- remoção do cache em logoff, autorização inválida ou dispositivo não aprovado;
+- teste instrumentado confirma round-trip cifrado, remoção separada e ausência
+  da senha em texto legível nas preferências;
+- build limpo, testes unitários e cinco testes instrumentados aprovados no
+  Android 16/API 36 equivalente ao Galaxy A25 5G;
+- fluxo SIP real permanece como validação física decisiva no S25 Ultra.
+
 ### 0.1.60
 
 - propriedade do ciclo baseada no `nativePointer` estável do objeto Liblinphone;

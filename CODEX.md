@@ -1,5 +1,19 @@
 # CODEX — Eagle PBX Mobile
 
+## Revisão 0.1.61
+
+- A configuração SIP aprovada passa a ser armazenada cifrada por AES-GCM com
+  chave não exportável do Android Keystore e restaurada antes das chamadas de
+  rede no arranque do processo.
+- Um push recebido sem conta ativa dispara imediatamente a consulta de
+  configuração SIP, sem aguardar restauração de perfil, agenda ou novo registro
+  administrativo do dispositivo.
+- Atualizações com a mesma configuração renovam o registro, mas não removem nem
+  recriam a conta durante uma chamada.
+- Cache e conta são removidos em logoff, sessão inválida ou dispositivo que
+  deixou de estar aprovado.
+- O pacote passa a usar `versionCode 62` e `versionName 0.1.61`.
+
 ## Revisão 0.1.60
 
 - A propriedade do ciclo SIP passa a usar o ponteiro nativo estável da chamada;

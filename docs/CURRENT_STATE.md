@@ -1,16 +1,16 @@
 # Estado atual — Eagle PBX Mobile
 
-Atualizado em: 2026-08-04 14:33 -03
+Atualizado em: 2026-08-04 15:06 -03
 
 ## Código e versão
 
 - Branch: `codex/ringtone-corporativo`.
-- Base confirmada antes do ajuste: `2bfd8a7`.
-- Commit da correção: `aed0a75`.
-- Versão candidata: `0.1.60` (`versionCode 61`).
-- Motivo: manter uma identidade imutável durante todo o ciclo nativo da segunda
-  chamada, restaurar o registro pelo caminho oficial de push do Liblinphone e
-  impedir aceite contra uma referência já encerrada.
+- Base confirmada antes do ajuste: `745a299`.
+- Commit da correção: `ce28e80`.
+- Versão candidata: `0.1.61` (`versionCode 62`).
+- Motivo: eliminar os 35 segundos observados entre o push e a configuração SIP
+  no arranque frio, garantindo que o `INVITE` alcance o aparelho enquanto a
+  chamada ainda está ativa.
 
 ## Homologação
 
@@ -71,35 +71,48 @@ Atualizado em: 2026-08-04 14:33 -03
 - O FCM passa a chamar `Core.processPushNotification(null)`. O valor enviado
   pelo PBX é o identificador Asterisk usado para cancelamento, e não pode ser
   entregue ao Liblinphone como se fosse o `Call-ID` do `INVITE`.
+- Validação física da `0.1.60`: a primeira chamada já permaneceu em
+  `Conectando...` e caiu.
+- Evidência dos serviços: o PBX enviou o push às 14:50:28 e encerrou o ciclo às
+  14:50:43, enquanto o APK só consultou e recebeu a configuração SIP às
+  14:51:03. A interface veio do FCM, mas não existiu `INVITE` atendível no S25.
+- A revisão `0.1.61` restaura a configuração SIP de cache cifrado no início do
+  processo. Na ausência de cache, o push dispara a consulta de configuração
+  imediatamente, sem aguardar a restauração completa do aplicativo.
+- A reconciliação posterior tornou-se idempotente: a mesma configuração renova
+  o registro sem remover a conta que já está processando a chamada.
 
-## Testes da 0.1.60
+## Testes da 0.1.61
 
-- `clean testDebugUnitTest assembleDebug`: aprovado, 46 tarefas.
-- Testes unitários cobrem a mudança tardia do `Call-ID`, preservação da
-  correlação e propriedade independente de chamadas consecutivas.
-- `connectedDebugAndroidTest`: aprovado, 73 tarefas.
-- Quatro testes instrumentados passaram no Android 16/API 36 equivalente ao
-  Galaxy A25 5G, incluindo liberação atrasada da primeira durante a segunda.
-- Pacote conferido: `versionName 0.1.60`, `versionCode 61`, `minSdk 28` e
+- `clean testDebugUnitTest assembleDebug connectedDebugAndroidTest`: aprovado.
+- Gradle: 79 tarefas executadas em build limpo.
+- Testes unitários cobrem chamadas consecutivas e configuração idempotente.
+- Cinco testes instrumentados passaram no Android 16/API 36 equivalente ao
+  Galaxy A25 5G.
+- O teste do cache confirma round-trip pelo Keystore, remoção independente e
+  ausência da senha SIP em texto legível nas preferências Android.
+- Pacote conferido: `versionName 0.1.61`, `versionCode 62`, `minSdk 28` e
   `targetSdk 36`.
 - Assinatura: Android Debug, certificado SHA-256
   `74f558c6f85328521a419b2e32e35875640470d1b11644fae9d564fbcf8d5789`.
-- APK: `Eagle-PBX-Mobile-0.1.60-debug.apk`.
-- SHA-256: `73a651627febabafd483241b9b8936b6ff309df05060edca86df107d52ed943a`.
-- Correção: commit `aed0a75`.
-- Publicação: `https://eaglesistemas.com/pbx/download/Eagle-PBX-Mobile-0.1.60-debug.apk`.
+- APK: `Eagle-PBX-Mobile-0.1.61-debug.apk`.
+- SHA-256: `da98e79c4828ea6ea0b58323ae9dc72be1d1766a7e9256ba473bfc279b783088`.
+- Correção: commit `ce28e80`.
+- Publicação: `https://eaglesistemas.com/pbx/download/Eagle-PBX-Mobile-0.1.61-debug.apk`.
 - Portal: arquivo, hash, catálogo, contador, serviço e configuração Nginx
   validados; acesso público continua protegido por autenticação HTTP.
 
 ## Próximos passos
 
-1. Instalar a `0.1.60` sobre a versão existente, sem desinstalar.
-2. Bloquear o S25 Ultra e ligar para o ramal 101.
-3. Atender e encerrar a primeira chamada e iniciar a segunda imediatamente.
-4. Na segunda, tocar em **Atender** e confirmar a transição direta de
+1. Instalar a `0.1.61` sobre a versão existente, sem desinstalar.
+2. Abrir o aplicativo uma vez e aguardar o estado **Online**; isso cria o cache
+   cifrado inicial desta revisão.
+3. Bloquear o S25 Ultra e ligar para o ramal 101.
+4. Atender e encerrar a primeira chamada e iniciar a segunda imediatamente.
+5. Na segunda, tocar em **Atender** e confirmar a transição direta de
    `Conectando...` para **Chamada em andamento**.
-5. Encerrar a segunda chamada pelo chamador e confirmar que a interface fecha.
-6. Somente após homologação completa, criar a tag final e avançar para Chamadas
+6. Encerrar a segunda chamada pelo chamador e confirmar que a interface fecha.
+7. Somente após homologação completa, criar a tag final e avançar para Chamadas
    ativas do Painel.
 
 ## Checkpoints
@@ -112,8 +125,8 @@ Atualizado em: 2026-08-04 14:33 -03
 
 - Dependências: PBX `10.20.20.140`, API/App `10.20.20.147`, ambiente Android
   `10.20.20.148` e portal de downloads `10.20.20.116`.
-- Defeito conhecido: o estabelecimento SIP e o áudio na segunda chamada
-  consecutiva ainda dependem da validação física da revisão `0.1.60` no S25
+- Defeito conhecido: o estabelecimento SIP e o áudio na chamada recebida após
+  arranque frio ainda dependem da validação física da revisão `0.1.61` no S25
   Ultra.
 - Rollback operacional: `checkpoint/mobile-0.1.54-fullscreen`.
 - Ponto estratégico de infraestrutura preservado:

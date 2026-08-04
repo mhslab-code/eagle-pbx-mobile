@@ -220,6 +220,20 @@ payload é o ciclo Asterisk usado para deduplicação e cancelamento, não o
 aguardar um identificador SIP incorreto, e o atendimento enfileirado permanece
 sob controle do evento real recebido pelo motor.
 
+Na versão 0.1.61, a configuração SIP aprovada ganha continuidade segura entre
+processos. O payload completo é cifrado em AES-GCM por uma chave não exportável
+do Android Keystore; `allowBackup=false` impede sua inclusão em backup ou
+transferência. O cache é restaurado localmente antes da restauração HTTP da
+sessão e é removido junto com a conta em logoff, revogação ou falha explícita de
+autorização.
+
+O primeiro arranque após uma atualização que ainda não possua cache continua
+protegido: ao receber `incoming_call`, o controlador consulta diretamente
+`/api/mobile/devices/config` usando a sessão já cifrada e configura o motor sem
+aguardar perfil, contatos, histórico ou a reconciliação administrativa normal.
+Quando essa reconciliação chega depois, dados idênticos apenas renovam o
+registro; não removem uma conta que já recebeu o `INVITE`.
+
 O estado de presença já utiliza a API existente do Eagle PBX. Temporariamente,
 o DND continua sendo aplicado ao ramal inteiro no Asterisk. A separação do DND
 por instalação — Android, PWA, desktop e softphones — fica prevista para a
