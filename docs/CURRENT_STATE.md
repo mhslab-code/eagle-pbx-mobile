@@ -1,6 +1,6 @@
 # Estado atual — Eagle PBX Mobile
 
-Atualizado em: 2026-08-04 15:43 -03
+Atualizado em: 2026-08-04 16:16 -03
 
 ## Código e versão
 
@@ -96,6 +96,14 @@ Atualizado em: 2026-08-04 15:43 -03
   para `Conectando...`.
 - Uma guarda da mesma geração remove a interface após três ausências
   consecutivas do objeto SIP nativo.
+- Na primeira tentativa física com a `0.1.62`, o S25 Ultra não tocou porque o
+  `INVITE` SIP não chegou ao aparelho: o PBX iniciou o ciclo às 16:07:19,
+  encerrou a janela às 16:07:35 e o registro móvel só reapareceu às 16:07:38.
+- A causa estava no canal `eagle-mobile-push`, que deixava de procurar o
+  contato após 14 segundos, junto do tempo padrão de 15 segundos do ramal.
+- A infraestrutura foi corrigida no commit `d774491`: o contato passa a ser
+  reavaliado por até 30 segundos e ramais com dispositivo mobile mantêm pelo
+  menos 45 segundos de toque. O APK permanece na versão `0.1.62`.
 
 ## Testes da 0.1.62
 
@@ -120,14 +128,13 @@ Atualizado em: 2026-08-04 15:43 -03
 
 ## Próximos passos
 
-1. Instalar a `0.1.62` sobre a versão existente, sem desinstalar.
-2. Abrir o aplicativo uma vez e aguardar o estado **Online**.
-3. Bloquear o S25 Ultra e ligar para o ramal 101.
-4. Atender, manter por alguns segundos e encerrar a primeira chamada.
-5. Iniciar a segunda imediatamente, tocar em **Atender** e confirmar a
+1. Manter a `0.1.62` instalada e aguardar o estado **Online**.
+2. Bloquear o S25 Ultra e ligar para o ramal 101.
+3. Atender, manter por alguns segundos e encerrar a primeira chamada.
+4. Iniciar a segunda imediatamente, tocar em **Atender** e confirmar a
    transição de `Conectando...` para **Chamada em andamento**.
-6. Encerrar a segunda chamada pelo chamador e confirmar que a interface fecha.
-7. Somente após homologação completa, criar a tag final e avançar para Chamadas
+5. Encerrar a segunda chamada pelo chamador e confirmar que a interface fecha.
+6. Somente após homologação completa, criar a tag final e avançar para Chamadas
    ativas do Painel.
 
 ## Checkpoints
@@ -142,7 +149,8 @@ Atualizado em: 2026-08-04 15:43 -03
   `10.20.20.148` e portal de downloads `10.20.20.116`.
 - Defeito conhecido: o estabelecimento SIP e o áudio em duas chamadas
   consecutivas ainda dependem da validação física da revisão `0.1.62` no S25
-  Ultra; a interface órfã já possui cobertura instrumentada específica.
+  Ultra após a ampliação das janelas do PBX; a interface órfã já possui
+  cobertura instrumentada específica.
 - Rollback operacional: `checkpoint/mobile-0.1.54-fullscreen`.
 - Ponto estratégico de infraestrutura preservado:
   `_backup_pre_restruturacao_cores`.

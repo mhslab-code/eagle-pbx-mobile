@@ -247,6 +247,12 @@ encerram o alerta e a atividade da mesma geração. Essa reconciliação não de
 do tempo de entrega do FCM e não permite que um término antigo remova uma nova
 chamada.
 
+O PBX mantém uma janela complementar para o arranque frio do Android. Quando o
+contato SIP está ausente, o canal móvel solicita o FCM e reavalia o registro a
+cada segundo por até 30 segundos. Ramais associados a mobile tocam por pelo
+menos 45 segundos, garantindo tempo de atendimento depois de atrasos de
+despertar observados na One UI sem transformar o push em sinalização de mídia.
+
 O estado de presença já utiliza a API existente do Eagle PBX. Temporariamente,
 o DND continua sendo aplicado ao ramal inteiro no Asterisk. A separação do DND
 por instalação — Android, PWA, desktop e softphones — fica prevista para a

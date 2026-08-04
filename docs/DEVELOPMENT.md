@@ -57,6 +57,9 @@ definitiva de assinatura e suas senhas não pertencem ao repositório.
   aprovados no Android 16/API 36 equivalente ao Galaxy A25 5G;
 - teste instrumentado reproduz a perda do objeto SIP e confirma o fechamento
   automático do estado de conexão;
+- teste físico isolou um atraso externo ao APK: o S25 registrou após 19
+  segundos, além da antiga janela de 14 segundos do PBX; a infraestrutura foi
+  ampliada para 30 segundos de reavaliação e 45 segundos de toque;
 - estabelecimento real de duas chamadas consecutivas permanece como validação
   física decisiva no S25 Ultra.
 

@@ -96,6 +96,11 @@ recursos de mídia antes de executar `accept()`. A interface só entra em
 `Conectando...` depois que o comando é aceito pelo SDK. Uma guarda independente
 fecha a tela recebida assim que a chamada deixa de existir no Liblinphone,
 mesmo se o cancelamento FCM estiver atrasado.
+O teste físico dessa revisão também isolou uma limitação externa ao APK: o S25
+Ultra levou cerca de 19 segundos para restaurar o registro, enquanto o PBX
+deixava de consultar o contato após 14 segundos. O canal móvel agora reavalia o
+registro por até 30 segundos e mantém no mínimo 45 segundos de toque no ramal,
+sem exigir nova compilação ou reinstalação do aplicativo.
 Com o aplicativo visível, o modal interno continua sendo a interface principal;
 a notificação nativa permanece ativa para o Telecom, mas não força a tela cheia.
 O canal de chamadas é silencioso e não disputa a reprodução controlada pelo

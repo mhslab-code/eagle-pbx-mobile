@@ -12,6 +12,10 @@
   pode produzir confirmação visual falsa.
 - Uma guarda consulta a lista nativa e remove alerta, notificação e atividade
   quando o objeto SIP desaparece, mesmo com atraso do cancelamento FCM.
+- A primeira validação física sem toque foi rastreada até o PBX: o registro do
+  S25 surgiu depois que a antiga espera de 14 segundos já havia terminado. A
+  infraestrutura passou a reavaliar o contato por 30 segundos e a manter 45
+  segundos de toque; não houve nova alteração no APK.
 - O pacote passa a usar `versionCode 63` e `versionName 0.1.62`.
 
 ## Revisão 0.1.61
