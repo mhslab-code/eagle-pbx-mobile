@@ -158,6 +158,48 @@ class SecureSessionStore(context: Context) {
         }.getOrNull()
     }
 
+    fun saveSipProvisioning(provisioning: SipProvisioning) {
+        saveEncrypted(
+            KEY_SIP_PROVISIONING,
+            KEY_SIP_PROVISIONING_IV,
+            JSONObject()
+                .put("username", provisioning.username)
+                .put("password", provisioning.password)
+                .put("domain", provisioning.domain)
+                .put("port", provisioning.port)
+                .put("transport", provisioning.transport)
+                .toString()
+        )
+    }
+
+    fun readSipProvisioning(): SipProvisioning? =
+        readEncrypted(KEY_SIP_PROVISIONING, KEY_SIP_PROVISIONING_IV)?.let {
+            runCatching {
+                JSONObject(it).let { json ->
+                    SipProvisioning(
+                        username = json.getString("username"),
+                        password = json.getString("password"),
+                        domain = json.getString("domain"),
+                        port = json.getInt("port"),
+                        transport = json.getString("transport")
+                    ).also { provisioning ->
+                        require(provisioning.username.isNotBlank())
+                        require(provisioning.password.isNotBlank())
+                        require(provisioning.domain.isNotBlank())
+                        require(provisioning.port in 1..65535)
+                        require(provisioning.transport == "tls")
+                    }
+                }
+            }.getOrNull()
+        }
+
+    fun clearSipProvisioning() {
+        preferences.edit()
+            .remove(KEY_SIP_PROVISIONING)
+            .remove(KEY_SIP_PROVISIONING_IV)
+            .apply()
+    }
+
     fun clear() {
         preferences.edit().clear().apply()
     }
@@ -216,6 +258,8 @@ class SecureSessionStore(context: Context) {
         const val KEY_CONTACTS_IV = "contacts_iv"
         const val KEY_HISTORY = "history"
         const val KEY_HISTORY_IV = "history_iv"
+        const val KEY_SIP_PROVISIONING = "sip_provisioning"
+        const val KEY_SIP_PROVISIONING_IV = "sip_provisioning_iv"
         const val MAX_CACHED_HISTORY = 200
         const val KEY_ALIAS = "eagle_pbx_session_v1"
         const val KEYSTORE_PROVIDER = "AndroidKeyStore"

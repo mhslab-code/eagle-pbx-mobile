@@ -39,11 +39,19 @@ class EagleApiClient(
     fun cachedHistory(extension: String): List<HistoryCall>? =
         sessionStore.readHistory(extension)
 
+    fun cachedSipProvisioning(): SipProvisioning? =
+        sessionStore.readSipProvisioning()
+
     fun cacheContacts(extension: String, contacts: List<EagleContact>) =
         sessionStore.saveContacts(extension, contacts)
 
     fun cacheHistory(extension: String, calls: List<HistoryCall>) =
         sessionStore.saveHistory(extension, calls)
+
+    fun cacheSipProvisioning(provisioning: SipProvisioning) =
+        sessionStore.saveSipProvisioning(provisioning)
+
+    fun clearCachedSipProvisioning() = sessionStore.clearSipProvisioning()
 
     fun login(extension: String, password: String): AuthenticatedUser {
         val body = "username=${encode(extension)}&password=${encode(password)}"

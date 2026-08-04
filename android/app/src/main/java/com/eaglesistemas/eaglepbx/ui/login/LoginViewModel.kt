@@ -92,6 +92,7 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
     private var notificationIncomingCall: IncomingSipCall? = null
     private var answerIncomingWhenReady = false
     private var pendingIncomingPushWake = false
+    private var sipConfigurationJob: Job? = null
     private var mediaPlayer: MediaPlayer? = null
     private var playbackJob: Job? = null
     private var contactsRequestInFlight = false
@@ -156,6 +157,7 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
                 error = failure?.toFriendlyMessage(),
                 connectionError = null
             )
+            linphoneEngine?.clearAccount()
             return
         }
     }
@@ -184,7 +186,14 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
             )
             result.getOrNull()?.let {
                 synchronizePushRegistration()
-                if (it.status == "ready") configureSipAccount()
+                if (it.status == "ready") {
+                    configureSipAccount()
+                } else {
+                    withContext(Dispatchers.IO) {
+                        api.clearCachedSipProvisioning()
+                    }
+                    linphoneEngine?.clearAccount()
+                }
             }
         }
     }
@@ -195,30 +204,56 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun configureSipAccount() {
-        viewModelScope.launch {
-            val result = runCatching {
-                withContext(Dispatchers.IO) { api.mobileSipConfig() }
-            }
-            result.onSuccess { provisioning ->
-                runCatching {
-                    linphoneEngine?.configure(provisioning)
-                        ?: error("Motor SIP indisponível")
-                    processPendingIncomingPush()
-                }.onFailure {
-                    mutableState.value = mutableState.value.copy(
-                        sipEngineStatus = SipEngineStatus.REGISTRATION_FAILED
-                    )
+        if (sipConfigurationJob?.isActive == true) return
+        sipConfigurationJob = viewModelScope.launch {
+            try {
+                val result = runCatching {
+                    withContext(Dispatchers.IO) { api.mobileSipConfig() }
                 }
-            }.onFailure {
-                mutableState.value = mutableState.value.copy(
-                    sipEngineStatus = SipEngineStatus.REGISTRATION_FAILED
-                )
+                val provisioning = result.getOrNull()
+                if (provisioning != null) {
+                    val configured = runCatching {
+                        val engine = linphoneEngine ?: error("Motor SIP indisponível")
+                        engine.configure(provisioning)
+                        withContext(Dispatchers.IO) {
+                            api.cacheSipProvisioning(provisioning)
+                        }
+                        processPendingIncomingPush()
+                    }
+                    if (configured.isFailure) {
+                        mutableState.value = mutableState.value.copy(
+                            sipEngineStatus = SipEngineStatus.REGISTRATION_FAILED
+                        )
+                    }
+                } else {
+                    val error = result.exceptionOrNull()
+                    val authorizationRevoked = error is ApiException &&
+                        error.statusCode in listOf(401, 403)
+                    val cachedProvisioning = withContext(Dispatchers.IO) {
+                        if (authorizationRevoked) {
+                            api.clearCachedSipProvisioning()
+                            null
+                        } else {
+                            api.cachedSipProvisioning()
+                        }
+                    }
+                    if (authorizationRevoked) linphoneEngine?.clearAccount()
+                    if (cachedProvisioning == null) {
+                        mutableState.value = mutableState.value.copy(
+                            sipEngineStatus = SipEngineStatus.REGISTRATION_FAILED
+                        )
+                    }
+                }
+            } finally {
+                sipConfigurationJob = null
             }
         }
     }
 
     private fun initializeSipEngine() {
+        var restoredCachedSipAccount = false
         runCatching {
+            val cachedProvisioning = api.cachedSipProvisioning()
             LinphoneEngine(
                 context = getApplication(),
                 onStatusChanged = { status ->
@@ -312,11 +347,18 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
             ).also {
                 it.start()
                 linphoneEngine = it
+                if (cachedProvisioning != null) {
+                    it.configure(cachedProvisioning)
+                    restoredCachedSipAccount = true
+                    processPendingIncomingPush()
+                }
             }
         }.onSuccess {
-            mutableState.value = mutableState.value.copy(
-                sipEngineStatus = SipEngineStatus.READY
-            )
+            if (!restoredCachedSipAccount) {
+                mutableState.value = mutableState.value.copy(
+                    sipEngineStatus = SipEngineStatus.READY
+                )
+            }
         }.onFailure {
             mutableState.value = mutableState.value.copy(
                 sipEngineStatus = SipEngineStatus.UNAVAILABLE
@@ -353,14 +395,18 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
 
     fun processIncomingPush() {
         pendingIncomingPushWake = true
-        processPendingIncomingPush()
+        if (!processPendingIncomingPush()) {
+            configureSipAccount()
+        }
     }
 
-    private fun processPendingIncomingPush() {
-        if (!pendingIncomingPushWake) return
+    private fun processPendingIncomingPush(): Boolean {
+        if (!pendingIncomingPushWake) return true
         if (linphoneEngine?.processIncomingPush() == true) {
             pendingIncomingPushWake = false
+            return true
         }
+        return false
     }
 
     fun placeCall(destination: String) {

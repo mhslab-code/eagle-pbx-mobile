@@ -1,5 +1,6 @@
 package com.eaglesistemas.eaglepbx.telephony
 
+import com.eaglesistemas.eaglepbx.data.SipProvisioning
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -154,6 +155,32 @@ class IncomingFullScreenPolicyTest {
                 existingId = null,
                 sipCallId = " sip-call-2 ",
                 ownerKey = "native:2002"
+            )
+        )
+    }
+
+    @Test
+    fun unchangedProvisioningDoesNotRecreateAnActiveSipAccount() {
+        val provisioning = SipProvisioning(
+            username = "mob101-test",
+            password = "encrypted-at-rest",
+            domain = "pbx.example.test",
+            port = 5061,
+            transport = "tls"
+        )
+
+        assertFalse(
+            shouldReplaceSipAccount(
+                currentProvisioning = provisioning,
+                requestedProvisioning = provisioning.copy(),
+                accountAvailable = true
+            )
+        )
+        assertTrue(
+            shouldReplaceSipAccount(
+                currentProvisioning = provisioning,
+                requestedProvisioning = provisioning,
+                accountAvailable = false
             )
         )
     }

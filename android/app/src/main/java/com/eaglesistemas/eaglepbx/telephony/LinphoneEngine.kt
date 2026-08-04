@@ -76,6 +76,12 @@ internal fun stableCallCorrelationId(
     ?: sipCallId?.trim()?.takeIf(String::isNotBlank)
     ?: ownerKey
 
+internal fun shouldReplaceSipAccount(
+    currentProvisioning: SipProvisioning?,
+    requestedProvisioning: SipProvisioning,
+    accountAvailable: Boolean
+): Boolean = !accountAvailable || currentProvisioning != requestedProvisioning
+
 /**
  * Owns the native SIP core and the authenticated per-device account.
  *
@@ -104,6 +110,7 @@ class LinphoneEngine(
     }
     private var account: Account? = null
     private var authInfo: AuthInfo? = null
+    private var currentProvisioning: SipProvisioning? = null
     private var activeCall: Call? = null
     private var activeCallKey: String? = null
     private val finalizedPrimaryCalls = LinkedHashSet<String>()
@@ -392,6 +399,16 @@ class LinphoneEngine(
 
     fun configure(provisioning: SipProvisioning) {
         require(provisioning.transport == "tls")
+        if (!shouldReplaceSipAccount(
+                currentProvisioning = currentProvisioning,
+                requestedProvisioning = provisioning,
+                accountAvailable = account != null
+            )
+        ) {
+            core.isNetworkReachable = true
+            core.refreshRegisters()
+            return
+        }
         clearAccount()
         val factory = Factory.instance()
         val identity = requireNotNull(
@@ -427,6 +444,7 @@ class LinphoneEngine(
         core.defaultAccount = configuredAccount
         authInfo = credentials
         account = configuredAccount
+        currentProvisioning = provisioning
         sipDomain = provisioning.domain
         onStatusChanged(SipEngineStatus.REGISTERING)
     }
@@ -745,6 +763,7 @@ class LinphoneEngine(
         authInfo?.let { core.removeAuthInfo(it) }
         account = null
         authInfo = null
+        currentProvisioning = null
         sipDomain = null
         onIncomingCallChanged(null)
         onAttendedTransferChanged(AttendedTransferStatus.IDLE)
