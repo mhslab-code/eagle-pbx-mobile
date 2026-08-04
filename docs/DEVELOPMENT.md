@@ -45,6 +45,21 @@ definitiva de assinatura e suas senhas não pertencem ao repositório.
 
 ## Marcos validados
 
+### 0.1.60
+
+- propriedade do ciclo baseada no `nativePointer` estável do objeto Liblinphone;
+- correlação externa congelada no primeiro evento, mesmo que o `Call-ID` só
+  apareça posteriormente;
+- `accept()` e `decline()` restritos aos estados reais de chamada recebida;
+- confirmação de atendimento idempotente entre `Connected` e `StreamsRunning`;
+- despertar FCM integrado a `Core.processPushNotification(null)` para recuperar
+  o registro sem confundir o ID Asterisk com o `Call-ID` SIP;
+- build limpo e testes unitários aprovados;
+- quatro testes instrumentados aprovados no Android 16/API 36 equivalente ao
+  Galaxy A25 5G;
+- segunda chamada SIP real permanece como validação física decisiva no S25
+  Ultra.
+
 ### 0.1.59
 
 - chamadas correlacionadas pelo `Call-ID` real fornecido pelo Liblinphone;

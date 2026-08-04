@@ -1,15 +1,16 @@
 # Estado atual — Eagle PBX Mobile
 
-Atualizado em: 2026-08-04 13:46 -03
+Atualizado em: 2026-08-04 14:33 -03
 
 ## Código e versão
 
 - Branch: `codex/ringtone-corporativo`.
-- Base confirmada antes do ajuste: `4edf5ea`.
-- Commit da correção: `7f26f51`.
-- Versão candidata: `0.1.59` (`versionCode 60`).
-- Motivo: impedir que eventos terminais atrasados da primeira chamada apaguem
-  o estado SIP, a notificação ou o atendimento enfileirado da chamada seguinte.
+- Base confirmada antes do ajuste: `2bfd8a7`.
+- Commit da correção: `aed0a75`.
+- Versão candidata: `0.1.60` (`versionCode 61`).
+- Motivo: manter uma identidade imutável durante todo o ciclo nativo da segunda
+  chamada, restaurar o registro pelo caminho oficial de push do Liblinphone e
+  impedir aceite contra uma referência já encerrada.
 
 ## Homologação
 
@@ -58,36 +59,47 @@ Atualizado em: 2026-08-04 13:46 -03
 - A revisão `0.1.59` identifica cada chamada pelo `Call-ID` SIP, processa o
   encerramento uma única vez, preserva chamadas de outro identificador e mantém
   a segunda sessão Telecom em fila.
+- Validação física da `0.1.59`: a primeira chamada foi atendida e encerrada
+  corretamente; na segunda, **Atender** permaneceu em `Conectando...` e o modal
+  não fechou nem depois do chamador encerrar.
+- Diagnóstico confirmado no código: o `Call-ID` pode estar vazio em
+  `IncomingReceived` e surgir antes de `End`/`Released`. A chave do evento
+  terminal deixava então de coincidir com a chave que abriu a interface.
+- A revisão `0.1.60` usa o `nativePointer` estável como proprietário do ciclo,
+  conserva uma correlação externa separada, valida o estado antes de `accept()`
+  e torna idempotente a confirmação `Connected`/`StreamsRunning`.
+- O FCM passa a chamar `Core.processPushNotification(null)`. O valor enviado
+  pelo PBX é o identificador Asterisk usado para cancelamento, e não pode ser
+  entregue ao Liblinphone como se fosse o `Call-ID` do `INVITE`.
 
-## Testes da 0.1.59
+## Testes da 0.1.60
 
-- `clean testDebugUnitTest assembleDebug assembleDebugAndroidTest`: aprovado.
-- Gradle: 78 tarefas concluídas; build limpo bem-sucedido.
-- Testes unitários cobrem Call-IDs consecutivos, propriedade do evento terminal
-  e separação entre chamada recebida e chamada em andamento.
-- Teste instrumentado reproduz exatamente a liberação atrasada da primeira
-  enquanto a segunda permanece recebida e confirma que a segunda não é limpa.
-- Três baterias consecutivas da tela bloqueada passaram; a suíte final do APK
-  definitivo executou quatro testes no Android 16/API 36 com PIN.
-- Log final: zero crash, ANR, erro de foreground ou timeout de `CallStyle`.
-- Pacote conferido: `versionName 0.1.59`, `versionCode 60`.
+- `clean testDebugUnitTest assembleDebug`: aprovado, 46 tarefas.
+- Testes unitários cobrem a mudança tardia do `Call-ID`, preservação da
+  correlação e propriedade independente de chamadas consecutivas.
+- `connectedDebugAndroidTest`: aprovado, 73 tarefas.
+- Quatro testes instrumentados passaram no Android 16/API 36 equivalente ao
+  Galaxy A25 5G, incluindo liberação atrasada da primeira durante a segunda.
+- Pacote conferido: `versionName 0.1.60`, `versionCode 61`, `minSdk 28` e
+  `targetSdk 36`.
 - Assinatura: Android Debug, certificado SHA-256
   `74f558c6f85328521a419b2e32e35875640470d1b11644fae9d564fbcf8d5789`.
-- APK: `Eagle-PBX-Mobile-0.1.59-debug.apk`.
-- SHA-256: `224e5784ce129dbeb7aa9354792e87364ed2885c4fe27dc334120aba781e7095`.
-- Correção: commit `7f26f51`.
-- Publicação: `https://eaglesistemas.com/pbx/download/Eagle-PBX-Mobile-0.1.59-debug.apk`.
-- Portal: contador cadastrado, redirecionamento `302`, arquivo visível e Nginx
-  validados.
+- APK: `Eagle-PBX-Mobile-0.1.60-debug.apk`.
+- SHA-256: `73a651627febabafd483241b9b8936b6ff309df05060edca86df107d52ed943a`.
+- Correção: commit `aed0a75`.
+- Publicação: `https://eaglesistemas.com/pbx/download/Eagle-PBX-Mobile-0.1.60-debug.apk`.
+- Portal: arquivo, hash, catálogo, contador, serviço e configuração Nginx
+  validados; acesso público continua protegido por autenticação HTTP.
 
 ## Próximos passos
 
-1. Instalar a `0.1.59` sobre a versão existente, sem desinstalar.
+1. Instalar a `0.1.60` sobre a versão existente, sem desinstalar.
 2. Bloquear o S25 Ultra e ligar para o ramal 101.
-3. Fazer três chamadas completas consecutivas, confirmando tela cheia em todas.
-4. Na primeira, atender e confirmar áudio bidirecional e estado “Chamada em
-   andamento”; na segunda, recusar; na terceira, deixar virar chamada perdida.
-5. Somente após homologação completa, criar a tag final e avançar para Chamadas
+3. Atender e encerrar a primeira chamada e iniciar a segunda imediatamente.
+4. Na segunda, tocar em **Atender** e confirmar a transição direta de
+   `Conectando...` para **Chamada em andamento**.
+5. Encerrar a segunda chamada pelo chamador e confirmar que a interface fecha.
+6. Somente após homologação completa, criar a tag final e avançar para Chamadas
    ativas do Painel.
 
 ## Checkpoints
@@ -100,8 +112,9 @@ Atualizado em: 2026-08-04 13:46 -03
 
 - Dependências: PBX `10.20.20.140`, API/App `10.20.20.147`, ambiente Android
   `10.20.20.148` e portal de downloads `10.20.20.116`.
-- Defeito conhecido: o estabelecimento SIP e o áudio em chamadas consecutivas
-  ainda dependem da validação física da revisão `0.1.59` no S25 Ultra.
+- Defeito conhecido: o estabelecimento SIP e o áudio na segunda chamada
+  consecutiva ainda dependem da validação física da revisão `0.1.60` no S25
+  Ultra.
 - Rollback operacional: `checkpoint/mobile-0.1.54-fullscreen`.
 - Ponto estratégico de infraestrutura preservado:
   `_backup_pre_restruturacao_cores`.

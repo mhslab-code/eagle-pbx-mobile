@@ -1,5 +1,43 @@
 # CODEX — Eagle PBX Mobile
 
+## Revisão 0.1.60
+
+- A propriedade do ciclo SIP passa a usar o ponteiro nativo estável da chamada;
+  o `Call-ID`, que pode surgir somente depois de `IncomingReceived`, permanece
+  apenas como correlação externa.
+- `End` e `Released` encerram o mesmo objeto que abriu a interface, inclusive
+  quando o identificador SIP muda entre o primeiro e o último callback.
+- O atendimento só é enviado para objetos ainda em estado de chamada recebida;
+  referências antigas não podem mais aceitar falsamente a chamada seguinte.
+- O despertar FCM chama `processPushNotification(null)`, caminho oficial do
+  Liblinphone para restaurar o registro quando o identificador do PBX não é o
+  `Call-ID` do `INVITE`.
+- A confirmação de atendimento tornou-se idempotente entre `Connected` e
+  `StreamsRunning`.
+- O pacote passa a usar `versionCode 61` e `versionName 0.1.60`.
+
+## Revisão 0.1.59
+
+- Chamadas consecutivas recebem correlação pelo `Call-ID` SIP e eventos
+  terminais duplicados são processados uma única vez.
+- O serviço mantém separadas as identidades da chamada recebida e da chamada
+  em andamento.
+- O Android Telecom conserva uma segunda sessão pendente enquanto termina de
+  desmontar a primeira.
+- O teste físico revelou que o `Call-ID` ainda pode mudar durante o ciclo; essa
+  limitação é corrigida pela revisão 0.1.60.
+- O pacote usa `versionCode 60` e `versionName 0.1.59`.
+
+## Revisão 0.1.58
+
+- O controlador SIP passa a pertencer ao processo, sem depender da existência
+  da `MainActivity`.
+- FCM e SIP da mesma chamada são consolidados, e o Android Telecom recebe uma
+  sessão própria por chamada.
+- Fechar a atividade de bloqueio não remove mais a tarefa nem encerra o serviço
+  de telefonia.
+- O pacote usa `versionCode 59` e `versionName 0.1.58`.
+
 ## Revisão 0.1.57
 
 - A tela cheia solicita o atendimento diretamente ao controlador SIP e recebe

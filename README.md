@@ -9,7 +9,7 @@ com homologação operacional nos Samsung Galaxy A25 5G e validação complement
 no Samsung Galaxy S25 Ultra. O iOS será desenvolvido depois da homologação do
 fluxo Android.
 
-Versão de desenvolvimento atual: `0.1.59`. A identidade visual, o login nativo,
+Versão de desenvolvimento atual: `0.1.60`. A identidade visual, o login nativo,
 a restauração segura da sessão, o logoff, a navegação principal e a integração
 inicial de presença foram validados no emulador equivalente ao Galaxy A25 5G.
 A agenda corporativa, o histórico e o player autenticado de gravações também
@@ -79,6 +79,12 @@ Eventos tardios `End` e `Released` da chamada anterior só podem finalizar a
 sessão à qual pertencem e não removem o INVITE, a notificação nem o atendimento
 enfileirado da chamada seguinte. O Android Telecom também mantém uma segunda
 chamada em fila enquanto conclui a desmontagem da primeira.
+O teste físico mostrou que o `Call-ID` pode ainda estar vazio no primeiro
+callback e aparecer somente no encerramento, deixando o segundo modal sem um
+evento terminal reconhecido. Na revisão `0.1.60`, a propriedade do ciclo usa a
+identidade nativa imutável do objeto Liblinphone e conserva separadamente a
+correlação SIP. O atendimento ignora referências que já não estejam recebendo
+e o FCM aciona o mecanismo oficial de recuperação de registro do Liblinphone.
 Com o aplicativo visível, o modal interno continua sendo a interface principal;
 a notificação nativa permanece ativa para o Telecom, mas não força a tela cheia.
 O canal de chamadas é silencioso e não disputa a reprodução controlada pelo

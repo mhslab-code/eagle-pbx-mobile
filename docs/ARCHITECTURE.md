@@ -205,6 +205,21 @@ uma sessão já encerrada não cancela um novo alerta ou um novo aceite. O bridg
 do Android Telecom conserva uma segunda sessão pendente até o fechamento da
 primeira e vincula push, SIP e Telecom sem usar apenas o número do chamador.
 
+A homologação física da 0.1.59 revelou que o `Call-ID` não é uma chave estável
+para possuir o ciclo: ele pode estar indisponível em `IncomingReceived` e surgir
+antes de `End` ou `Released`. Na versão 0.1.60, cada objeto é possuído pelo
+`nativePointer` imutável fornecido pela API e recebe uma correlação externa
+congelada no primeiro evento. O aceite também valida que o objeto permanece em
+`IncomingReceived` ou `IncomingEarlyMedia`, impedindo uma referência antiga de
+consumir o comando da chamada seguinte.
+
+Quando o PBX precisa despertar uma instalação por FCM, o identificador do
+payload é o ciclo Asterisk usado para deduplicação e cancelamento, não o
+`Call-ID` SIP do `INVITE`. Por isso, a 0.1.60 chama explicitamente
+`Core.processPushNotification(null)`: o Liblinphone restaura o registro sem
+aguardar um identificador SIP incorreto, e o atendimento enfileirado permanece
+sob controle do evento real recebido pelo motor.
+
 O estado de presença já utiliza a API existente do Eagle PBX. Temporariamente,
 o DND continua sendo aplicado ao ramal inteiro no Asterisk. A separação do DND
 por instalação — Android, PWA, desktop e softphones — fica prevista para a
