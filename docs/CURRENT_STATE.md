@@ -1,6 +1,6 @@
 # Estado atual — Eagle PBX Mobile
 
-Atualizado em: 2026-08-04 06:41 -03
+Atualizado em: 2026-08-04 06:52 -03
 
 ## Código e versão
 
@@ -21,6 +21,11 @@ Atualizado em: 2026-08-04 06:41 -03
 - A revisão `0.1.53` foi rejeitada: o processo encerrou ao iniciar o alerta e a
   vibração ocorreu somente uma vez.
 - A revisão `0.1.54` corrige essa regressão e aguarda homologação física.
+- Resultado parcial da `0.1.54` no Galaxy S25 Ultra: a chamada abriu em tela
+  cheia imediatamente no primeiro teste e abriu novamente no segundo teste,
+  com atraso de alguns segundos.
+- Estado: checkpoint funcional aprovado; homologação final ainda pendente dos
+  fluxos de atendimento, recusa, término e chamada perdida.
 
 ## Testes da 0.1.54
 
@@ -43,8 +48,14 @@ Atualizado em: 2026-08-04 06:41 -03
 3. Confirmar que a tela acende e mostra a atividade personalizada sem
    duplicação.
 4. Validar atendimento, recusa e chamada perdida.
-5. Somente após homologação, criar tag/checkpoint e avançar para Chamadas
+5. Somente após homologação completa, criar a tag final e avançar para Chamadas
    ativas do Painel.
+
+## Checkpoints
+
+- `checkpoint/mobile-0.1.54-fullscreen`: primeira revisão que apresentou a
+  chamada recebida em tela cheia no S25 Ultra bloqueado, inclusive em duas
+  tentativas consecutivas; a latência variável permanece em observação.
 
 ## Dependências, defeitos e rollback
 

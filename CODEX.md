@@ -10,6 +10,9 @@
 - A criação das opções é protegida para que uma rejeição do fabricante nunca
   interrompa o toque ou a vibração da chamada.
 - O pacote passa a usar `versionCode 55` e `versionName 0.1.54`.
+- Checkpoint físico: no Galaxy S25 Ultra bloqueado, a atividade de chamada foi
+  apresentada nas duas tentativas; a primeira imediatamente e a segunda após
+  alguns segundos. A revisão segue em homologação para os demais fluxos.
 
 ## Revisão 0.1.53
 
