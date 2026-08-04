@@ -45,6 +45,19 @@ definitiva de assinatura e suas senhas não pertencem ao repositório.
 
 ## Marcos validados
 
+### 0.1.59
+
+- chamadas correlacionadas pelo `Call-ID` real fornecido pelo Liblinphone;
+- eventos terminais duplicados ou atrasados afetam somente a sessão de origem;
+- notificação recebida e chamada em andamento mantêm identidades SIP separadas;
+- segunda chamada preservada enquanto o Android Telecom desmonta a primeira;
+- teste instrumentado reproduz a sequência: primeira atendida, segunda recebida
+  e `Released` tardio da primeira;
+- três baterias consecutivas e a suíte final no Android 16 passaram sem crash,
+  ANR, erro de foreground ou timeout de `CallStyle`;
+- estabelecimento SIP real permanece como validação física obrigatória no S25
+  Ultra.
+
 ### 0.1.58
 
 - controlador SIP movido da `MainActivity` para o ciclo de vida do processo;

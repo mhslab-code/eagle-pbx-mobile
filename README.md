@@ -9,7 +9,7 @@ com homologação operacional nos Samsung Galaxy A25 5G e validação complement
 no Samsung Galaxy S25 Ultra. O iOS será desenvolvido depois da homologação do
 fluxo Android.
 
-Versão de desenvolvimento atual: `0.1.58`. A identidade visual, o login nativo,
+Versão de desenvolvimento atual: `0.1.59`. A identidade visual, o login nativo,
 a restauração segura da sessão, o logoff, a navegação principal e a integração
 inicial de presença foram validados no emulador equivalente ao Galaxy A25 5G.
 A agenda corporativa, o histórico e o player autenticado de gravações também
@@ -74,6 +74,11 @@ Telecom. Eventos duplicados do push e do SIP são consolidados, cada chamada
 recebe um `PendingIntent` próprio e fechar a atividade de bloqueio não encerra
 mais o serviço de telefonia. A notificação `CallStyle` permanece foreground
 durante o atendimento e a chamada conectada, conforme o contrato do Android.
+Na revisão `0.1.59`, cada chamada passa a ser correlacionada pelo `Call-ID` SIP.
+Eventos tardios `End` e `Released` da chamada anterior só podem finalizar a
+sessão à qual pertencem e não removem o INVITE, a notificação nem o atendimento
+enfileirado da chamada seguinte. O Android Telecom também mantém uma segunda
+chamada em fila enquanto conclui a desmontagem da primeira.
 Com o aplicativo visível, o modal interno continua sendo a interface principal;
 a notificação nativa permanece ativa para o Telecom, mas não força a tela cheia.
 O canal de chamadas é silencioso e não disputa a reprodução controlada pelo

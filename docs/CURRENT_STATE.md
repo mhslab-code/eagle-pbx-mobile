@@ -1,16 +1,15 @@
 # Estado atual — Eagle PBX Mobile
 
-Atualizado em: 2026-08-04 10:55 -03
+Atualizado em: 2026-08-04 13:46 -03
 
 ## Código e versão
 
 - Branch: `codex/ringtone-corporativo`.
-- Base confirmada antes do ajuste: `461e160`.
-- Commit da correção: `bdf5576`.
-- Versão candidata: `0.1.58` (`versionCode 59`).
-- Motivo: retirar o controle SIP do ciclo de vida da `MainActivity`, integrar
-  as chamadas ao Android Telecom e impedir que a atividade de bloqueio encerre
-  o serviço de telefonia.
+- Base confirmada antes do ajuste: `4edf5ea`.
+- Commit da correção: `7f26f51`.
+- Versão candidata: `0.1.59` (`versionCode 60`).
+- Motivo: impedir que eventos terminais atrasados da primeira chamada apaguem
+  o estado SIP, a notificação ou o atendimento enfileirado da chamada seguinte.
 
 ## Homologação
 
@@ -47,30 +46,43 @@ Atualizado em: 2026-08-04 10:55 -03
 - A revisão `0.1.58` mantém o controlador no processo, registra a chamada com
   Core-Telecom, consolida FCM/SIP, usa um `PendingIntent` por ciclo e não encerra
   mais o serviço ao atender ou recusar.
+- Validação física da `0.1.58`: a primeira chamada foi atendida corretamente;
+  na segunda, **Atender** chegou ao aplicativo e exibiu `Conectando...`, mas o
+  estabelecimento SIP não prosseguiu.
+- Causa encontrada: Liblinphone possui estados separados para o término e para
+  a liberação do objeto. O aplicativo tratava `End` e `Released` como eventos
+  globais;
+  um evento tardio da primeira podia zerar a referência da segunda. A mesma
+  janela fazia o Android Telecom descartar a nova sessão enquanto a anterior
+  ainda estava sendo desmontada.
+- A revisão `0.1.59` identifica cada chamada pelo `Call-ID` SIP, processa o
+  encerramento uma única vez, preserva chamadas de outro identificador e mantém
+  a segunda sessão Telecom em fila.
 
-## Testes da 0.1.58
+## Testes da 0.1.59
 
 - `clean testDebugUnitTest assembleDebug assembleDebugAndroidTest`: aprovado.
 - Gradle: 78 tarefas concluídas; build limpo bem-sucedido.
-- Teste instrumentado com Android 16/API 36 e bloqueio por PIN: aprovado.
-- Cada bateria confirma atendimento na primeira chamada, três chamadas
-  bloqueadas consecutivas e atualização da mesma notificação `CallStyle` para
-  “Chamada em andamento”.
-- Três processos novos: 12 telas cheias, 12 registros reconhecidos pelo Android
-  Telecom, zero encerramentos do serviço pela tarefa, zero timeout de
-  `CallStyle`, zero crash e zero ANR.
-- Pacote conferido: `versionName 0.1.58`, `versionCode 59`.
-- Assinatura: compatível com o APK de depuração anterior disponível na VM.
-- APK: `Eagle-PBX-Mobile-0.1.58-debug.apk`.
-- SHA-256: `455e1aa164e9a02187f7036a1a66e4a892b3788c145a670c2b06bba2b895b029`.
-- Correção: commit `bdf5576`.
-- Publicação: `https://eaglesistemas.com/pbx/download/Eagle-PBX-Mobile-0.1.58-debug.apk`.
+- Testes unitários cobrem Call-IDs consecutivos, propriedade do evento terminal
+  e separação entre chamada recebida e chamada em andamento.
+- Teste instrumentado reproduz exatamente a liberação atrasada da primeira
+  enquanto a segunda permanece recebida e confirma que a segunda não é limpa.
+- Três baterias consecutivas da tela bloqueada passaram; a suíte final do APK
+  definitivo executou quatro testes no Android 16/API 36 com PIN.
+- Log final: zero crash, ANR, erro de foreground ou timeout de `CallStyle`.
+- Pacote conferido: `versionName 0.1.59`, `versionCode 60`.
+- Assinatura: Android Debug, certificado SHA-256
+  `74f558c6f85328521a419b2e32e35875640470d1b11644fae9d564fbcf8d5789`.
+- APK: `Eagle-PBX-Mobile-0.1.59-debug.apk`.
+- SHA-256: `224e5784ce129dbeb7aa9354792e87364ed2885c4fe27dc334120aba781e7095`.
+- Correção: commit `7f26f51`.
+- Publicação: `https://eaglesistemas.com/pbx/download/Eagle-PBX-Mobile-0.1.59-debug.apk`.
 - Portal: contador cadastrado, redirecionamento `302`, arquivo visível e Nginx
   validados.
 
 ## Próximos passos
 
-1. Instalar a `0.1.58` sobre a versão existente, sem desinstalar.
+1. Instalar a `0.1.59` sobre a versão existente, sem desinstalar.
 2. Bloquear o S25 Ultra e ligar para o ramal 101.
 3. Fazer três chamadas completas consecutivas, confirmando tela cheia em todas.
 4. Na primeira, atender e confirmar áudio bidirecional e estado “Chamada em
@@ -88,8 +100,8 @@ Atualizado em: 2026-08-04 10:55 -03
 
 - Dependências: PBX `10.20.20.140`, API/App `10.20.20.147`, ambiente Android
   `10.20.20.148` e portal de downloads `10.20.20.116`.
-- Defeito conhecido: o estabelecimento SIP e o áudio após **Atender** ainda
-  dependem da validação física da revisão `0.1.58` no S25 Ultra.
+- Defeito conhecido: o estabelecimento SIP e o áudio em chamadas consecutivas
+  ainda dependem da validação física da revisão `0.1.59` no S25 Ultra.
 - Rollback operacional: `checkpoint/mobile-0.1.54-fullscreen`.
 - Ponto estratégico de infraestrutura preservado:
   `_backup_pre_restruturacao_cores`.

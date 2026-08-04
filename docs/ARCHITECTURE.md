@@ -196,6 +196,15 @@ remove a tarefa nem encerra `SipForegroundService`. Eventos FCM e SIP com o
 mesmo identificador ou número são idempotentes, enquanto chamadas posteriores
 com novos identificadores permanecem independentes.
 
+Na versão 0.1.59, o ciclo deixa de depender de uma referência global sem
+identidade. `LinphoneEngine` extrai o `Call-ID` do `CallLog`, ignora a repetição
+terminal `End`/`Released` e só limpa o estado ativo quando o evento pertence ao
+mesmo `Call-ID`. `SipForegroundService` mantém separadamente o identificador SIP
+da chamada recebida e o da chamada em andamento. Assim, a liberação tardia de
+uma sessão já encerrada não cancela um novo alerta ou um novo aceite. O bridge
+do Android Telecom conserva uma segunda sessão pendente até o fechamento da
+primeira e vincula push, SIP e Telecom sem usar apenas o número do chamador.
+
 O estado de presença já utiliza a API existente do Eagle PBX. Temporariamente,
 o DND continua sendo aplicado ao ramal inteiro no Asterisk. A separação do DND
 por instalação — Android, PWA, desktop e softphones — fica prevista para a
