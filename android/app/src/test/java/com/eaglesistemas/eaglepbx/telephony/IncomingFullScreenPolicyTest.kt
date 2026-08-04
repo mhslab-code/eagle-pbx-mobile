@@ -5,8 +5,17 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.linphone.core.Call
 
 class IncomingFullScreenPolicyTest {
+    @Test
+    fun terminalNativeStatesCannotKeepIncomingPresentationAlive() {
+        assertFalse(callStateKeepsIncomingPresentation(Call.State.End))
+        assertFalse(callStateKeepsIncomingPresentation(Call.State.Error))
+        assertFalse(callStateKeepsIncomingPresentation(Call.State.Released))
+        assertTrue(callStateKeepsIncomingPresentation(Call.State.IncomingReceived))
+    }
+
     @Test
     fun fullScreenIntentIsNotDuplicatedWhenAvailable() {
         assertFalse(shouldManuallyLaunchIncomingCall(true, true))

@@ -85,6 +85,14 @@ internal fun canPresentIncomingFromNotification(
 internal fun canQueueAnswerBeforeNativeInvite(sipCallId: String?): Boolean =
     sipCallId.isNullOrBlank()
 
+internal fun shouldRetryQueuedAnswer(
+    answerPending: Boolean,
+    serviceIncomingCallActive: Boolean,
+    callStatus: SipCallStatus
+): Boolean = answerPending &&
+    serviceIncomingCallActive &&
+    callStatus == SipCallStatus.INCOMING
+
 class LoginViewModel(application: Application) : AndroidViewModel(application) {
     private val api = EagleApiClient(
         SecureSessionStore(application),
@@ -94,6 +102,7 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
     private var sipIncomingWasActive = false
     private var notificationIncomingCall: IncomingSipCall? = null
     private var answerIncomingWhenReady = false
+    private var answerIncomingRetryJob: Job? = null
     private var pendingIncomingPushWake = false
     private var sipConfigurationJob: Job? = null
     private var mediaPlayer: MediaPlayer? = null
@@ -275,12 +284,17 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
                         val connectedIncomingCall = notificationIncomingCall != null ||
                             SipForegroundService.currentIncomingCall() != null
                         answerIncomingWhenReady = false
+                        answerIncomingRetryJob?.cancel()
+                        answerIncomingRetryJob = null
                         notificationIncomingCall = null
                         if (connectedIncomingCall) {
                             SipForegroundService.markAnswered(getApplication())
                         }
                         telecomController()?.markActive()
                     } else if (status in setOf(SipCallStatus.IDLE, SipCallStatus.FAILED)) {
+                        answerIncomingWhenReady = false
+                        answerIncomingRetryJob?.cancel()
+                        answerIncomingRetryJob = null
                         SipForegroundService.finishOngoingCall(getApplication())
                     }
                     mutableState.value = mutableState.value.copy(
@@ -313,13 +327,7 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
                         notificationIncomingCall = call
                         SipForegroundService.showIncoming(getApplication(), call)
                         if (answerIncomingWhenReady) {
-                            answerIncomingWhenReady = false
-                            if (linphoneEngine?.acceptIncomingCall() == true) {
-                                SipForegroundService.prepareForAnswer()
-                                telecomController()?.answerFromApp()
-                            } else {
-                                answerIncomingWhenReady = true
-                            }
+                            queueAnswerIncomingUntilReady()
                         }
                     }
                     if (call != null && !mutableState.value.contactsLoaded) {
@@ -580,9 +588,12 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
         } else if (
             SipForegroundService.currentIncomingCall() != null &&
             mutableState.value.sipCallStatus == SipCallStatus.INCOMING &&
-            canQueueAnswerBeforeNativeInvite(serviceCall.sipCallId)
+            (
+                canQueueAnswerBeforeNativeInvite(serviceCall.sipCallId) ||
+                    linphoneEngine?.hasIncomingCall() == true
+            )
         ) {
-            answerIncomingWhenReady = true
+            queueAnswerIncomingUntilReady()
             mutableState.value = mutableState.value.copy(incomingSipCall = null)
             return true
         }
@@ -595,6 +606,39 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
         return false
     }
 
+    private fun queueAnswerIncomingUntilReady() {
+        answerIncomingWhenReady = true
+        if (answerIncomingRetryJob?.isActive == true) return
+        answerIncomingRetryJob = viewModelScope.launch {
+            while (shouldRetryQueuedAnswer(
+                    answerPending = answerIncomingWhenReady,
+                    serviceIncomingCallActive =
+                        SipForegroundService.currentIncomingCall() != null,
+                    callStatus = mutableState.value.sipCallStatus
+                )
+            ) {
+                if (linphoneEngine?.acceptIncomingCall() == true) {
+                    answerIncomingWhenReady = false
+                    SipForegroundService.prepareForAnswer()
+                    mutableState.value = mutableState.value.copy(incomingSipCall = null)
+                    telecomController()?.answerFromApp()
+                    break
+                }
+                delay(200L)
+            }
+            if (!shouldRetryQueuedAnswer(
+                    answerPending = answerIncomingWhenReady,
+                    serviceIncomingCallActive =
+                        SipForegroundService.currentIncomingCall() != null,
+                    callStatus = mutableState.value.sipCallStatus
+                )
+            ) {
+                answerIncomingWhenReady = false
+            }
+            answerIncomingRetryJob = null
+        }
+    }
+
     private fun answerIncomingFromLockScreen(): Boolean =
         answerIncomingFromNotification(SipForegroundService.currentIncomingCall())
 
@@ -605,6 +649,8 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
         }
         notificationIncomingCall = null
         answerIncomingWhenReady = false
+        answerIncomingRetryJob?.cancel()
+        answerIncomingRetryJob = null
         if (
             !sipIncomingWasActive &&
             mutableState.value.sipCallStatus in setOf(

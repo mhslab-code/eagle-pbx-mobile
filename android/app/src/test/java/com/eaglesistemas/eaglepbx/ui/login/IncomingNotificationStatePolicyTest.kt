@@ -34,4 +34,29 @@ class IncomingNotificationStatePolicyTest {
         assertFalse(canQueueAnswerBeforeNativeInvite("native:2002"))
         assertFalse(canQueueAnswerBeforeNativeInvite("sip-call-2"))
     }
+
+    @Test
+    fun queuedAnswerRetriesOnlyWhileTheSameIncomingFlowIsActive() {
+        assertTrue(
+            shouldRetryQueuedAnswer(
+                answerPending = true,
+                serviceIncomingCallActive = true,
+                callStatus = SipCallStatus.INCOMING
+            )
+        )
+        assertFalse(
+            shouldRetryQueuedAnswer(
+                answerPending = true,
+                serviceIncomingCallActive = false,
+                callStatus = SipCallStatus.INCOMING
+            )
+        )
+        assertFalse(
+            shouldRetryQueuedAnswer(
+                answerPending = true,
+                serviceIncomingCallActive = true,
+                callStatus = SipCallStatus.IDLE
+            )
+        )
+    }
 }

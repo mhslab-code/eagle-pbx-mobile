@@ -83,6 +83,9 @@ internal fun shouldReplaceSipAccount(
     accountAvailable: Boolean
 ): Boolean = !accountAvailable || currentProvisioning != requestedProvisioning
 
+internal fun callStateKeepsIncomingPresentation(state: Call.State): Boolean =
+    state !in setOf(Call.State.Error, Call.State.End, Call.State.Released)
+
 /**
  * Owns the native SIP core and the authenticated per-device account.
  *
@@ -373,6 +376,9 @@ class LinphoneEngine(
         if (correlationId.isBlank()) return@synchronized false
         runCatching {
             core.calls.any { call ->
+                if (!callStateKeepsIncomingPresentation(call.state)) {
+                    return@any false
+                }
                 val key = callKey(call)
                 val knownCorrelation = primaryCallCorrelationIds[key]
                 val sipCallId = runCatching { call.callLog.callId }
@@ -384,6 +390,10 @@ class LinphoneEngine(
                     correlationId == sipCallId
             }
         }.getOrDefault(false)
+    }
+
+    fun hasIncomingCall(): Boolean = synchronized(coreLock) {
+        findIncomingCall() != null
     }
 
     private fun finishPrimaryCall(call: Call, failed: Boolean) = synchronized(coreLock) {
@@ -765,12 +775,16 @@ class LinphoneEngine(
             }
             activatePrimaryCall(call)
             val accepted = runCatching {
-                // The lock-screen activity is not MainActivity, therefore the
-                // core may still be in background mode when the user answers.
-                core.enterForeground()
-                core.isNetworkReachable = true
-                core.preemptSoundResources()
-                call.accept() == 0
+                // Follow the SDK's Android client: let the Core manage its
+                // unique media resources and answer with parameters derived
+                // from the actual INVITE. Manually preempting audio here can
+                // race the release of the immediately preceding call.
+                val params = core.createCallParams(call)
+                if (params != null) {
+                    call.acceptWithParams(params) == 0
+                } else {
+                    call.accept() == 0
+                }
             }.getOrDefault(false)
             Log.i(LOG_TAG, "Native incoming answer submitted=$accepted")
             accepted
