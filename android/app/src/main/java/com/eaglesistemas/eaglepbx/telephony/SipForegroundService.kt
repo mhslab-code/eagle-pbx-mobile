@@ -19,12 +19,12 @@ import android.graphics.Shader
 import android.media.AudioAttributes
 import android.media.AudioManager
 import android.media.MediaPlayer
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.IBinder
 import android.os.Handler
 import android.os.Looper
-import android.os.PowerManager
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
@@ -35,6 +35,7 @@ import androidx.core.content.ContextCompat
 import androidx.core.graphics.drawable.IconCompat
 import com.eaglesistemas.eaglepbx.MainActivity
 import com.eaglesistemas.eaglepbx.IncomingCallActivity
+import com.eaglesistemas.eaglepbx.EaglePbxApplication
 import com.eaglesistemas.eaglepbx.R
 import com.eaglesistemas.eaglepbx.data.EagleContact
 import com.eaglesistemas.eaglepbx.data.SecureSessionStore
@@ -61,6 +62,19 @@ internal fun shouldRunIncomingCallFallback(
     incomingCallActive: Boolean,
     incomingActivityVisible: Boolean
 ): Boolean = deviceLocked && incomingCallActive && !incomingActivityVisible
+
+internal fun isSameIncomingCall(
+    activeNumber: String?,
+    activeCallId: String,
+    incomingNumber: String,
+    incomingCallId: String
+): Boolean {
+    if (activeNumber == null) return false
+    if (activeCallId.isNotBlank() && incomingCallId.isNotBlank()) {
+        return activeCallId == incomingCallId
+    }
+    return activeNumber.filter(Char::isDigit) == incomingNumber.filter(Char::isDigit)
+}
 
 private fun incomingActivityCreatorOptions(): Bundle? {
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) return null
@@ -93,6 +107,8 @@ private fun sendIncomingActivity(pendingIntent: PendingIntent) {
  * in the background. Process-death recovery belongs to the push phase.
  */
 class SipForegroundService : Service() {
+    private var callNotificationForeground = false
+
     override fun onCreate() {
         super.onCreate()
         getSystemService(NotificationManager::class.java).apply {
@@ -137,20 +153,40 @@ class SipForegroundService : Service() {
         flags: Int,
         startId: Int
     ): Int {
-        startForeground(NOTIFICATION_ID, notification())
         when (intent?.action) {
-            ACTION_ANSWER -> requestAnswer()
+            ACTION_SET_CALL_NOTIFICATION -> {
+                val callNotification = pendingCallNotification.also {
+                    pendingCallNotification = null
+                }
+                if (callNotification != null) {
+                    startForeground(INCOMING_NOTIFICATION_ID, callNotification)
+                    callNotificationForeground = true
+                } else if (!callNotificationForeground) {
+                    startForeground(NOTIFICATION_ID, notification())
+                }
+            }
+            ACTION_RESTORE_TELEPHONY_NOTIFICATION -> {
+                startForeground(NOTIFICATION_ID, notification())
+                callNotificationForeground = false
+            }
+            ACTION_ANSWER -> {
+                if (!callNotificationForeground) startForeground(NOTIFICATION_ID, notification())
+                requestAnswer()
+            }
             ACTION_REJECT -> {
+                if (!callNotificationForeground) startForeground(NOTIFICATION_ID, notification())
                 onRejectIncoming?.invoke()
                 markRejected(this)
             }
+            ACTION_HANGUP -> {
+                if (!callNotificationForeground) startForeground(NOTIFICATION_ID, notification())
+                onHangupCall?.invoke()
+            }
+            else -> if (!callNotificationForeground) {
+                startForeground(NOTIFICATION_ID, notification())
+            }
         }
         return START_NOT_STICKY
-    }
-
-    override fun onTaskRemoved(rootIntent: Intent?) {
-        stopSelf()
-        super.onTaskRemoved(rootIntent)
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -185,6 +221,11 @@ class SipForegroundService : Service() {
         private const val MISSED_CHANNEL_ID = "eagle_pbx_missed_calls"
         private const val NOTIFICATION_ID = 101
         private const val INCOMING_NOTIFICATION_ID = 102
+        private const val MISSED_NOTIFICATION_ID = 103
+        private const val ACTION_SET_CALL_NOTIFICATION =
+            "com.eaglesistemas.eaglepbx.action.SET_CALL_NOTIFICATION"
+        private const val ACTION_RESTORE_TELEPHONY_NOTIFICATION =
+            "com.eaglesistemas.eaglepbx.action.RESTORE_TELEPHONY_NOTIFICATION"
         const val ACTION_ANSWER =
             "com.eaglesistemas.eaglepbx.action.ANSWER_INCOMING_CALL"
         const val ACTION_SHOW_INCOMING =
@@ -195,6 +236,8 @@ class SipForegroundService : Service() {
         const val EXTRA_CALLER_PHOTO = "eagle_pbx_caller_photo"
         const val ACTION_REJECT =
             "com.eaglesistemas.eaglepbx.action.REJECT_INCOMING_CALL"
+        const val ACTION_HANGUP =
+            "com.eaglesistemas.eaglepbx.action.HANGUP_CALL"
 
         @Volatile
         private var onAnswerIncoming: (() -> Boolean)? = null
@@ -203,10 +246,19 @@ class SipForegroundService : Service() {
         private var onRejectIncoming: (() -> Unit)? = null
 
         @Volatile
+        private var onHangupCall: (() -> Unit)? = null
+
+        @Volatile
         private var onIncomingNotificationChanged: ((IncomingSipCall?) -> Unit)? = null
 
         @Volatile
         private var activeIncomingCall: IncomingSipCall? = null
+
+        @Volatile
+        private var pendingCallNotification: Notification? = null
+
+        @Volatile
+        private var callNotificationActive = false
 
         @Volatile
         private var applicationVisible = false
@@ -221,8 +273,6 @@ class SipForegroundService : Service() {
         private var incomingRingtone: MediaPlayer? = null
         private val incomingVibrationLock = Any()
         private var incomingVibrator: Vibrator? = null
-        private val incomingWakeLockLock = Any()
-        private var incomingWakeLock: PowerManager.WakeLock? = null
         private val incomingTimeoutHandler = Handler(Looper.getMainLooper())
         private var incomingGeneration = 0L
         private var currentIncomingCallId = ""
@@ -246,6 +296,10 @@ class SipForegroundService : Service() {
             onRejectIncoming = onReject
         }
 
+        fun setHangupCallHandler(onHangup: (() -> Unit)?) {
+            onHangupCall = onHangup
+        }
+
         fun setIncomingNotificationHandler(
             handler: ((IncomingSipCall?) -> Unit)?
         ) {
@@ -263,13 +317,14 @@ class SipForegroundService : Service() {
 
         fun setApplicationVisible(context: Context, visible: Boolean) {
             applicationVisible = visible
-            val notificationManager =
-                context.getSystemService(NotificationManager::class.java)
-            if (visible) {
-                notificationManager.cancel(INCOMING_NOTIFICATION_ID)
-            } else {
+            if (!visible) {
                 activeIncomingCall?.let { call ->
-                    showIncomingNotification(context, call, currentIncomingCallId)
+                    showIncomingNotification(
+                        context,
+                        call,
+                        currentIncomingCallId,
+                        allowFullScreen = true
+                    )
                 }
             }
         }
@@ -298,6 +353,15 @@ class SipForegroundService : Service() {
                 cancelledCallIds.entries.removeAll { now - it.value > 60_000L }
                 if (callId.isNotBlank() && cancelledCallIds.remove(callId) != null) return
             }
+            if (isSameIncomingCall(
+                    activeNumber = activeIncomingCall?.number,
+                    activeCallId = currentIncomingCallId,
+                    incomingNumber = call.number,
+                    incomingCallId = callId
+                )
+            ) {
+                return
+            }
             currentIncomingCallId = callId
             val directory = cachedCaller(context, call.number)
             val caller = directory?.name
@@ -310,13 +374,18 @@ class SipForegroundService : Service() {
             activeIncomingCall = effectiveCall
             incomingAnswerConfirmed = false
             incomingDisposition = IncomingDisposition.RINGING
+            (context.applicationContext as? EaglePbxApplication)
+                ?.telecomController
+                ?.registerIncoming(effectiveCall, callId)
             onIncomingNotificationChanged?.invoke(effectiveCall)
             val generation = ++incomingGeneration
             ensureIncomingAlert(context)
-            if (!applicationVisible) {
-                wakeScreenForIncomingCall(context)
-                showIncomingNotification(context, effectiveCall, callId)
-            }
+            showIncomingNotification(
+                context,
+                effectiveCall,
+                callId,
+                allowFullScreen = !applicationVisible && !incomingCallActivityVisible
+            )
             incomingTimeoutHandler.postDelayed({
                 if (generation == incomingGeneration) {
                     cancelIncoming(context, showMissed = true)
@@ -327,8 +396,14 @@ class SipForegroundService : Service() {
         private fun showIncomingNotification(
             context: Context,
             call: IncomingSipCall,
-            callId: String
+            callId: String,
+            allowFullScreen: Boolean
         ) {
+            val pendingIntentData = Uri.Builder()
+                .scheme("eaglepbx")
+                .authority("incoming-call")
+                .appendPath(incomingGeneration.toString())
+                .build()
             val directory = cachedCaller(context, call.number)
             val caller = call.displayName
                 ?.takeIf(String::isNotBlank)
@@ -339,6 +414,7 @@ class SipForegroundService : Service() {
                 1,
                 Intent(context, IncomingCallActivity::class.java).apply {
                     action = ACTION_SHOW_INCOMING
+                    data = pendingIntentData.buildUpon().appendPath("show").build()
                     putExtra(EXTRA_CALL_ID, callId)
                     putExtra(EXTRA_CALLER_NUMBER, call.number)
                     putExtra(EXTRA_CALLER_NAME, caller)
@@ -355,6 +431,7 @@ class SipForegroundService : Service() {
                 2,
                 Intent(context, MainActivity::class.java).apply {
                     action = ACTION_ANSWER
+                    data = pendingIntentData.buildUpon().appendPath("answer").build()
                     putExtra(EXTRA_CALL_ID, callId)
                     putExtra(EXTRA_CALLER_NUMBER, call.number)
                     putExtra(EXTRA_CALLER_NAME, caller)
@@ -369,6 +446,7 @@ class SipForegroundService : Service() {
                 3,
                 Intent(context, SipForegroundService::class.java).apply {
                     action = ACTION_REJECT
+                    data = pendingIntentData.buildUpon().appendPath("reject").build()
                 },
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
@@ -388,7 +466,7 @@ class SipForegroundService : Service() {
                 .setIcon(IconCompat.createWithBitmap(largeIcon))
                 .setImportant(true)
                 .build()
-            val notification = NotificationCompat.Builder(context, INCOMING_CHANNEL_ID)
+            val notificationBuilder = NotificationCompat.Builder(context, INCOMING_CHANNEL_ID)
                 .setSmallIcon(R.drawable.eagle_pbx_logo_official)
                 .setContentTitle(caller)
                 .setContentText(
@@ -397,7 +475,6 @@ class SipForegroundService : Service() {
                 )
                 .setSubText("Eagle PBX")
                 .setContentIntent(openApp)
-                .setFullScreenIntent(openApp, true)
                 .setCategory(NotificationCompat.CATEGORY_CALL)
                 .setPriority(NotificationCompat.PRIORITY_MAX)
                 .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
@@ -410,9 +487,12 @@ class SipForegroundService : Service() {
                         answerCall
                     )
                 )
-                .build()
+            if (allowFullScreen) {
+                notificationBuilder.setFullScreenIntent(openApp, true)
+            }
+            val notification = notificationBuilder.build()
             val notificationManager = context.getSystemService(NotificationManager::class.java)
-            notificationManager.notify(INCOMING_NOTIFICATION_ID, notification)
+            publishCallNotification(context, notification)
             val fullScreenIntentAvailable = if (Build.VERSION.SDK_INT >= 34) {
                 notificationManager.canUseFullScreenIntent()
             } else {
@@ -545,53 +625,32 @@ class SipForegroundService : Service() {
         private fun stopIncomingAlert() {
             stopIncomingRingtone()
             stopIncomingVibration()
-            releaseIncomingWakeLock()
-        }
-
-        @Suppress("DEPRECATION")
-        private fun wakeScreenForIncomingCall(context: Context) {
-            val powerManager = context.getSystemService(PowerManager::class.java)
-                ?: return
-            if (powerManager.isInteractive) return
-            synchronized(incomingWakeLockLock) {
-                incomingWakeLock?.let { wakeLock ->
-                    if (wakeLock.isHeld) wakeLock.release()
-                }
-                incomingWakeLock = powerManager.newWakeLock(
-                    PowerManager.SCREEN_BRIGHT_WAKE_LOCK or
-                        PowerManager.ACQUIRE_CAUSES_WAKEUP,
-                    "EaglePBX:IncomingCall"
-                ).apply {
-                    setReferenceCounted(false)
-                    acquire(15_000L)
-                }
-            }
-        }
-
-        private fun releaseIncomingWakeLock() {
-            synchronized(incomingWakeLockLock) {
-                incomingWakeLock?.let { wakeLock ->
-                    if (wakeLock.isHeld) wakeLock.release()
-                }
-                incomingWakeLock = null
-            }
         }
 
         fun markAnswered(context: Context) {
+            val answeredCall = activeIncomingCall
             incomingDisposition = IncomingDisposition.ANSWERED
             incomingAnswerConfirmed = true
-            cancelIncoming(context, showMissed = false)
+            incomingGeneration += 1
+            currentIncomingCallId = ""
+            activeIncomingCall = null
+            incomingDisposition = IncomingDisposition.NONE
+            onIncomingNotificationChanged?.invoke(null)
+            stopIncomingAlert()
+            if (answeredCall != null) {
+                showOngoingCall(context, answeredCall)
+            } else {
+                restoreTelephonyNotification(context)
+            }
         }
 
         /**
          * Stops the user-facing alert while Linphone negotiates the answer, but keeps the
          * incoming call available until the SIP state actually changes to CONNECTED.
          */
-        fun prepareForAnswer(context: Context) {
+        fun prepareForAnswer() {
             incomingDisposition = IncomingDisposition.ANSWERED
             stopIncomingAlert()
-            context.getSystemService(NotificationManager::class.java)
-                .cancel(INCOMING_NOTIFICATION_ID)
         }
 
         fun markRejected(context: Context) {
@@ -623,10 +682,96 @@ class SipForegroundService : Service() {
             onIncomingNotificationChanged?.invoke(null)
             stopIncomingAlert()
             val manager = context.getSystemService(NotificationManager::class.java)
-            manager.cancel(INCOMING_NOTIFICATION_ID)
+            restoreTelephonyNotification(context)
             if (shouldShowMissed && missedCall != null) {
                 showMissedCall(context, manager, missedCall)
             }
+        }
+
+        fun finishOngoingCall(context: Context) {
+            restoreTelephonyNotification(context)
+        }
+
+        private fun showOngoingCall(context: Context, call: IncomingSipCall) {
+            val directory = cachedCaller(context, call.number)
+            val caller = call.displayName
+                ?.takeIf(String::isNotBlank)
+                ?: directory?.name
+                ?: formatPhoneNumber(call.number)
+            val openApp = PendingIntent.getActivity(
+                context,
+                4,
+                Intent(context, MainActivity::class.java).apply {
+                    flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                        Intent.FLAG_ACTIVITY_SINGLE_TOP or
+                        Intent.FLAG_ACTIVITY_NEW_TASK
+                },
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            val hangup = PendingIntent.getService(
+                context,
+                5,
+                Intent(context, SipForegroundService::class.java).apply {
+                    action = ACTION_HANGUP
+                    data = Uri.Builder()
+                        .scheme("eaglepbx")
+                        .authority("ongoing-call")
+                        .appendPath(incomingGeneration.toString())
+                        .build()
+                },
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            val appIcon = BitmapFactory.decodeResource(
+                context.resources,
+                R.drawable.eagle_pbx_logo
+            )
+            val callerPhoto = decodeDataImage(directory?.photo)
+            val largeIcon = if (callerPhoto != null) {
+                circularBitmapWithBadge(callerPhoto, appIcon)
+            } else {
+                circularBitmap(appIcon)
+            }
+            val callerPerson = Person.Builder()
+                .setName(caller)
+                .setIcon(IconCompat.createWithBitmap(largeIcon))
+                .setImportant(true)
+                .build()
+            val notification = NotificationCompat.Builder(context, INCOMING_CHANNEL_ID)
+                .setSmallIcon(R.drawable.eagle_pbx_logo_official)
+                .setContentTitle(caller)
+                .setContentText("Chamada em andamento")
+                .setSubText("Eagle PBX")
+                .setContentIntent(openApp)
+                .setCategory(NotificationCompat.CATEGORY_CALL)
+                .setPriority(NotificationCompat.PRIORITY_MAX)
+                .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+                .setOngoing(true)
+                .setAutoCancel(false)
+                .setStyle(NotificationCompat.CallStyle.forOngoingCall(callerPerson, hangup))
+                .build()
+            publishCallNotification(context, notification)
+        }
+
+        private fun publishCallNotification(context: Context, notification: Notification) {
+            pendingCallNotification = notification
+            callNotificationActive = true
+            ContextCompat.startForegroundService(
+                context,
+                Intent(context, SipForegroundService::class.java).apply {
+                    action = ACTION_SET_CALL_NOTIFICATION
+                }
+            )
+        }
+
+        private fun restoreTelephonyNotification(context: Context) {
+            if (!callNotificationActive) return
+            callNotificationActive = false
+            ContextCompat.startForegroundService(
+                context,
+                Intent(context, SipForegroundService::class.java).apply {
+                    action = ACTION_RESTORE_TELEPHONY_NOTIFICATION
+                }
+            )
         }
 
         private fun showMissedCall(
@@ -672,7 +817,7 @@ class SipForegroundService : Service() {
                 .setWhen(System.currentTimeMillis())
                 .setShowWhen(true)
                 .build()
-            manager.notify(INCOMING_NOTIFICATION_ID, notification)
+            manager.notify(MISSED_NOTIFICATION_ID, notification)
         }
 
         private fun stopIncomingRingtone() {

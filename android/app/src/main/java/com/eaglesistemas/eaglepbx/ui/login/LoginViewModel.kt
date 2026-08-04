@@ -1,6 +1,7 @@
 package com.eaglesistemas.eaglepbx.ui.login
 
 import android.app.Application
+import android.telecom.DisconnectCause
 import android.media.MediaPlayer
 import android.os.Build
 import androidx.lifecycle.AndroidViewModel
@@ -17,6 +18,7 @@ import com.google.firebase.messaging.FirebaseMessaging
 import com.eaglesistemas.eaglepbx.telephony.LinphoneEngine
 import com.eaglesistemas.eaglepbx.telephony.IncomingSipCall
 import com.eaglesistemas.eaglepbx.telephony.SipCallStatus
+import com.eaglesistemas.eaglepbx.EaglePbxApplication
 import com.eaglesistemas.eaglepbx.telephony.SipEngineStatus
 import com.eaglesistemas.eaglepbx.telephony.SipAudioOutput
 import com.eaglesistemas.eaglepbx.telephony.SipForegroundService
@@ -96,9 +98,13 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
     private val mutableState = MutableStateFlow(LoginUiState())
     val state: StateFlow<LoginUiState> = mutableState.asStateFlow()
 
+    private fun telecomController() =
+        (getApplication<Application>() as? EaglePbxApplication)?.telecomController
+
     init {
         SipForegroundService.setAnswerCallHandler(::answerIncomingFromLockScreen)
         SipForegroundService.setRejectCallHandler(::rejectIncomingCall)
+        SipForegroundService.setHangupCallHandler(::hangupCall)
         SipForegroundService.setIncomingNotificationHandler(
             ::onIncomingNotificationChanged
         )
@@ -226,6 +232,11 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
                         answerIncomingWhenReady = false
                         notificationIncomingCall = null
                         SipForegroundService.markAnswered(getApplication())
+                        telecomController()?.markActive()
+                    } else if (status in setOf(SipCallStatus.IDLE, SipCallStatus.FAILED)) {
+                        SipForegroundService.cancelIncoming(getApplication())
+                        SipForegroundService.finishOngoingCall(getApplication())
+                        telecomController()?.disconnect(DisconnectCause.REMOTE)
                     }
                     mutableState.value = mutableState.value.copy(
                         sipCallStatus = status,
@@ -251,10 +262,7 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
                         incomingSipCall = call ?: notificationIncomingCall
                     )
                     if (call == null) {
-                        if (sipIncomingWasActive) {
-                            sipIncomingWasActive = false
-                            SipForegroundService.cancelIncoming(getApplication())
-                        }
+                        sipIncomingWasActive = false
                     } else {
                         sipIncomingWasActive = true
                         notificationIncomingCall = call
@@ -262,7 +270,7 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
                         if (answerIncomingWhenReady) {
                             answerIncomingWhenReady = false
                             if (linphoneEngine?.acceptIncomingCall() == true) {
-                                SipForegroundService.prepareForAnswer(getApplication())
+                                SipForegroundService.prepareForAnswer()
                             } else {
                                 answerIncomingWhenReady = true
                             }
@@ -445,7 +453,8 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
     fun acceptIncomingCall() {
         if (mutableState.value.sipCallStatus != SipCallStatus.INCOMING) return
         if (linphoneEngine?.acceptIncomingCall() == true) {
-            SipForegroundService.prepareForAnswer(getApplication())
+            SipForegroundService.prepareForAnswer()
+            telecomController()?.answerFromApp()
         } else {
             mutableState.value = mutableState.value.copy(
                 sipCallStatus = SipCallStatus.FAILED,
@@ -476,8 +485,9 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
         if (!presentIncomingFromNotification(call)) return false
         if (linphoneEngine?.acceptIncomingCall() == true) {
             answerIncomingWhenReady = false
-            SipForegroundService.prepareForAnswer(getApplication())
+            SipForegroundService.prepareForAnswer()
             mutableState.value = mutableState.value.copy(incomingSipCall = null)
+            telecomController()?.answerFromApp()
             return true
         } else if (
             SipForegroundService.currentIncomingCall() != null &&
@@ -485,6 +495,7 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
         ) {
             answerIncomingWhenReady = true
             mutableState.value = mutableState.value.copy(incomingSipCall = null)
+            telecomController()?.answerFromApp()
             return true
         }
         return false
@@ -517,8 +528,17 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun rejectIncomingCall() {
+        rejectIncomingCall(notifyTelecom = true)
+    }
+
+    fun rejectIncomingFromTelecom() {
+        rejectIncomingCall(notifyTelecom = false)
+    }
+
+    private fun rejectIncomingCall(notifyTelecom: Boolean) {
         if (mutableState.value.sipCallStatus != SipCallStatus.INCOMING) return
         SipForegroundService.markRejected(getApplication())
+        if (notifyTelecom) telecomController()?.disconnect(DisconnectCause.REJECTED)
         linphoneEngine?.rejectIncomingCall()
         mutableState.value = mutableState.value.copy(
             sipCallStatus = SipCallStatus.ENDING,
@@ -853,6 +873,7 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
     override fun onCleared() {
         SipForegroundService.setAnswerCallHandler(null)
         SipForegroundService.setRejectCallHandler(null)
+        SipForegroundService.setHangupCallHandler(null)
         SipForegroundService.setIncomingNotificationHandler(null)
         releasePlayer()
         linphoneEngine?.stop()

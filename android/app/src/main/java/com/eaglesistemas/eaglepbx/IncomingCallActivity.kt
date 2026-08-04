@@ -88,7 +88,7 @@ class IncomingCallActivity : ComponentActivity() {
                     startService(Intent(this, SipForegroundService::class.java).apply {
                         action = SipForegroundService.ACTION_REJECT
                     })
-                    finishAndRemoveTask()
+                    finish()
                 },
                 onAnswer = SipForegroundService::requestAnswer,
                 onCallEnded = { answered ->
@@ -98,7 +98,7 @@ class IncomingCallActivity : ComponentActivity() {
                                 Intent.FLAG_ACTIVITY_SINGLE_TOP
                         })
                     } else {
-                        finishAndRemoveTask()
+                        finish()
                     }
                 }
             )

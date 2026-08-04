@@ -34,4 +34,24 @@ class IncomingFullScreenPolicyTest {
     fun fallbackIgnoresCallThatAlreadyEnded() {
         assertFalse(shouldRunIncomingCallFallback(true, false, false))
     }
+
+    @Test
+    fun pushAndSipForSameCallAreDeduplicatedByNumber() {
+        assertTrue(isSameIncomingCall("104", "push-1", "104", ""))
+    }
+
+    @Test
+    fun repeatedPushForSameCallIsDeduplicatedById() {
+        assertTrue(isSameIncomingCall("104", "push-1", "104", "push-1"))
+    }
+
+    @Test
+    fun differentCallIdsFromSameNumberRemainIndependent() {
+        assertFalse(isSameIncomingCall("104", "push-1", "104", "push-2"))
+    }
+
+    @Test
+    fun callAfterPreviousCycleEndedIsNeverDeduplicated() {
+        assertFalse(isSameIncomingCall(null, "", "104", "push-2"))
+    }
 }
