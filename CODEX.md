@@ -1,5 +1,13 @@
 # CODEX — Eagle PBX Mobile
 
+## Revisão 0.1.53
+
+- O `PendingIntent` da tela de chamada passa a conceder explicitamente a
+  autorização de abertura em segundo plano exigida por Android 15 e 16.
+- A contingência temporizada usa a mesma autorização ao reenviar a intenção,
+  evitando que o S25 Ultra apenas toque e vibre com a tela bloqueada.
+- O pacote passa a usar `versionCode 54` e `versionName 0.1.53`.
+
 ## Revisão 0.1.52
 
 - Sinalizações atrasadas da notificação não podem mais rebaixar uma chamada já

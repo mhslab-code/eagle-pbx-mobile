@@ -157,6 +157,11 @@ chamada sinaliza sua própria visibilidade ao serviço; se o Android não a exib
 após aceitar a intenção de tela cheia, uma contingência temporizada pode
 apresentá-la, desde que o aparelho continue bloqueado e a chamada ainda exista.
 
+Na versão 0.1.53, o criador e o remetente do `PendingIntent` da chamada
+concedem explicitamente a autorização de abertura em segundo plano exigida a
+partir do Android 15. Essa autorização fica limitada à atividade dedicada de
+chamada recebida e à sua contingência no aparelho bloqueado.
+
 O estado de presença já utiliza a API existente do Eagle PBX. Temporariamente,
 o DND continua sendo aplicado ao ramal inteiro no Asterisk. A separação do DND
 por instalação — Android, PWA, desktop e softphones — fica prevista para a

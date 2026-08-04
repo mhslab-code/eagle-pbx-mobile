@@ -45,6 +45,15 @@ definitiva de assinatura e suas senhas não pertencem ao repositório.
 
 ## Marcos validados
 
+### 0.1.53
+
+- intenção de tela cheia compatível com as restrições de abertura em segundo
+  plano dos Androids 15 e 16;
+- criador e remetente do `PendingIntent` autorizados apenas no fluxo de chamada
+  recebida;
+- exibição real sobre o bloqueio permanece como teste físico obrigatório no
+  Galaxy S25 Ultra.
+
 ### 0.1.52
 
 - proteção contra eventos atrasados de notificação após o atendimento SIP;

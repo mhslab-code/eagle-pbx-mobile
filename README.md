@@ -9,7 +9,7 @@ com homologação operacional nos Samsung Galaxy A25 5G e validação complement
 no Samsung Galaxy S25 Ultra. O iOS será desenvolvido depois da homologação do
 fluxo Android.
 
-Versão de desenvolvimento atual: `0.1.52`. A identidade visual, o login nativo,
+Versão de desenvolvimento atual: `0.1.53`. A identidade visual, o login nativo,
 a restauração segura da sessão, o logoff, a navegação principal e a integração
 inicial de presença foram validados no emulador equivalente ao Galaxy A25 5G.
 A agenda corporativa, o histórico e o player autenticado de gravações também
@@ -53,6 +53,9 @@ intenção de tela cheia, mas não apresente a tela personalizada no bloqueio.
 No Android 14 ou superior, o card de notificações em `Minha conta` também
 identifica e abre a autorização específica de chamadas em tela cheia quando ela
 ainda não foi concedida pelo sistema.
+Na revisão `0.1.53`, a intenção de tela cheia e sua contingência passam a
+autorizar explicitamente a abertura da atividade em segundo plano, conforme as
+restrições dos Androids 15 e 16 usados pelo Galaxy S25 Ultra.
 Com o aplicativo visível, somente o modal interno e esse toque são apresentados;
 o aviso nativo fica reservado ao segundo plano. O canal de chamadas do Android
 é silencioso e não disputa a reprodução controlada pelo serviço de telefonia.

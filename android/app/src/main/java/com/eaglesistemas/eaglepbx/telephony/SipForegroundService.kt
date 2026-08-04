@@ -6,6 +6,7 @@ import android.app.NotificationManager
 import android.app.KeyguardManager
 import android.app.PendingIntent
 import android.app.Service
+import android.app.ActivityOptions
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
@@ -19,6 +20,7 @@ import android.media.AudioAttributes
 import android.media.AudioManager
 import android.media.MediaPlayer
 import android.os.Build
+import android.os.Bundle
 import android.os.IBinder
 import android.os.Handler
 import android.os.Looper
@@ -59,6 +61,28 @@ internal fun shouldRunIncomingCallFallback(
     incomingCallActive: Boolean,
     incomingActivityVisible: Boolean
 ): Boolean = deviceLocked && incomingCallActive && !incomingActivityVisible
+
+private fun incomingActivityLaunchOptions(): Bundle? {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) return null
+    val mode = if (Build.VERSION.SDK_INT >= 36) {
+        ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOW_ALWAYS
+    } else {
+        @Suppress("DEPRECATION")
+        ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED
+    }
+    return ActivityOptions.makeBasic()
+        .setPendingIntentCreatorBackgroundActivityStartMode(mode)
+        .setPendingIntentBackgroundActivityStartMode(mode)
+        .toBundle()
+}
+
+private fun sendIncomingActivity(pendingIntent: PendingIntent) {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+        pendingIntent.send(incomingActivityLaunchOptions())
+    } else {
+        pendingIntent.send()
+    }
+}
 
 /**
  * Keeps the authenticated SIP process eligible to run while the activity is
@@ -303,7 +327,8 @@ class SipForegroundService : Service() {
                         Intent.FLAG_ACTIVITY_SINGLE_TOP or
                         Intent.FLAG_ACTIVITY_NEW_TASK
                 },
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+                incomingActivityLaunchOptions()
             )
             val answerCall = PendingIntent.getActivity(
                 context,
@@ -379,7 +404,7 @@ class SipForegroundService : Service() {
                     fullScreenIntentAvailable = fullScreenIntentAvailable
                 )
             ) {
-                runCatching { openApp.send() }
+                runCatching { sendIncomingActivity(openApp) }
             } else if (context.getSystemService(KeyguardManager::class.java)
                     ?.isKeyguardLocked == true
             ) {
@@ -393,7 +418,7 @@ class SipForegroundService : Service() {
                             incomingActivityVisible = incomingCallActivityVisible
                         )
                     ) {
-                        runCatching { openApp.send() }
+                        runCatching { sendIncomingActivity(openApp) }
                     }
                 }, 900L)
             }
