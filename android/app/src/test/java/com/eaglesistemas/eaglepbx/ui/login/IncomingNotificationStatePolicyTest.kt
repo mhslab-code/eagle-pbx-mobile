@@ -22,4 +22,16 @@ class IncomingNotificationStatePolicyTest {
     fun notificationWithoutLiveServiceCallIsIgnored() {
         assertFalse(canPresentIncomingFromNotification(SipCallStatus.IDLE, false))
     }
+
+    @Test
+    fun preliminaryPushMayQueueAnswerUntilInviteArrives() {
+        assertTrue(canQueueAnswerBeforeNativeInvite(null))
+        assertTrue(canQueueAnswerBeforeNativeInvite(""))
+    }
+
+    @Test
+    fun nativeInviteFailureMustNotPretendAnswerWasSubmitted() {
+        assertFalse(canQueueAnswerBeforeNativeInvite("native:2002"))
+        assertFalse(canQueueAnswerBeforeNativeInvite("sip-call-2"))
+    }
 }

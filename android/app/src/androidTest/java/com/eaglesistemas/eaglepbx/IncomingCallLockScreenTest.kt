@@ -27,6 +27,7 @@ class IncomingCallLockScreenTest {
 
     @After
     fun cleanUp() {
+        SipForegroundService.setIncomingCallAliveHandler(null)
         (context.applicationContext as EaglePbxApplication)
             .telecomController
             ?.disconnect(DisconnectCause.LOCAL)
@@ -169,5 +170,31 @@ class IncomingCallLockScreenTest {
             SipForegroundService.finishSipCall(context, "sip-call-2")
         )
         assertNull(SipForegroundService.currentIncomingCall())
+    }
+
+    @Test
+    fun nativeCallGuardClosesStaleConnectingScreenAfterSipDisappears() {
+        SipForegroundService.start(context)
+        SystemClock.sleep(750L)
+        SipForegroundService.setIncomingCallAliveHandler { false }
+        SipForegroundService.showIncoming(
+            context,
+            IncomingSipCall(
+                number = "104",
+                displayName = "Chamada encerrada",
+                sipCallId = "native:stale-call"
+            )
+        )
+
+        val deadline = SystemClock.uptimeMillis() + 3_000L
+        while (
+            SipForegroundService.currentIncomingCall() != null &&
+            SystemClock.uptimeMillis() < deadline
+        ) {
+            SystemClock.sleep(100L)
+        }
+
+        assertNull(SipForegroundService.currentIncomingCall())
+        SipForegroundService.setIncomingCallAliveHandler(null)
     }
 }

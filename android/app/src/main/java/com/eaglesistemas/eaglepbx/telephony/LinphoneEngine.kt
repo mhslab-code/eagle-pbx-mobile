@@ -1,6 +1,7 @@
 package com.eaglesistemas.eaglepbx.telephony
 
 import android.content.Context
+import android.util.Log
 import com.eaglesistemas.eaglepbx.data.SipProvisioning
 import org.linphone.core.Account
 import org.linphone.core.AudioDevice
@@ -97,6 +98,7 @@ class LinphoneEngine(
     private val onAttendedTransferChanged: (AttendedTransferStatus) -> Unit,
     private val onConferenceSetupChanged: (ConferenceSetupStatus) -> Unit
 ) {
+    private val coreLock = Any()
     private val core: Core = Factory.instance().createCore(
         null,
         null,
@@ -111,6 +113,7 @@ class LinphoneEngine(
     private var account: Account? = null
     private var authInfo: AuthInfo? = null
     private var currentProvisioning: SipProvisioning? = null
+    @Volatile
     private var activeCall: Call? = null
     private var activeCallKey: String? = null
     private val finalizedPrimaryCalls = LinkedHashSet<String>()
@@ -332,22 +335,60 @@ class LinphoneEngine(
         ).also { primaryCallCorrelationIds[ownerKey] = it }
     }
 
-    private fun setActiveCall(call: Call?) {
+    private fun setActiveCall(call: Call?) = synchronized(coreLock) {
         activeCall = call
         activeCallKey = call?.let(::callKey)
     }
 
-    private fun activatePrimaryCall(call: Call): String {
+    private fun activatePrimaryCall(call: Call): String = synchronized(coreLock) {
         val key = callKey(call)
         finalizedPrimaryCalls.remove(key)
         activeCall = call
         activeCallKey = key
-        return callCorrelationId(call, key)
+        callCorrelationId(call, key)
     }
 
-    private fun finishPrimaryCall(call: Call, failed: Boolean) {
+    private fun isIncomingState(call: Call): Boolean = runCatching {
+        call.state in setOf(
+            Call.State.IncomingReceived,
+            Call.State.IncomingEarlyMedia
+        )
+    }.getOrDefault(false)
+
+    /**
+     * The wrapper cached from a previous callback is not authoritative.  In
+     * particular, Android can deliver the answer action while Liblinphone is
+     * replacing the Java wrapper for the same native call.  Resolve the
+     * incoming call from Core at the instant the user answers.
+     */
+    private fun findIncomingCall(): Call? {
+        val tracked = activeCall
+        if (tracked != null && isIncomingState(tracked)) return tracked
+        val current = runCatching { core.currentCall }.getOrNull()
+        if (current != null && isIncomingState(current)) return current
+        return runCatching { core.calls.firstOrNull(::isIncomingState) }.getOrNull()
+    }
+
+    fun isCallAlive(correlationId: String): Boolean = synchronized(coreLock) {
+        if (correlationId.isBlank()) return@synchronized false
+        runCatching {
+            core.calls.any { call ->
+                val key = callKey(call)
+                val knownCorrelation = primaryCallCorrelationIds[key]
+                val sipCallId = runCatching { call.callLog.callId }
+                    .getOrNull()
+                    ?.trim()
+                    ?.takeIf(String::isNotBlank)
+                correlationId == key ||
+                    correlationId == knownCorrelation ||
+                    correlationId == sipCallId
+            }
+        }.getOrDefault(false)
+    }
+
+    private fun finishPrimaryCall(call: Call, failed: Boolean) = synchronized(coreLock) {
         val key = callKey(call)
-        if (!finalizedPrimaryCalls.add(key)) return
+        if (!finalizedPrimaryCalls.add(key)) return@synchronized
         while (finalizedPrimaryCalls.size > 32) {
             finalizedPrimaryCalls.remove(finalizedPrimaryCalls.first())
         }
@@ -716,28 +757,39 @@ class LinphoneEngine(
     }
 
     fun acceptIncomingCall(): Boolean {
-        val call = activeCall ?: return false
-        if (call.state !in setOf(
-                Call.State.IncomingReceived,
-                Call.State.IncomingEarlyMedia
-            )
-        ) return false
-        return call.accept() == 0
+        return synchronized(coreLock) {
+            val call = findIncomingCall()
+            if (call == null) {
+                Log.w(LOG_TAG, "Answer ignored: no native incoming call")
+                return@synchronized false
+            }
+            activatePrimaryCall(call)
+            val accepted = runCatching {
+                // The lock-screen activity is not MainActivity, therefore the
+                // core may still be in background mode when the user answers.
+                core.enterForeground()
+                core.isNetworkReachable = true
+                core.preemptSoundResources()
+                call.accept() == 0
+            }.getOrDefault(false)
+            Log.i(LOG_TAG, "Native incoming answer submitted=$accepted")
+            accepted
+        }
     }
 
     fun rejectIncomingCall(): Boolean {
-        val call = activeCall ?: return false
-        if (call.state !in setOf(
-                Call.State.IncomingReceived,
-                Call.State.IncomingEarlyMedia
-            )
-        ) return false
-        val accepted = call.decline(Reason.Declined) == 0
-        if (accepted) {
-            onIncomingCallChanged(null)
-            onCallStatusChanged(SipCallStatus.ENDING)
+        return synchronized(coreLock) {
+            val call = findIncomingCall() ?: return@synchronized false
+            activatePrimaryCall(call)
+            val accepted = runCatching {
+                call.decline(Reason.Declined) == 0
+            }.getOrDefault(false)
+            if (accepted) {
+                onIncomingCallChanged(null)
+                onCallStatusChanged(SipCallStatus.ENDING)
+            }
+            accepted
         }
-        return accepted
     }
 
     fun clearAccount() {
@@ -775,5 +827,9 @@ class LinphoneEngine(
         clearAccount()
         core.removeListener(listener)
         core.stop()
+    }
+
+    private companion object {
+        const val LOG_TAG = "EagleSip"
     }
 }

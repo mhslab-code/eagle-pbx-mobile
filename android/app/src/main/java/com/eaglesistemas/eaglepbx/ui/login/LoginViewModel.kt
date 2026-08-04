@@ -82,6 +82,9 @@ internal fun canPresentIncomingFromNotification(
     SipCallStatus.FAILED
 )
 
+internal fun canQueueAnswerBeforeNativeInvite(sipCallId: String?): Boolean =
+    sipCallId.isNullOrBlank()
+
 class LoginViewModel(application: Application) : AndroidViewModel(application) {
     private val api = EagleApiClient(
         SecureSessionStore(application),
@@ -110,6 +113,9 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
         SipForegroundService.setIncomingNotificationHandler(
             ::onIncomingNotificationChanged
         )
+        SipForegroundService.setIncomingCallAliveHandler { sipCallId ->
+            linphoneEngine?.isCallAlive(sipCallId) == true
+        }
         api.cachedUser()?.let { cachedUser ->
             mutableState.value = mutableState.value.copy(
                 restoringSession = false,
@@ -310,6 +316,7 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
                             answerIncomingWhenReady = false
                             if (linphoneEngine?.acceptIncomingCall() == true) {
                                 SipForegroundService.prepareForAnswer()
+                                telecomController()?.answerFromApp()
                             } else {
                                 answerIncomingWhenReady = true
                             }
@@ -547,7 +554,10 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
                 serviceIncomingCallActive = true
             )
         ) return false
-        val effectiveCall = call?.takeIf { it.number == serviceCall.number } ?: serviceCall
+        val effectiveCall = call
+            ?.takeIf { it.number == serviceCall.number }
+            ?.copy(sipCallId = serviceCall.sipCallId ?: call.sipCallId)
+            ?: serviceCall
         notificationIncomingCall = effectiveCall
         mutableState.value = mutableState.value.copy(
             sipCallStatus = SipCallStatus.INCOMING,
@@ -559,6 +569,7 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun answerIncomingFromNotification(call: IncomingSipCall?): Boolean {
+        val serviceCall = SipForegroundService.currentIncomingCall() ?: return false
         if (!presentIncomingFromNotification(call)) return false
         if (linphoneEngine?.acceptIncomingCall() == true) {
             answerIncomingWhenReady = false
@@ -568,13 +579,19 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
             return true
         } else if (
             SipForegroundService.currentIncomingCall() != null &&
-            mutableState.value.sipCallStatus == SipCallStatus.INCOMING
+            mutableState.value.sipCallStatus == SipCallStatus.INCOMING &&
+            canQueueAnswerBeforeNativeInvite(serviceCall.sipCallId)
         ) {
             answerIncomingWhenReady = true
             mutableState.value = mutableState.value.copy(incomingSipCall = null)
-            telecomController()?.answerFromApp()
             return true
         }
+        answerIncomingWhenReady = false
+        mutableState.value = mutableState.value.copy(
+            sipCallStatus = SipCallStatus.INCOMING,
+            incomingSipCall = serviceCall,
+            sipCallError = "Não foi possível confirmar o atendimento. Tente novamente."
+        )
         return false
     }
 
@@ -952,6 +969,7 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
         SipForegroundService.setRejectCallHandler(null)
         SipForegroundService.setHangupCallHandler(null)
         SipForegroundService.setIncomingNotificationHandler(null)
+        SipForegroundService.setIncomingCallAliveHandler(null)
         releasePlayer()
         linphoneEngine?.stop()
         linphoneEngine = null

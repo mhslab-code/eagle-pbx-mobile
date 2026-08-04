@@ -273,6 +273,9 @@ class SipForegroundService : Service() {
         private var onIncomingNotificationChanged: ((IncomingSipCall?) -> Unit)? = null
 
         @Volatile
+        private var onIncomingCallAlive: ((String) -> Boolean)? = null
+
+        @Volatile
         private var activeIncomingCall: IncomingSipCall? = null
 
         @Volatile
@@ -328,6 +331,10 @@ class SipForegroundService : Service() {
         ) {
             onIncomingNotificationChanged = handler
             handler?.invoke(activeIncomingCall)
+        }
+
+        fun setIncomingCallAliveHandler(handler: ((String) -> Boolean)?) {
+            onIncomingCallAlive = handler
         }
 
         fun currentIncomingCall(): IncomingSipCall? = activeIncomingCall
@@ -396,6 +403,7 @@ class SipForegroundService : Service() {
                     if (mergedCall != null) {
                         onIncomingNotificationChanged?.invoke(mergedCall)
                     }
+                    guardNativeIncomingCall(context, incomingGeneration, sipCallId)
                 }
                 return
             }
@@ -425,11 +433,54 @@ class SipForegroundService : Service() {
                 callId,
                 allowFullScreen = !applicationVisible && !incomingCallActivityVisible
             )
+            currentIncomingSipCallId?.let { sipCallId ->
+                guardNativeIncomingCall(context, generation, sipCallId)
+            }
             incomingTimeoutHandler.postDelayed({
                 if (generation == incomingGeneration) {
                     cancelIncoming(context, showMissed = true)
                 }
             }, 45_000L)
+        }
+
+        /**
+         * The native SIP list is the final authority for a lock-screen call.
+         * FCM cancellation is still useful for cold starts, but a delivered
+         * INVITE must never leave a stale full-screen activity behind after
+         * the native call disappears.
+         */
+        private fun guardNativeIncomingCall(
+            context: Context,
+            expectedGeneration: Long,
+            sipCallId: String
+        ) {
+            incomingTimeoutHandler.postDelayed(object : Runnable {
+                private var consecutiveMisses = 0
+
+                override fun run() {
+                    if (
+                        expectedGeneration != incomingGeneration ||
+                        currentIncomingSipCallId != sipCallId ||
+                        activeIncomingCall == null
+                    ) return
+                    val alive = runCatching {
+                        onIncomingCallAlive?.invoke(sipCallId)
+                    }.getOrNull()
+                    if (alive == false) {
+                        consecutiveMisses += 1
+                        if (consecutiveMisses >= 3) {
+                            cancelIncoming(
+                                context,
+                                showMissed = incomingDisposition == IncomingDisposition.RINGING
+                            )
+                            return
+                        }
+                    } else {
+                        consecutiveMisses = 0
+                    }
+                    incomingTimeoutHandler.postDelayed(this, 300L)
+                }
+            }, 300L)
         }
 
         private fun showIncomingNotification(
