@@ -45,6 +45,19 @@ definitiva de assinatura e suas senhas não pertencem ao repositório.
 
 ## Marcos validados
 
+### 0.1.63
+
+- atendimento nativo por `createCallParams()` e `acceptWithParams()`, sem a
+  corrida causada pela preempção manual do áudio da chamada anterior;
+- repetição de `accept` a cada 200 ms somente enquanto o pedido, a chamada do
+  serviço e o estado `INCOMING` pertencem ao mesmo ciclo;
+- `End`, `Error` e `Released` não mantêm mais a apresentação recebida ativa;
+- build limpo com 79 tarefas e 36 testes unitários aprovados;
+- seis testes instrumentados aprovados no Android 16/API 36 equivalente ao
+  Galaxy A25 5G;
+- duas chamadas SIP consecutivas permanecem como validação física decisiva no
+  S25 Ultra.
+
 ### 0.1.62
 
 - atendimento resolve a chamada recebida diretamente em `Core.currentCall` e

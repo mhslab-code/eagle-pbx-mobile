@@ -1,5 +1,17 @@
 # CODEX — Eagle PBX Mobile
 
+## Revisão 0.1.63
+
+- O aceite segue o fluxo do cliente Android oficial do Linphone:
+  `Core.createCallParams()` e `Call.acceptWithParams()`, sem preempção manual
+  dos recursos de áudio ainda em liberação pela chamada anterior.
+- Um atendimento solicitado antes de o segundo `INVITE` estar pronto, ou
+  durante uma falha transitória do SDK, é repetido enquanto a mesma chamada
+  permanece recebível; a repetição cessa em conexão, cancelamento ou término.
+- A guarda nativa ignora objetos em `End`, `Error` e `Released`, impedindo que
+  uma entrada terminal ainda retida em `Core.calls` sustente `Conectando...`.
+- O pacote passa a usar `versionCode 64` e `versionName 0.1.63`.
+
 ## Revisão 0.1.62
 
 - O atendimento deixa de confiar apenas no wrapper guardado pelo callback e

@@ -9,7 +9,7 @@ com homologação operacional nos Samsung Galaxy A25 5G e validação complement
 no Samsung Galaxy S25 Ultra. O iOS será desenvolvido depois da homologação do
 fluxo Android.
 
-Versão de desenvolvimento atual: `0.1.62`. A identidade visual, o login nativo,
+Versão de desenvolvimento atual: `0.1.63`. A identidade visual, o login nativo,
 a restauração segura da sessão, o logoff, a navegação principal e a integração
 inicial de presença foram validados no emulador equivalente ao Galaxy A25 5G.
 A agenda corporativa, o histórico e o player autenticado de gravações também
@@ -101,6 +101,12 @@ Ultra levou cerca de 19 segundos para restaurar o registro, enquanto o PBX
 deixava de consultar o contato após 14 segundos. O canal móvel agora reavalia o
 registro por até 30 segundos e mantém no mínimo 45 segundos de toque no ramal,
 sem exigir nova compilação ou reinstalação do aplicativo.
+Na revisão `0.1.63`, o aceite deixa de antecipar manualmente a liberação do
+áudio e passa a usar `createCallParams()`/`acceptWithParams()`, como o cliente
+Android oficial do Linphone. Se a segunda chamada chegar enquanto a primeira
+ainda é desmontada, a ação de **Atender** é repetida somente enquanto o mesmo
+`INVITE` permanece recebível. Objetos em `End`, `Error` ou `Released` deixam de
+manter a atividade de bloqueio aberta.
 Com o aplicativo visível, o modal interno continua sendo a interface principal;
 a notificação nativa permanece ativa para o Telecom, mas não força a tela cheia.
 O canal de chamadas é silencioso e não disputa a reprodução controlada pelo

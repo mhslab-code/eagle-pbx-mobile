@@ -247,6 +247,14 @@ encerram o alerta e a atividade da mesma geração. Essa reconciliação não de
 do tempo de entrega do FCM e não permite que um término antigo remova uma nova
 chamada.
 
+Na versão 0.1.63, aceitar uma chamada não tenta mais desalojar manualmente os
+recursos de áudio. O motor cria `CallParams` para o `INVITE` real e usa
+`acceptWithParams()`, acompanhando o fluxo do cliente Android oficial do
+Linphone. Uma solicitação feita durante a desmontagem da chamada anterior é
+repetida enquanto o mesmo ciclo permanece em estado recebível. A autoridade de
+vida também considera `End`, `Error` e `Released` terminais, independentemente
+de o wrapper ainda aparecer temporariamente em `Core.calls`.
+
 O PBX mantém uma janela complementar para o arranque frio do Android. Quando o
 contato SIP está ausente, o canal móvel solicita o FCM e reavalia o registro a
 cada segundo por até 30 segundos. Ramais associados a mobile tocam por pelo

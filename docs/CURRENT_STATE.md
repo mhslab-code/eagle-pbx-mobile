@@ -1,15 +1,15 @@
 # Estado atual — Eagle PBX Mobile
 
-Atualizado em: 2026-08-04 16:16 -03
+Atualizado em: 2026-08-04 16:40 -03
 
 ## Código e versão
 
 - Branch: `codex/ringtone-corporativo`.
-- Base confirmada antes do ajuste: `336fbfc`.
-- Commit da correção: `903cc33`.
-- Versão candidata: `0.1.62` (`versionCode 63`).
-- Motivo: garantir que **Atender** envie o comando ao objeto SIP nativo atual e
-  que a tela bloqueada nunca permaneça em `Conectando...` depois do término.
+- Base confirmada antes do ajuste: `b89244b`.
+- Commit da correção: `a139fd8`.
+- Versão candidata: `0.1.63` (`versionCode 64`).
+- Motivo: garantir o atendimento da segunda chamada enquanto o áudio da
+  primeira ainda é liberado e remover a tela assim que a sessão SIP terminar.
 
 ## Homologação
 
@@ -104,31 +104,42 @@ Atualizado em: 2026-08-04 16:16 -03
 - A infraestrutura foi corrigida no commit `d774491`: o contato passa a ser
   reavaliado por até 30 segundos e ramais com dispositivo mobile mantêm pelo
   menos 45 segundos de toque. O APK permanece na versão `0.1.62`.
+- Validação física após a correção do PBX: a primeira chamada recebeu `ANSWER`
+  às 16:23:44 e entrou na ponte. A segunda recebeu `INVITE`, respondeu
+  `Ringing`, mas não gerou `ANSWER`; o chamador cancelou às 16:24:10 e a tela
+  permaneceu em `Conectando...`.
+- A revisão `0.1.63` remove a preempção manual de áudio. O atendimento passa a
+  seguir o cliente Android oficial do Linphone, usando parâmetros criados a
+  partir do `INVITE`; se o clique ocorrer antes de o objeto estar pronto ou
+  durante a liberação da chamada anterior, o comando é repetido enquanto a
+  mesma chamada continua válida.
+- A guarda agora considera `End`, `Error` e `Released` como estados terminais,
+  mesmo que o objeto ainda permaneça temporariamente em `Core.calls`.
 
-## Testes da 0.1.62
+## Testes da 0.1.63
 
 - `clean testDebugUnitTest assembleDebug connectedDebugAndroidTest`: aprovado.
 - Gradle: 79 tarefas executadas em build limpo.
-- Testes unitários cobrem chamadas consecutivas, configuração idempotente e a
-  distinção entre push preliminar e `INVITE` nativo.
+- Trinta e seis testes unitários passaram sem falhas; a nova cobertura valida
+  a repetição condicionada do aceite e os três estados terminais nativos.
 - Seis testes instrumentados passaram no Android 16/API 36 equivalente ao
   Galaxy A25 5G.
-- O novo teste remove o objeto SIP durante a apresentação e confirma que alerta
-  e atividade deixam o estado órfão automaticamente.
-- Pacote conferido: `versionName 0.1.62`, `versionCode 63`, `minSdk 28` e
+- O teste instrumentado remove o objeto SIP durante a apresentação e confirma
+  que alerta e atividade deixam o estado órfão automaticamente.
+- Pacote conferido: `versionName 0.1.63`, `versionCode 64`, `minSdk 28` e
   `targetSdk 36`.
 - Assinatura: Android Debug, certificado SHA-256
   `74f558c6f85328521a419b2e32e35875640470d1b11644fae9d564fbcf8d5789`.
-- APK: `Eagle-PBX-Mobile-0.1.62-debug.apk`.
-- SHA-256: `b2c6fbcab2dd673a7b920d1461eac6c6cfa56783d535adcff43602e97b09ddc4`.
-- Correção: commit `903cc33`.
-- Publicação: `https://eaglesistemas.com/pbx/download/Eagle-PBX-Mobile-0.1.62-debug.apk`.
+- APK: `Eagle-PBX-Mobile-0.1.63-debug.apk`.
+- SHA-256: `b96fb1c8657ae5dc22169b7af7ba15336dc0a49cea3466997a9df3bd3c6bcb51`.
+- Correção: commit `a139fd8`.
+- Publicação: `https://eaglesistemas.com/pbx/download/Eagle-PBX-Mobile-0.1.63-debug.apk`.
 - Portal: arquivo, hash, catálogo, contador, serviço e configuração Nginx
   validados; acesso público continua protegido por autenticação HTTP.
 
 ## Próximos passos
 
-1. Manter a `0.1.62` instalada e aguardar o estado **Online**.
+1. Instalar a `0.1.63` sobre a versão existente e aguardar **Online**.
 2. Bloquear o S25 Ultra e ligar para o ramal 101.
 3. Atender, manter por alguns segundos e encerrar a primeira chamada.
 4. Iniciar a segunda imediatamente, tocar em **Atender** e confirmar a
@@ -148,9 +159,9 @@ Atualizado em: 2026-08-04 16:16 -03
 - Dependências: PBX `10.20.20.140`, API/App `10.20.20.147`, ambiente Android
   `10.20.20.148` e portal de downloads `10.20.20.116`.
 - Defeito conhecido: o estabelecimento SIP e o áudio em duas chamadas
-  consecutivas ainda dependem da validação física da revisão `0.1.62` no S25
-  Ultra após a ampliação das janelas do PBX; a interface órfã já possui
-  cobertura instrumentada específica.
+  consecutivas ainda dependem da validação física da revisão `0.1.63` no S25
+  Ultra; repetição do aceite e remoção terminal possuem cobertura unitária e a
+  interface órfã possui cobertura instrumentada.
 - Rollback operacional: `checkpoint/mobile-0.1.54-fullscreen`.
 - Ponto estratégico de infraestrutura preservado:
   `_backup_pre_restruturacao_cores`.
