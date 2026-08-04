@@ -151,6 +151,12 @@ o estado visual somente passa a atendido após o Liblinphone confirmar
 `CONNECTED`; assim, a interface não confunde uma solicitação de atendimento
 com uma chamada já estabelecida.
 
+Na versão 0.1.52, a restauração deixa de aceitar um evento atrasado da
+notificação quando o motor já está em `CONNECTED` ou `HELD`. A atividade de
+chamada sinaliza sua própria visibilidade ao serviço; se o Android não a exibir
+após aceitar a intenção de tela cheia, uma contingência temporizada pode
+apresentá-la, desde que o aparelho continue bloqueado e a chamada ainda exista.
+
 O estado de presença já utiliza a API existente do Eagle PBX. Temporariamente,
 o DND continua sendo aplicado ao ramal inteiro no Asterisk. A separação do DND
 por instalação — Android, PWA, desktop e softphones — fica prevista para a

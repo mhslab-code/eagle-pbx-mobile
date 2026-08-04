@@ -45,6 +45,17 @@ definitiva de assinatura e suas senhas não pertencem ao repositório.
 
 ## Marcos validados
 
+### 0.1.52
+
+- proteção contra eventos atrasados de notificação após o atendimento SIP;
+- atividade dedicada mantida até confirmação real do atendimento;
+- contingência de tela cheia condicionada a aparelho bloqueado, chamada ainda
+  ativa e atividade ainda não visível;
+- atualização sobre a revisão anterior deve ser validada com a mesma assinatura
+  antes da publicação;
+- tela bloqueada e atendimento permanecem como testes físicos obrigatórios no
+  S25 Ultra.
+
 ### 0.1.51
 
 - atividade de chamada preparada explicitamente para aparecer e acender sobre

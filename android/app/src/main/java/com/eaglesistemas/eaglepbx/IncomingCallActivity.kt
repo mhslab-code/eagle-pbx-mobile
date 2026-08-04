@@ -27,6 +27,10 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -42,6 +46,16 @@ import com.eaglesistemas.eaglepbx.telephony.SipForegroundService
 import kotlinx.coroutines.delay
 
 class IncomingCallActivity : ComponentActivity() {
+    override fun onStart() {
+        super.onStart()
+        SipForegroundService.setIncomingCallActivityVisible(true)
+    }
+
+    override fun onStop() {
+        SipForegroundService.setIncomingCallActivityVisible(false)
+        super.onStop()
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         window.addFlags(
@@ -82,7 +96,6 @@ class IncomingCallActivity : ComponentActivity() {
                         putExtras(source)
                         flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
                     })
-                    finish()
                 },
                 onCallEnded = { finishAndRemoveTask() }
             )
@@ -99,6 +112,7 @@ private fun IncomingCallScreen(
     onAnswer: () -> Unit,
     onCallEnded: () -> Unit
 ) {
+    var answering by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
         while (SipForegroundService.currentIncomingCall() != null) delay(250)
         onCallEnded()
@@ -120,13 +134,29 @@ private fun IncomingCallScreen(
             Text(caller, color = Color.White, fontSize = 28.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
             Text(number, color = Color(0xFFB9CADD), fontSize = 20.sp)
             Spacer(Modifier.height(16.dp))
-            Text("Chamando...", color = Color(0xFF42A5FF), fontSize = 17.sp, fontWeight = FontWeight.Bold)
+            Text(
+                if (answering) "Conectando..." else "Chamando...",
+                color = Color(0xFF42A5FF),
+                fontSize = 17.sp,
+                fontWeight = FontWeight.Bold
+            )
             Spacer(Modifier.height(30.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                Button(onClick = onReject, modifier = Modifier.weight(1f).height(60.dp), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE43D4A)), shape = RoundedCornerShape(14.dp)) {
+                Button(onClick = onReject, enabled = !answering, modifier = Modifier.weight(1f).height(60.dp), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE43D4A)), shape = RoundedCornerShape(14.dp)) {
                     Text("Recusar", fontSize = 17.sp, fontWeight = FontWeight.Bold)
                 }
-                Button(onClick = onAnswer, modifier = Modifier.weight(1f).height(60.dp), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF12B66F)), shape = RoundedCornerShape(14.dp)) {
+                Button(
+                    onClick = {
+                        if (!answering) {
+                            answering = true
+                            onAnswer()
+                        }
+                    },
+                    enabled = !answering,
+                    modifier = Modifier.weight(1f).height(60.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF12B66F)),
+                    shape = RoundedCornerShape(14.dp)
+                ) {
                     Text("Atender", fontSize = 17.sp, fontWeight = FontWeight.Bold)
                 }
             }

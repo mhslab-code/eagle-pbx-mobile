@@ -9,7 +9,7 @@ com homologação operacional nos Samsung Galaxy A25 5G e validação complement
 no Samsung Galaxy S25 Ultra. O iOS será desenvolvido depois da homologação do
 fluxo Android.
 
-Versão de desenvolvimento atual: `0.1.51`. A identidade visual, o login nativo,
+Versão de desenvolvimento atual: `0.1.52`. A identidade visual, o login nativo,
 a restauração segura da sessão, o logoff, a navegação principal e a integração
 inicial de presença foram validados no emulador equivalente ao Galaxy A25 5G.
 A agenda corporativa, o histórico e o player autenticado de gravações também
@@ -46,6 +46,10 @@ Na revisão `0.1.51`, essa atividade recebe também as sinalizações explícita
 tela bloqueada e o atendimento só muda para o estado conectado depois da
 confirmação real do SIP. Isso evita a falsa tela de espera após tocar em
 **Atender**.
+Na revisão `0.1.52`, notificações atrasadas deixam de sobrescrever uma chamada
+já atendida. A atividade dedicada permanece em `Conectando...` até a confirmação
+real do SIP e o serviço usa uma contingência curta caso o Android aceite a
+intenção de tela cheia, mas não apresente a tela personalizada no bloqueio.
 No Android 14 ou superior, o card de notificações em `Minha conta` também
 identifica e abre a autorização específica de chamadas em tela cheia quando ela
 ainda não foi concedida pelo sistema.

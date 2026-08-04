@@ -71,6 +71,15 @@ data class LoginUiState(
     val recordingError: String? = null
 )
 
+internal fun canPresentIncomingFromNotification(
+    callStatus: SipCallStatus,
+    serviceIncomingCallActive: Boolean
+): Boolean = serviceIncomingCallActive && callStatus in setOf(
+    SipCallStatus.IDLE,
+    SipCallStatus.INCOMING,
+    SipCallStatus.FAILED
+)
+
 class LoginViewModel(application: Application) : AndroidViewModel(application) {
     private val api = EagleApiClient(
         SecureSessionStore(application),
@@ -444,8 +453,14 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun presentIncomingFromNotification(call: IncomingSipCall?) {
-        val effectiveCall = call ?: SipForegroundService.currentIncomingCall() ?: return
+    fun presentIncomingFromNotification(call: IncomingSipCall?): Boolean {
+        val serviceCall = SipForegroundService.currentIncomingCall() ?: return false
+        if (!canPresentIncomingFromNotification(
+                callStatus = mutableState.value.sipCallStatus,
+                serviceIncomingCallActive = true
+            )
+        ) return false
+        val effectiveCall = call?.takeIf { it.number == serviceCall.number } ?: serviceCall
         notificationIncomingCall = effectiveCall
         mutableState.value = mutableState.value.copy(
             sipCallStatus = SipCallStatus.INCOMING,
@@ -453,14 +468,18 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
             sipCallError = null
         )
         if (!mutableState.value.contactsLoaded) loadContacts(false)
+        return true
     }
 
     fun answerIncomingFromNotification(call: IncomingSipCall?) {
-        presentIncomingFromNotification(call)
+        if (!presentIncomingFromNotification(call)) return
         if (linphoneEngine?.acceptIncomingCall() == true) {
             answerIncomingWhenReady = false
             SipForegroundService.prepareForAnswer(getApplication())
-        } else {
+        } else if (
+            SipForegroundService.currentIncomingCall() != null &&
+            mutableState.value.sipCallStatus == SipCallStatus.INCOMING
+        ) {
             answerIncomingWhenReady = true
         }
     }
@@ -472,7 +491,14 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
         }
         notificationIncomingCall = null
         answerIncomingWhenReady = false
-        if (!sipIncomingWasActive) {
+        if (
+            !sipIncomingWasActive &&
+            mutableState.value.sipCallStatus in setOf(
+                SipCallStatus.IDLE,
+                SipCallStatus.INCOMING,
+                SipCallStatus.FAILED
+            )
+        ) {
             mutableState.value = mutableState.value.copy(
                 sipCallStatus = SipCallStatus.IDLE,
                 incomingSipCall = null,

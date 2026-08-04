@@ -1,5 +1,16 @@
 # CODEX — Eagle PBX Mobile
 
+## Revisão 0.1.52
+
+- Sinalizações atrasadas da notificação não podem mais rebaixar uma chamada já
+  conectada para o estado de espera ou chamada recebida.
+- A ação **Atender** permanece na atividade dedicada, com o estado
+  `Conectando...`, até o Liblinphone confirmar `CONNECTED`.
+- A tela bloqueada ganhou contingência controlada: se a intenção nativa de tela
+  cheia não tornar a atividade visível, o serviço tenta apresentá-la uma única
+  vez, sem duplicar telas nem reabrir chamadas encerradas.
+- O pacote passa a usar `versionCode 53` e `versionName 0.1.52`.
+
 ## Revisão 0.1.51
 
 - A atividade de chamada recebida solicita explicitamente exibição e despertar

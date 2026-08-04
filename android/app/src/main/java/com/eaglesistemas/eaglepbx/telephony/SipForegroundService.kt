@@ -49,6 +49,17 @@ internal fun incomingAlertMode(ringerMode: Int?): IncomingAlertMode = when (ring
     else -> IncomingAlertMode.SILENT
 }
 
+internal fun shouldManuallyLaunchIncomingCall(
+    deviceLocked: Boolean,
+    fullScreenIntentAvailable: Boolean
+): Boolean = deviceLocked && !fullScreenIntentAvailable
+
+internal fun shouldRunIncomingCallFallback(
+    deviceLocked: Boolean,
+    incomingCallActive: Boolean,
+    incomingActivityVisible: Boolean
+): Boolean = deviceLocked && incomingCallActive && !incomingActivityVisible
+
 /**
  * Keeps the authenticated SIP process eligible to run while the activity is
  * in the background. Process-death recovery belongs to the push phase.
@@ -168,6 +179,9 @@ class SipForegroundService : Service() {
         @Volatile
         private var applicationVisible = false
 
+        @Volatile
+        private var incomingCallActivityVisible = false
+
         private val incomingRingtoneLock = Any()
         private var incomingRingtone: MediaPlayer? = null
         private val incomingVibrationLock = Any()
@@ -199,6 +213,10 @@ class SipForegroundService : Service() {
         }
 
         fun currentIncomingCall(): IncomingSipCall? = activeIncomingCall
+
+        fun setIncomingCallActivityVisible(visible: Boolean) {
+            incomingCallActivityVisible = visible
+        }
 
         fun setApplicationVisible(context: Context, visible: Boolean) {
             applicationVisible = visible
@@ -348,10 +366,36 @@ class SipForegroundService : Service() {
                     )
                 )
                 .build()
-            context.getSystemService(NotificationManager::class.java)
-                .notify(INCOMING_NOTIFICATION_ID, notification)
-            if (context.getSystemService(KeyguardManager::class.java)?.isKeyguardLocked == true) {
+            val notificationManager = context.getSystemService(NotificationManager::class.java)
+            notificationManager.notify(INCOMING_NOTIFICATION_ID, notification)
+            val fullScreenIntentAvailable = if (Build.VERSION.SDK_INT >= 34) {
+                notificationManager.canUseFullScreenIntent()
+            } else {
+                true
+            }
+            if (shouldManuallyLaunchIncomingCall(
+                    deviceLocked = context.getSystemService(KeyguardManager::class.java)
+                        ?.isKeyguardLocked == true,
+                    fullScreenIntentAvailable = fullScreenIntentAvailable
+                )
+            ) {
                 runCatching { openApp.send() }
+            } else if (context.getSystemService(KeyguardManager::class.java)
+                    ?.isKeyguardLocked == true
+            ) {
+                val expectedGeneration = incomingGeneration
+                incomingTimeoutHandler.postDelayed({
+                    if (expectedGeneration != incomingGeneration) return@postDelayed
+                    if (shouldRunIncomingCallFallback(
+                            deviceLocked = context.getSystemService(KeyguardManager::class.java)
+                                ?.isKeyguardLocked == true,
+                            incomingCallActive = activeIncomingCall != null,
+                            incomingActivityVisible = incomingCallActivityVisible
+                        )
+                    ) {
+                        runCatching { openApp.send() }
+                    }
+                }, 900L)
             }
         }
 
