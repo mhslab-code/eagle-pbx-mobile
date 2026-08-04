@@ -67,14 +67,35 @@ internal fun isSameIncomingCall(
     activeNumber: String?,
     activeCallId: String,
     incomingNumber: String,
-    incomingCallId: String
+    incomingCallId: String,
+    activeSipCallId: String? = null,
+    incomingSipCallId: String? = null
 ): Boolean {
     if (activeNumber == null) return false
+    if (!activeSipCallId.isNullOrBlank() && !incomingSipCallId.isNullOrBlank()) {
+        return activeSipCallId == incomingSipCallId
+    }
     if (activeCallId.isNotBlank() && incomingCallId.isNotBlank()) {
         return activeCallId == incomingCallId
     }
     return activeNumber.filter(Char::isDigit) == incomingNumber.filter(Char::isDigit)
 }
+
+internal data class SipCallCompletionTargets(
+    val incoming: Boolean,
+    val ongoing: Boolean
+)
+
+internal fun sipCallCompletionTargets(
+    currentIncomingSipCallId: String?,
+    ongoingSipCallId: String?,
+    completedSipCallId: String
+): SipCallCompletionTargets = SipCallCompletionTargets(
+    incoming = !currentIncomingSipCallId.isNullOrBlank() &&
+        currentIncomingSipCallId == completedSipCallId,
+    ongoing = !ongoingSipCallId.isNullOrBlank() &&
+        ongoingSipCallId == completedSipCallId
+)
 
 private fun incomingActivityCreatorOptions(): Bundle? {
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) return null
@@ -276,6 +297,8 @@ class SipForegroundService : Service() {
         private val incomingTimeoutHandler = Handler(Looper.getMainLooper())
         private var incomingGeneration = 0L
         private var currentIncomingCallId = ""
+        private var currentIncomingSipCallId: String? = null
+        private var ongoingSipCallId: String? = null
         private var incomingDisposition = IncomingDisposition.NONE
         private val cancelledCallIds = mutableMapOf<String, Long>()
 
@@ -356,20 +379,36 @@ class SipForegroundService : Service() {
             if (isSameIncomingCall(
                     activeNumber = activeIncomingCall?.number,
                     activeCallId = currentIncomingCallId,
+                    activeSipCallId = currentIncomingSipCallId,
                     incomingNumber = call.number,
-                    incomingCallId = callId
+                    incomingCallId = callId,
+                    incomingSipCallId = call.sipCallId
                 )
             ) {
+                val sipCallId = call.sipCallId?.takeIf(String::isNotBlank)
+                if (sipCallId != null && currentIncomingSipCallId != sipCallId) {
+                    currentIncomingSipCallId = sipCallId
+                    val mergedCall = activeIncomingCall?.copy(sipCallId = sipCallId)
+                    activeIncomingCall = mergedCall
+                    (context.applicationContext as? EaglePbxApplication)
+                        ?.telecomController
+                        ?.bindSipCall(currentIncomingCallId, sipCallId)
+                    if (mergedCall != null) {
+                        onIncomingNotificationChanged?.invoke(mergedCall)
+                    }
+                }
                 return
             }
             currentIncomingCallId = callId
+            currentIncomingSipCallId = call.sipCallId?.takeIf(String::isNotBlank)
             val directory = cachedCaller(context, call.number)
             val caller = directory?.name
                 ?: call.displayName?.takeIf(String::isNotBlank)
                 ?: formatPhoneNumber(call.number)
             val effectiveCall = IncomingSipCall(
                 number = call.number,
-                displayName = caller
+                displayName = caller,
+                sipCallId = currentIncomingSipCallId
             )
             activeIncomingCall = effectiveCall
             incomingAnswerConfirmed = false
@@ -632,7 +671,9 @@ class SipForegroundService : Service() {
             incomingDisposition = IncomingDisposition.ANSWERED
             incomingAnswerConfirmed = true
             incomingGeneration += 1
+            ongoingSipCallId = answeredCall?.sipCallId ?: currentIncomingSipCallId
             currentIncomingCallId = ""
+            currentIncomingSipCallId = null
             activeIncomingCall = null
             incomingDisposition = IncomingDisposition.NONE
             onIncomingNotificationChanged?.invoke(null)
@@ -677,6 +718,7 @@ class SipForegroundService : Service() {
                 ?: (incomingDisposition == IncomingDisposition.RINGING)
             incomingGeneration += 1
             currentIncomingCallId = ""
+            currentIncomingSipCallId = null
             activeIncomingCall = null
             incomingDisposition = IncomingDisposition.NONE
             onIncomingNotificationChanged?.invoke(null)
@@ -689,7 +731,37 @@ class SipForegroundService : Service() {
         }
 
         fun finishOngoingCall(context: Context) {
-            restoreTelephonyNotification(context)
+            ongoingSipCallId = null
+            if (activeIncomingCall == null) {
+                restoreTelephonyNotification(context)
+            }
+        }
+
+        /**
+         * Completes only the UI/notification that owns this real SIP Call-ID.
+         * A delayed End/Released from an earlier call must never clear a newer one.
+         */
+        fun finishSipCall(
+            context: Context,
+            sipCallId: String,
+            failed: Boolean = false
+        ): Boolean {
+            val targets = sipCallCompletionTargets(
+                currentIncomingSipCallId = currentIncomingSipCallId,
+                ongoingSipCallId = ongoingSipCallId,
+                completedSipCallId = sipCallId
+            )
+            if (!targets.incoming && !targets.ongoing) return false
+            if (targets.ongoing) ongoingSipCallId = null
+            if (targets.incoming) {
+                cancelIncoming(
+                    context,
+                    showMissed = !failed && incomingDisposition == IncomingDisposition.RINGING
+                )
+            } else if (activeIncomingCall == null) {
+                restoreTelephonyNotification(context)
+            }
+            return true
         }
 
         private fun showOngoingCall(context: Context, call: IncomingSipCall) {

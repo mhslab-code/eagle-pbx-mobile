@@ -12,6 +12,9 @@ import androidx.test.uiautomator.Until
 import com.eaglesistemas.eaglepbx.telephony.IncomingSipCall
 import com.eaglesistemas.eaglepbx.telephony.SipForegroundService
 import org.junit.After
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -116,5 +119,55 @@ class IncomingCallLockScreenTest {
                 device.wait(Until.gone(By.text("CHAMADA RECEBIDA")), 5_000L)
             )
         }
+    }
+
+    @Test
+    fun lateReleaseFromFirstCallPreservesSecondIncomingCall() {
+        SipForegroundService.start(context)
+        SystemClock.sleep(750L)
+        SipForegroundService.showIncoming(
+            context,
+            IncomingSipCall(
+                number = "104",
+                displayName = "Primeira chamada",
+                sipCallId = "sip-call-1"
+            ),
+            callId = "push-call-1"
+        )
+        SipForegroundService.markAnswered(context)
+
+        SipForegroundService.showIncoming(
+            context,
+            IncomingSipCall(number = "104", displayName = "Segunda chamada"),
+            callId = "push-call-2"
+        )
+        SipForegroundService.showIncoming(
+            context,
+            IncomingSipCall(
+                number = "104",
+                displayName = "Segunda chamada",
+                sipCallId = "sip-call-2"
+            )
+        )
+
+        assertTrue(
+            SipForegroundService.finishSipCall(context, "sip-call-1")
+        )
+        assertEquals(
+            "sip-call-2",
+            SipForegroundService.currentIncomingCall()?.sipCallId
+        )
+        assertFalse(
+            SipForegroundService.finishSipCall(context, "sip-call-1")
+        )
+        assertEquals(
+            "sip-call-2",
+            SipForegroundService.currentIncomingCall()?.sipCallId
+        )
+
+        assertTrue(
+            SipForegroundService.finishSipCall(context, "sip-call-2")
+        )
+        assertNull(SipForegroundService.currentIncomingCall())
     }
 }

@@ -234,9 +234,7 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
                         SipForegroundService.markAnswered(getApplication())
                         telecomController()?.markActive()
                     } else if (status in setOf(SipCallStatus.IDLE, SipCallStatus.FAILED)) {
-                        SipForegroundService.cancelIncoming(getApplication())
                         SipForegroundService.finishOngoingCall(getApplication())
-                        telecomController()?.disconnect(DisconnectCause.REMOTE)
                     }
                     mutableState.value = mutableState.value.copy(
                         sipCallStatus = status,
@@ -279,6 +277,21 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
                     if (call != null && !mutableState.value.contactsLoaded) {
                         loadContacts(false)
                     }
+                },
+                onCallTerminated = { sipCallId, failed ->
+                    SipForegroundService.finishSipCall(
+                        context = getApplication(),
+                        sipCallId = sipCallId,
+                        failed = failed
+                    )
+                    telecomController()?.disconnectSipCall(
+                        sipCallId = sipCallId,
+                        cause = if (failed) {
+                            DisconnectCause.ERROR
+                        } else {
+                            DisconnectCause.REMOTE
+                        }
+                    )
                 },
                 onAttendedTransferChanged = { status ->
                     mutableState.value = mutableState.value.copy(

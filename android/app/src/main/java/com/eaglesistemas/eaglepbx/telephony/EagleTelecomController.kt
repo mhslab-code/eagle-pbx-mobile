@@ -29,6 +29,7 @@ class EagleTelecomController(
     private val coroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val lock = Any()
     private var activeSession: TelecomCallSession? = null
+    private var pendingIncoming: PendingTelecomCall? = null
 
     private sealed interface TelecomCommand {
         data object Answer : TelecomCommand
@@ -36,18 +37,59 @@ class EagleTelecomController(
         data class Disconnect(val cause: DisconnectCause) : TelecomCommand
     }
 
-    private data class TelecomCallSession(
+    private class TelecomCallSession(
         val key: String,
+        var sipCallId: String?,
         val commands: Channel<TelecomCommand> = Channel(Channel.UNLIMITED)
+    ) {
+        fun matches(otherKey: String, otherSipCallId: String?): Boolean = if (
+            sipCallId != null && otherSipCallId != null
+        ) {
+            sipCallId == otherSipCallId
+        } else {
+            key == otherKey
+        }
+    }
+
+    private data class PendingTelecomCall(
+        val call: IncomingSipCall,
+        val session: TelecomCallSession
     )
 
     fun registerIncoming(call: IncomingSipCall, callId: String) {
         val manager = callsManager ?: return
         val key = callId.ifBlank { call.number.filter(Char::isDigit) }
-        val session = synchronized(lock) {
-            if (activeSession != null) return
-            TelecomCallSession(key).also { activeSession = it }
+        val sipCallId = call.sipCallId?.takeIf(String::isNotBlank)
+        val session = TelecomCallSession(key, sipCallId)
+        val startNow = synchronized(lock) {
+            val active = activeSession
+            val sameAsActive = active?.matches(key, sipCallId) == true
+            if (sameAsActive) {
+                if (sipCallId != null) active?.sipCallId = sipCallId
+                false
+            } else if (active == null) {
+                activeSession = session
+                true
+            } else {
+                val pending = pendingIncoming
+                if (pending?.session?.matches(key, sipCallId) == true) {
+                    if (sipCallId != null) pending.session.sipCallId = sipCallId
+                } else {
+                    pending?.session?.commands?.close()
+                    pendingIncoming = PendingTelecomCall(call, session)
+                }
+                false
+            }
         }
+        if (!startNow) return
+        launchTelecomCall(manager, call, session)
+    }
+
+    private fun launchTelecomCall(
+        manager: CallsManager,
+        call: IncomingSipCall,
+        session: TelecomCallSession
+    ) {
         coroutineScope.launch {
             val attributes = CallAttributesCompat(
                 displayName = call.displayName ?: call.number,
@@ -80,30 +122,67 @@ class EagleTelecomController(
                 // The custom CallStyle flow remains available if an OEM Telecom
                 // implementation refuses a self-managed call.
             } finally {
-                synchronized(lock) {
+                val next = synchronized(lock) {
                     if (activeSession === session) activeSession = null
+                    pendingIncoming?.also {
+                        pendingIncoming = null
+                        activeSession = it.session
+                    }
                 }
                 session.commands.close()
+                if (next != null) {
+                    launchTelecomCall(manager, next.call, next.session)
+                }
             }
         }
     }
 
+    fun bindSipCall(callId: String, sipCallId: String) {
+        if (sipCallId.isBlank()) return
+        synchronized(lock) {
+            val sessions = listOfNotNull(
+                activeSession,
+                pendingIncoming?.session
+            )
+            sessions.firstOrNull { session ->
+                session.key == callId ||
+                    (callId.isBlank() && session.sipCallId == sipCallId)
+            }?.sipCallId = sipCallId
+        }
+    }
+
     fun answerFromApp() {
-        activeSession()?.commands?.trySend(TelecomCommand.Answer)
+        currentSession()?.commands?.trySend(TelecomCommand.Answer)
     }
 
     fun markActive() {
-        activeSession()?.commands?.trySend(TelecomCommand.SetActive)
+        currentSession()?.commands?.trySend(TelecomCommand.SetActive)
     }
 
     fun disconnect(cause: Int) {
-        activeSession()?.commands?.trySend(
+        currentSession()?.commands?.trySend(
             TelecomCommand.Disconnect(DisconnectCause(cause))
         )
     }
 
-    private fun activeSession(): TelecomCallSession? = synchronized(lock) {
-        activeSession
+    fun disconnectSipCall(sipCallId: String, cause: Int): Boolean {
+        val session = synchronized(lock) {
+            val pending = pendingIncoming
+            if (pending?.session?.sipCallId == sipCallId) {
+                pendingIncoming = null
+                pending.session.commands.close()
+                return true
+            }
+            activeSession?.takeIf { it.sipCallId == sipCallId }
+        } ?: return false
+        session.commands.trySend(
+            TelecomCommand.Disconnect(DisconnectCause(cause))
+        )
+        return true
+    }
+
+    private fun currentSession(): TelecomCallSession? = synchronized(lock) {
+        pendingIncoming?.session ?: activeSession
     }
 
     private suspend fun CallControlScope.processCommands(session: TelecomCallSession) {

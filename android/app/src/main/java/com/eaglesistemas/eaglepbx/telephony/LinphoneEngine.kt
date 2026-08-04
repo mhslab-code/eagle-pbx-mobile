@@ -53,7 +53,8 @@ enum class ConferenceSetupStatus {
 
 data class IncomingSipCall(
     val number: String,
-    val displayName: String?
+    val displayName: String?,
+    val sipCallId: String? = null
 )
 
 data class SipAudioOutput(
@@ -61,6 +62,11 @@ data class SipAudioOutput(
     val label: String,
     val selected: Boolean
 )
+
+internal fun terminalEventOwnsActiveCall(
+    activeCallKey: String?,
+    terminalCallKey: String
+): Boolean = activeCallKey != null && activeCallKey == terminalCallKey
 
 /**
  * Owns the native SIP core and the authenticated per-device account.
@@ -73,6 +79,7 @@ class LinphoneEngine(
     private val onStatusChanged: (SipEngineStatus) -> Unit,
     private val onCallStatusChanged: (SipCallStatus) -> Unit,
     private val onIncomingCallChanged: (IncomingSipCall?) -> Unit,
+    private val onCallTerminated: (sipCallId: String, failed: Boolean) -> Unit,
     private val onAttendedTransferChanged: (AttendedTransferStatus) -> Unit,
     private val onConferenceSetupChanged: (ConferenceSetupStatus) -> Unit
 ) {
@@ -90,6 +97,8 @@ class LinphoneEngine(
     private var account: Account? = null
     private var authInfo: AuthInfo? = null
     private var activeCall: Call? = null
+    private var activeCallKey: String? = null
+    private val finalizedPrimaryCalls = LinkedHashSet<String>()
     private var originalTransferCall: Call? = null
     private var consultationCall: Call? = null
     private var releasedConsultationCall: Call? = null
@@ -129,7 +138,7 @@ class LinphoneEngine(
                 when (state) {
                     Call.State.Connected,
                     Call.State.StreamsRunning -> {
-                        activeCall = call
+                        setActiveCall(call)
                         onCallStatusChanged(SipCallStatus.CONNECTED)
                     }
                     Call.State.Error,
@@ -137,11 +146,11 @@ class LinphoneEngine(
                     Call.State.Released -> {
                         conferenceCalls.remove(call)
                         if (conferenceCalls.isEmpty()) {
-                            activeCall = null
+                            setActiveCall(null)
                             onConferenceSetupChanged(ConferenceSetupStatus.IDLE)
                             onCallStatusChanged(SipCallStatus.IDLE)
                         } else {
-                            activeCall = conferenceCalls.first()
+                            setActiveCall(conferenceCalls.first())
                             onCallStatusChanged(SipCallStatus.CONNECTED)
                         }
                     }
@@ -159,12 +168,12 @@ class LinphoneEngine(
                     Call.State.OutgoingProgress,
                     Call.State.OutgoingRinging,
                     Call.State.OutgoingEarlyMedia -> {
-                        activeCall = call
+                        setActiveCall(call)
                         onConferenceSetupChanged(ConferenceSetupStatus.CALLING)
                     }
                     Call.State.Connected -> Unit
                     Call.State.StreamsRunning -> {
-                        activeCall = call
+                        setActiveCall(call)
                         onCallStatusChanged(SipCallStatus.CONNECTED)
                         onConferenceSetupChanged(ConferenceSetupStatus.CONNECTED)
                     }
@@ -176,7 +185,7 @@ class LinphoneEngine(
                             addedConferenceCall = null
                             val original = originalConferenceCall
                             originalConferenceCall = null
-                            activeCall = original
+                            setActiveCall(original)
                             if (original != null) {
                                 original.resume()
                                 onCallStatusChanged(SipCallStatus.CONNECTED)
@@ -203,12 +212,12 @@ class LinphoneEngine(
                     Call.State.OutgoingProgress,
                     Call.State.OutgoingRinging,
                     Call.State.OutgoingEarlyMedia -> {
-                        activeCall = call
+                        setActiveCall(call)
                         onAttendedTransferChanged(AttendedTransferStatus.CALLING)
                     }
                     Call.State.Connected -> Unit
                     Call.State.StreamsRunning -> {
-                        activeCall = call
+                        setActiveCall(call)
                         onCallStatusChanged(SipCallStatus.CONNECTED)
                         onAttendedTransferChanged(AttendedTransferStatus.CONNECTED)
                     }
@@ -220,7 +229,7 @@ class LinphoneEngine(
                             consultationCall = null
                             val original = originalTransferCall
                             originalTransferCall = null
-                            activeCall = original
+                            setActiveCall(original)
                             if (original != null) {
                                 original.resume()
                                 onCallStatusChanged(SipCallStatus.CONNECTED)
@@ -240,58 +249,87 @@ class LinphoneEngine(
             when (state) {
                 Call.State.IncomingReceived,
                 Call.State.IncomingEarlyMedia -> {
-                    activeCall = call
+                    val sipCallId = activatePrimaryCall(call)
                     val remote = call.remoteAddress
                     onIncomingCallChanged(
                         IncomingSipCall(
                             number = remote.username.orEmpty(),
                             displayName = remote.displayName
                                 ?.trim()
-                                ?.takeIf(String::isNotBlank)
+                                ?.takeIf(String::isNotBlank),
+                            sipCallId = sipCallId
                         )
                     )
                     onCallStatusChanged(SipCallStatus.INCOMING)
                 }
                 Call.State.OutgoingInit,
                 Call.State.OutgoingProgress -> {
-                    activeCall = call
+                    activatePrimaryCall(call)
                     onCallStatusChanged(SipCallStatus.OUTGOING)
                 }
                 Call.State.OutgoingRinging,
                 Call.State.OutgoingEarlyMedia -> {
-                    activeCall = call
+                    activatePrimaryCall(call)
                     onCallStatusChanged(SipCallStatus.RINGING)
                 }
                 Call.State.Connected,
                 Call.State.StreamsRunning -> {
-                    activeCall = call
+                    activatePrimaryCall(call)
                     onIncomingCallChanged(null)
                     onCallStatusChanged(SipCallStatus.CONNECTED)
                 }
                 Call.State.Pausing,
                 Call.State.Paused,
                 Call.State.PausedByRemote -> {
-                    activeCall = call
+                    activatePrimaryCall(call)
                     onCallStatusChanged(SipCallStatus.HELD)
                 }
                 Call.State.Resuming -> {
-                    activeCall = call
+                    activatePrimaryCall(call)
                     onCallStatusChanged(SipCallStatus.CONNECTED)
                 }
-                Call.State.Error -> {
-                    activeCall = null
-                    onIncomingCallChanged(null)
-                    onCallStatusChanged(SipCallStatus.FAILED)
-                }
+                Call.State.Error -> finishPrimaryCall(call, failed = true)
                 Call.State.End,
-                Call.State.Released -> {
-                    activeCall = null
-                    onIncomingCallChanged(null)
-                    onCallStatusChanged(SipCallStatus.IDLE)
-                }
+                Call.State.Released -> finishPrimaryCall(call, failed = false)
                 else -> Unit
             }
         }
+    }
+
+    private fun callKey(call: Call): String = runCatching {
+        call.callLog.callId
+    }.getOrNull()
+        ?.trim()
+        ?.takeIf(String::isNotBlank)
+        ?: "native:${System.identityHashCode(call)}"
+
+    private fun setActiveCall(call: Call?) {
+        activeCall = call
+        activeCallKey = call?.let(::callKey)
+    }
+
+    private fun activatePrimaryCall(call: Call): String {
+        val key = callKey(call)
+        finalizedPrimaryCalls.remove(key)
+        activeCall = call
+        activeCallKey = key
+        return key
+    }
+
+    private fun finishPrimaryCall(call: Call, failed: Boolean) {
+        val key = callKey(call)
+        if (!finalizedPrimaryCalls.add(key)) return
+        while (finalizedPrimaryCalls.size > 32) {
+            finalizedPrimaryCalls.remove(finalizedPrimaryCalls.first())
+        }
+        if (terminalEventOwnsActiveCall(activeCallKey, key)) {
+            setActiveCall(null)
+            onIncomingCallChanged(null)
+            onCallStatusChanged(
+                if (failed) SipCallStatus.FAILED else SipCallStatus.IDLE
+            )
+        }
+        onCallTerminated(key, failed)
     }
 
     fun start() {
@@ -368,7 +406,7 @@ class LinphoneEngine(
         val address = Factory.instance().createAddress("sip:$normalized@$domain")
             ?: return false
         return runCatching {
-            activeCall = core.inviteAddress(address)
+            setActiveCall(core.inviteAddress(address))
             activeCall != null
         }.getOrDefault(false)
     }
@@ -485,7 +523,7 @@ class LinphoneEngine(
                 return@runCatching false
             }
             consultationCall = consultation
-            activeCall = consultation
+            setActiveCall(consultation)
             onAttendedTransferChanged(AttendedTransferStatus.CALLING)
             true
         }.getOrDefault(false)
@@ -498,7 +536,7 @@ class LinphoneEngine(
         consultation?.terminate()
         if (consultation == null) {
             originalTransferCall = null
-            activeCall = original
+            setActiveCall(original)
             cancellingConsultation = false
             val accepted = original.resume() == 0
             if (accepted) onCallStatusChanged(SipCallStatus.CONNECTED)
@@ -548,7 +586,7 @@ class LinphoneEngine(
                 return@runCatching false
             }
             addedConferenceCall = additional
-            activeCall = additional
+            setActiveCall(additional)
             onConferenceSetupChanged(ConferenceSetupStatus.CALLING)
             true
         }.getOrDefault(false)
@@ -569,7 +607,7 @@ class LinphoneEngine(
         additional?.terminate()
         if (additional == null) {
             originalConferenceCall = null
-            activeCall = original
+            setActiveCall(original)
             cancellingAddedCall = false
             val accepted = original.resume() == 0
             if (accepted) onCallStatusChanged(SipCallStatus.CONNECTED)
@@ -592,7 +630,7 @@ class LinphoneEngine(
             conferenceCalls.add(additional)
             originalConferenceCall = null
             addedConferenceCall = null
-            activeCall = additional
+            setActiveCall(additional)
             onCallStatusChanged(SipCallStatus.CONNECTED)
             onConferenceSetupChanged(ConferenceSetupStatus.ACTIVE)
         } else {
@@ -654,7 +692,8 @@ class LinphoneEngine(
         releasedConferenceCall = null
         cancellingAddedCall = false
         activeCall?.terminate()
-        activeCall = null
+        setActiveCall(null)
+        finalizedPrimaryCalls.clear()
         account?.let { core.removeAccount(it) }
         authInfo?.let { core.removeAuthInfo(it) }
         account = null
