@@ -1,5 +1,16 @@
 # CODEX — Eagle PBX Mobile
 
+## Revisão 0.1.54
+
+- Corrige a regressão da `0.1.53` que encerrava o processo ao iniciar o alerta
+  no Android 16.
+- A autorização de abertura em segundo plano do criador passa a seguir o modo
+  documentado para `PendingIntent`; a autorização do remetente fica restrita à
+  contingência manual.
+- A criação das opções é protegida para que uma rejeição do fabricante nunca
+  interrompa o toque ou a vibração da chamada.
+- O pacote passa a usar `versionCode 55` e `versionName 0.1.54`.
+
 ## Revisão 0.1.53
 
 - O `PendingIntent` da tela de chamada passa a conceder explicitamente a

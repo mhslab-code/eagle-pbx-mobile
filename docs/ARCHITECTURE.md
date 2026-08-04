@@ -162,6 +162,11 @@ concedem explicitamente a autorização de abertura em segundo plano exigida a
 partir do Android 15. Essa autorização fica limitada à atividade dedicada de
 chamada recebida e à sua contingência no aparelho bloqueado.
 
+Na versão 0.1.54, a autorização do criador segue o modo compatível documentado
+pelo Android e a autorização do remetente é aplicada apenas no envio manual da
+contingência. A criação das opções possui fallback seguro para preservar toque
+e vibração mesmo que uma implementação do fabricante rejeite a opção.
+
 O estado de presença já utiliza a API existente do Eagle PBX. Temporariamente,
 o DND continua sendo aplicado ao ramal inteiro no Asterisk. A separação do DND
 por instalação — Android, PWA, desktop e softphones — fica prevista para a

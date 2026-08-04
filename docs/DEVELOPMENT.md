@@ -45,6 +45,16 @@ definitiva de assinatura e suas senhas não pertencem ao repositório.
 
 ## Marcos validados
 
+### 0.1.54
+
+- corrigida a regressão de encerramento do processo observada fisicamente na
+  `0.1.53` no Galaxy S25 Ultra;
+- opções do criador e do remetente do `PendingIntent` separadas conforme a API
+  oficial do Android;
+- rejeições específicas do fabricante não podem interromper a sinalização da
+  chamada;
+- tela bloqueada permanece pendente de nova homologação física.
+
 ### 0.1.53
 
 - intenção de tela cheia compatível com as restrições de abertura em segundo

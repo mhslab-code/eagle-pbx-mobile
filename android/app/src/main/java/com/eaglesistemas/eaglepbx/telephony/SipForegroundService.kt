@@ -62,23 +62,27 @@ internal fun shouldRunIncomingCallFallback(
     incomingActivityVisible: Boolean
 ): Boolean = deviceLocked && incomingCallActive && !incomingActivityVisible
 
-private fun incomingActivityLaunchOptions(): Bundle? {
+private fun incomingActivityCreatorOptions(): Bundle? {
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) return null
-    val mode = if (Build.VERSION.SDK_INT >= 36) {
-        ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOW_ALWAYS
-    } else {
+    return runCatching {
         @Suppress("DEPRECATION")
-        ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED
-    }
-    return ActivityOptions.makeBasic()
-        .setPendingIntentCreatorBackgroundActivityStartMode(mode)
-        .setPendingIntentBackgroundActivityStartMode(mode)
-        .toBundle()
+        ActivityOptions.makeBasic()
+            .setPendingIntentCreatorBackgroundActivityStartMode(
+                ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED
+            )
+            .toBundle()
+    }.getOrNull()
 }
 
 private fun sendIncomingActivity(pendingIntent: PendingIntent) {
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-        pendingIntent.send(incomingActivityLaunchOptions())
+        @Suppress("DEPRECATION")
+        val options = ActivityOptions.makeBasic()
+            .setPendingIntentBackgroundActivityStartMode(
+                ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED
+            )
+            .toBundle()
+        pendingIntent.send(options)
     } else {
         pendingIntent.send()
     }
@@ -328,7 +332,7 @@ class SipForegroundService : Service() {
                         Intent.FLAG_ACTIVITY_NEW_TASK
                 },
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-                incomingActivityLaunchOptions()
+                incomingActivityCreatorOptions()
             )
             val answerCall = PendingIntent.getActivity(
                 context,
