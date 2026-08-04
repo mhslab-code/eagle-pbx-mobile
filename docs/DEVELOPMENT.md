@@ -45,6 +45,21 @@ definitiva de assinatura e suas senhas não pertencem ao repositório.
 
 ## Marcos validados
 
+### 0.1.62
+
+- atendimento resolve a chamada recebida diretamente em `Core.currentCall` e
+  `Core.calls`, sem depender de um wrapper potencialmente obsoleto;
+- o motor sai do modo de fundo, reativa a rede e libera recursos de áudio antes
+  de enviar `accept()`;
+- estado `Conectando...` exige aceite nativo ou um push ainda sem `INVITE`;
+- guarda de vida nativa remove a tela órfã após três consultas negativas;
+- build limpo com 79 tarefas, testes unitários e seis testes instrumentados
+  aprovados no Android 16/API 36 equivalente ao Galaxy A25 5G;
+- teste instrumentado reproduz a perda do objeto SIP e confirma o fechamento
+  automático do estado de conexão;
+- estabelecimento real de duas chamadas consecutivas permanece como validação
+  física decisiva no S25 Ultra.
+
 ### 0.1.61
 
 - configuração SIP cifrada por AES-GCM com chave do Android Keystore;

@@ -9,7 +9,7 @@ com homologação operacional nos Samsung Galaxy A25 5G e validação complement
 no Samsung Galaxy S25 Ultra. O iOS será desenvolvido depois da homologação do
 fluxo Android.
 
-Versão de desenvolvimento atual: `0.1.61`. A identidade visual, o login nativo,
+Versão de desenvolvimento atual: `0.1.62`. A identidade visual, o login nativo,
 a restauração segura da sessão, o logoff, a navegação principal e a integração
 inicial de presença foram validados no emulador equivalente ao Galaxy A25 5G.
 A agenda corporativa, o histórico e o player autenticado de gravações também
@@ -90,6 +90,12 @@ Keystore e restaurada assim que o processo nasce. Se uma atualização ainda nã
 possuir esse cache, o próprio push busca a configuração diretamente antes do
 `INVITE`, sem esperar o carregamento de perfil, agenda ou histórico. Uma
 reconciliação posterior com os mesmos dados não desmonta a conta ativa.
+Na revisão `0.1.62`, o comando de atendimento consulta a lista nativa de
+chamadas no instante do clique, traz o motor para primeiro plano e libera os
+recursos de mídia antes de executar `accept()`. A interface só entra em
+`Conectando...` depois que o comando é aceito pelo SDK. Uma guarda independente
+fecha a tela recebida assim que a chamada deixa de existir no Liblinphone,
+mesmo se o cancelamento FCM estiver atrasado.
 Com o aplicativo visível, o modal interno continua sendo a interface principal;
 a notificação nativa permanece ativa para o Telecom, mas não força a tela cheia.
 O canal de chamadas é silencioso e não disputa a reprodução controlada pelo

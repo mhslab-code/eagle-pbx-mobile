@@ -234,6 +234,19 @@ aguardar perfil, contatos, histórico ou a reconciliação administrativa normal
 Quando essa reconciliação chega depois, dados idênticos apenas renovam o
 registro; não removem uma conta que já recebeu o `INVITE`.
 
+Na versão 0.1.62, o estado visual deixa de ser confirmação suficiente para o
+atendimento. Sob um lock comum, `LinphoneEngine` procura a chamada nos objetos
+atuais de `Core`, coloca o motor em primeiro plano, reativa a rede, antecipa a
+liberação dos recursos de áudio e só confirma a ação quando `Call.accept()`
+retorna sucesso. O enfileiramento permanece disponível exclusivamente para o
+intervalo entre um push preliminar e a chegada do `INVITE`.
+
+Depois que um identificador nativo foi observado, o serviço compara
+periodicamente essa correlação com `Core.calls`. Três ausências consecutivas
+encerram o alerta e a atividade da mesma geração. Essa reconciliação não depende
+do tempo de entrega do FCM e não permite que um término antigo remova uma nova
+chamada.
+
 O estado de presença já utiliza a API existente do Eagle PBX. Temporariamente,
 o DND continua sendo aplicado ao ramal inteiro no Asterisk. A separação do DND
 por instalação — Android, PWA, desktop e softphones — fica prevista para a

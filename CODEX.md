@@ -1,5 +1,19 @@
 # CODEX — Eagle PBX Mobile
 
+## Revisão 0.1.62
+
+- O atendimento deixa de confiar apenas no wrapper guardado pelo callback e
+  resolve o `Call` recebido diretamente em `Core.currentCall`/`Core.calls` no
+  instante do toque em **Atender**.
+- Antes de `accept()`, o Liblinphone sai explicitamente do modo de fundo,
+  restaura a rede e libera recursos de áudio da chamada anterior.
+- `Conectando...` só é exibido quando o SDK aceitou o comando ou enquanto um
+  push preliminar ainda aguarda o `INVITE`; uma chamada SIP já entregue não
+  pode produzir confirmação visual falsa.
+- Uma guarda consulta a lista nativa e remove alerta, notificação e atividade
+  quando o objeto SIP desaparece, mesmo com atraso do cancelamento FCM.
+- O pacote passa a usar `versionCode 63` e `versionName 0.1.62`.
+
 ## Revisão 0.1.61
 
 - A configuração SIP aprovada passa a ser armazenada cifrada por AES-GCM com

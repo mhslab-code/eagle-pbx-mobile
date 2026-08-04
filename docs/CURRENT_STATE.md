@@ -1,16 +1,15 @@
 # Estado atual — Eagle PBX Mobile
 
-Atualizado em: 2026-08-04 15:06 -03
+Atualizado em: 2026-08-04 15:43 -03
 
 ## Código e versão
 
 - Branch: `codex/ringtone-corporativo`.
-- Base confirmada antes do ajuste: `745a299`.
-- Commit da correção: `ce28e80`.
-- Versão candidata: `0.1.61` (`versionCode 62`).
-- Motivo: eliminar os 35 segundos observados entre o push e a configuração SIP
-  no arranque frio, garantindo que o `INVITE` alcance o aparelho enquanto a
-  chamada ainda está ativa.
+- Base confirmada antes do ajuste: `336fbfc`.
+- Commit da correção: `903cc33`.
+- Versão candidata: `0.1.62` (`versionCode 63`).
+- Motivo: garantir que **Atender** envie o comando ao objeto SIP nativo atual e
+  que a tela bloqueada nunca permaneça em `Conectando...` depois do término.
 
 ## Homologação
 
@@ -81,36 +80,52 @@ Atualizado em: 2026-08-04 15:06 -03
   imediatamente, sem aguardar a restauração completa do aplicativo.
 - A reconciliação posterior tornou-se idempotente: a mesma configuração renova
   o registro sem remover a conta que já está processando a chamada.
+- Validação física monitorada da `0.1.61`: a primeira chamada recebeu `ANSWER`,
+  entrou na ponte e terminou normalmente. Na segunda, o PBX manteve o endpoint
+  em `Ringing` por aproximadamente nove segundos e recebeu `CANCEL`, sem nenhum
+  `ANSWER`; mesmo depois do término, o S25 permaneceu em `Conectando...`.
+- A captura comprova que a interface considerava um atendimento enfileirado
+  como sucesso visual apesar de o motor não confirmar `accept()`. O encerramento
+  da atividade também dependia de callbacks/cancelamento, sem reconciliação com
+  a lista nativa.
+- A revisão `0.1.62` resolve a chamada novamente em `Core.currentCall` e
+  `Core.calls`, traz o motor para primeiro plano, reativa a rede e libera os
+  recursos de mídia antes do aceite.
+- O enfileiramento agora só é permitido enquanto existe push sem identificador
+  SIP. Se o `INVITE` já existe e `accept()` falha, a tela não muda falsamente
+  para `Conectando...`.
+- Uma guarda da mesma geração remove a interface após três ausências
+  consecutivas do objeto SIP nativo.
 
-## Testes da 0.1.61
+## Testes da 0.1.62
 
 - `clean testDebugUnitTest assembleDebug connectedDebugAndroidTest`: aprovado.
 - Gradle: 79 tarefas executadas em build limpo.
-- Testes unitários cobrem chamadas consecutivas e configuração idempotente.
-- Cinco testes instrumentados passaram no Android 16/API 36 equivalente ao
+- Testes unitários cobrem chamadas consecutivas, configuração idempotente e a
+  distinção entre push preliminar e `INVITE` nativo.
+- Seis testes instrumentados passaram no Android 16/API 36 equivalente ao
   Galaxy A25 5G.
-- O teste do cache confirma round-trip pelo Keystore, remoção independente e
-  ausência da senha SIP em texto legível nas preferências Android.
-- Pacote conferido: `versionName 0.1.61`, `versionCode 62`, `minSdk 28` e
+- O novo teste remove o objeto SIP durante a apresentação e confirma que alerta
+  e atividade deixam o estado órfão automaticamente.
+- Pacote conferido: `versionName 0.1.62`, `versionCode 63`, `minSdk 28` e
   `targetSdk 36`.
 - Assinatura: Android Debug, certificado SHA-256
   `74f558c6f85328521a419b2e32e35875640470d1b11644fae9d564fbcf8d5789`.
-- APK: `Eagle-PBX-Mobile-0.1.61-debug.apk`.
-- SHA-256: `da98e79c4828ea6ea0b58323ae9dc72be1d1766a7e9256ba473bfc279b783088`.
-- Correção: commit `ce28e80`.
-- Publicação: `https://eaglesistemas.com/pbx/download/Eagle-PBX-Mobile-0.1.61-debug.apk`.
+- APK: `Eagle-PBX-Mobile-0.1.62-debug.apk`.
+- SHA-256: `b2c6fbcab2dd673a7b920d1461eac6c6cfa56783d535adcff43602e97b09ddc4`.
+- Correção: commit `903cc33`.
+- Publicação: `https://eaglesistemas.com/pbx/download/Eagle-PBX-Mobile-0.1.62-debug.apk`.
 - Portal: arquivo, hash, catálogo, contador, serviço e configuração Nginx
   validados; acesso público continua protegido por autenticação HTTP.
 
 ## Próximos passos
 
-1. Instalar a `0.1.61` sobre a versão existente, sem desinstalar.
-2. Abrir o aplicativo uma vez e aguardar o estado **Online**; isso cria o cache
-   cifrado inicial desta revisão.
+1. Instalar a `0.1.62` sobre a versão existente, sem desinstalar.
+2. Abrir o aplicativo uma vez e aguardar o estado **Online**.
 3. Bloquear o S25 Ultra e ligar para o ramal 101.
-4. Atender e encerrar a primeira chamada e iniciar a segunda imediatamente.
-5. Na segunda, tocar em **Atender** e confirmar a transição direta de
-   `Conectando...` para **Chamada em andamento**.
+4. Atender, manter por alguns segundos e encerrar a primeira chamada.
+5. Iniciar a segunda imediatamente, tocar em **Atender** e confirmar a
+   transição de `Conectando...` para **Chamada em andamento**.
 6. Encerrar a segunda chamada pelo chamador e confirmar que a interface fecha.
 7. Somente após homologação completa, criar a tag final e avançar para Chamadas
    ativas do Painel.
@@ -125,9 +140,9 @@ Atualizado em: 2026-08-04 15:06 -03
 
 - Dependências: PBX `10.20.20.140`, API/App `10.20.20.147`, ambiente Android
   `10.20.20.148` e portal de downloads `10.20.20.116`.
-- Defeito conhecido: o estabelecimento SIP e o áudio na chamada recebida após
-  arranque frio ainda dependem da validação física da revisão `0.1.61` no S25
-  Ultra.
+- Defeito conhecido: o estabelecimento SIP e o áudio em duas chamadas
+  consecutivas ainda dependem da validação física da revisão `0.1.62` no S25
+  Ultra; a interface órfã já possui cobertura instrumentada específica.
 - Rollback operacional: `checkpoint/mobile-0.1.54-fullscreen`.
 - Ponto estratégico de infraestrutura preservado:
   `_backup_pre_restruturacao_cores`.
