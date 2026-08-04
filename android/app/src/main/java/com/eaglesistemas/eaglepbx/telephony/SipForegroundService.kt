@@ -139,7 +139,7 @@ class SipForegroundService : Service() {
     ): Int {
         startForeground(NOTIFICATION_ID, notification())
         when (intent?.action) {
-            ACTION_ANSWER -> onAnswerIncoming?.invoke()
+            ACTION_ANSWER -> requestAnswer()
             ACTION_REJECT -> {
                 onRejectIncoming?.invoke()
                 markRejected(this)
@@ -197,7 +197,7 @@ class SipForegroundService : Service() {
             "com.eaglesistemas.eaglepbx.action.REJECT_INCOMING_CALL"
 
         @Volatile
-        private var onAnswerIncoming: (() -> Unit)? = null
+        private var onAnswerIncoming: (() -> Boolean)? = null
 
         @Volatile
         private var onRejectIncoming: (() -> Unit)? = null
@@ -236,9 +236,11 @@ class SipForegroundService : Service() {
             REJECTED
         }
 
-        fun setAnswerCallHandler(onAnswer: (() -> Unit)?) {
+        fun setAnswerCallHandler(onAnswer: (() -> Boolean)?) {
             onAnswerIncoming = onAnswer
         }
+
+        fun requestAnswer(): Boolean = onAnswerIncoming?.invoke() == true
 
         fun setRejectCallHandler(onReject: (() -> Unit)?) {
             onRejectIncoming = onReject

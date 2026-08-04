@@ -1,5 +1,14 @@
 # CODEX — Eagle PBX Mobile
 
+## Revisão 0.1.57
+
+- A tela cheia solicita o atendimento diretamente ao controlador SIP e recebe
+  confirmação síncrona de que o aceite foi executado ou enfileirado.
+- `Conectando...` só aparece depois dessa confirmação; tocar no botão não cria
+  mais um estado visual falso quando o handler SIP está indisponível.
+- A transição para a interface principal continua condicionada a `CONNECTED`.
+- O pacote passa a usar `versionCode 58` e `versionName 0.1.57`.
+
 ## Revisão 0.1.56
 
 - A atividade de tela cheia envia **Atender** diretamente ao serviço, sem

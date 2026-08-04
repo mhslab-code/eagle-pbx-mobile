@@ -90,11 +90,7 @@ class IncomingCallActivity : ComponentActivity() {
                     })
                     finishAndRemoveTask()
                 },
-                onAnswer = {
-                    startService(Intent(this, SipForegroundService::class.java).apply {
-                        action = SipForegroundService.ACTION_ANSWER
-                    })
-                },
+                onAnswer = SipForegroundService::requestAnswer,
                 onCallEnded = { answered ->
                     if (answered && SipForegroundService.wasIncomingAnswerConfirmed()) {
                         startActivity(Intent(this, MainActivity::class.java).apply {
@@ -116,7 +112,7 @@ private fun IncomingCallScreen(
     number: String,
     photo: String?,
     onReject: () -> Unit,
-    onAnswer: () -> Unit,
+    onAnswer: () -> Boolean,
     onCallEnded: (Boolean) -> Unit
 ) {
     var answering by remember { mutableStateOf(false) }
@@ -154,9 +150,8 @@ private fun IncomingCallScreen(
                 }
                 Button(
                     onClick = {
-                        if (!answering) {
+                        if (!answering && onAnswer()) {
                             answering = true
-                            onAnswer()
                         }
                     },
                     enabled = !answering,

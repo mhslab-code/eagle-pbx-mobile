@@ -1,13 +1,13 @@
 # Estado atual — Eagle PBX Mobile
 
-Atualizado em: 2026-08-04 09:15 -03
+Atualizado em: 2026-08-04 09:24 -03
 
 ## Código e versão
 
 - Branch: `codex/ringtone-corporativo`.
 - Base confirmada antes do ajuste: `c4df0a3`.
 - Commit da correção: `7fd6335`.
-- Versão candidata: `0.1.56` (`versionCode 57`).
+- Versão candidata: `0.1.57` (`versionCode 58`).
 - Motivo: permitir explicitamente a abertura da tela de chamada em segundo
   plano no Android 15/16, inclusive no Galaxy S25 Ultra bloqueado.
 
@@ -33,24 +33,24 @@ Atualizado em: 2026-08-04 09:15 -03
   em estado `INCOMING` antes da confirmação SIP, exibindo “Chamada recebida”.
 - A revisão `0.1.56` mantém a tela dedicada até `CONNECTED` e só então apresenta
   a interface principal como “Chamada em andamento”.
+- A validação física da `0.1.56` mostrou `Conectando...` sem aceite SIP real;
+  a chamada seguiu para a caixa postal e a atividade fechou.
+- A revisão `0.1.57` só confirma `Conectando...` quando o controlador SIP aceita
+  ou enfileira efetivamente o comando.
 
-## Testes da 0.1.56
+## Testes da 0.1.57
 
 - `testDebugUnitTest`: aprovado.
 - `assembleDebug`: aprovado.
 - Gradle: 45 tarefas concluídas; build bem-sucedido.
-- Pacote conferido: `versionName 0.1.56`, `versionCode 57`.
+- Pacote conferido: `versionName 0.1.57`, `versionCode 58`.
 - Assinatura: compatível com o APK de depuração anterior disponível na VM.
-- APK: `Eagle-PBX-Mobile-0.1.56-debug.apk`.
-- SHA-256: `4bc52574d5a2fd8ba3913a42c6128772ea012fd2f833bcc1df3f22ac1538a1e3`.
-- Correção: commit `0e52542`.
-- Publicação: `https://eaglesistemas.com/pbx/download/Eagle-PBX-Mobile-0.1.56-debug.apk`.
-- Portal: contador cadastrado, redirecionamento `302`, arquivo visível e Nginx
-  validados.
+- APK: `Eagle-PBX-Mobile-0.1.57-debug.apk`.
+- SHA-256: `8f0b56b3b0a13a6d4414145b9f62a1900f9c12ae1fc0b48d5ff2a4206bfa9d27`.
 
 ## Próximos passos
 
-1. Instalar a `0.1.56` sobre a versão existente, sem desinstalar.
+1. Instalar a `0.1.57` sobre a versão existente, sem desinstalar.
 2. Bloquear o S25 Ultra e ligar para o ramal 101.
 3. Confirmar que a tela acende e mostra a atividade personalizada sem
    duplicação.
@@ -68,8 +68,8 @@ Atualizado em: 2026-08-04 09:15 -03
 
 - Dependências: PBX `10.20.20.140`, API/App `10.20.20.147`, ambiente Android
   `10.20.20.148` e portal de downloads `10.20.20.116`.
-- Defeito conhecido: a transição direta da tela cheia para a chamada ativa
-  ainda depende da validação física da revisão `0.1.56` no S25 Ultra.
+- Defeito conhecido: o aceite SIP confirmado pela tela cheia ainda depende da
+  validação física da revisão `0.1.57` no S25 Ultra.
 - Rollback lógico: branch anterior em `c4df0a3`, versão `0.1.52`.
 - Ponto estratégico de infraestrutura preservado:
   `_backup_pre_restruturacao_cores`.

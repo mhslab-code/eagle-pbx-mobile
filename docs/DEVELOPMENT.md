@@ -45,6 +45,13 @@ definitiva de assinatura e suas senhas não pertencem ao repositório.
 
 ## Marcos validados
 
+### 0.1.57
+
+- comando **Atender** confirmado diretamente pelo controlador SIP;
+- estado `Conectando...` bloqueado quando o aceite não foi executado nem
+  enfileirado;
+- transição completa permanece pendente de homologação física no S25 Ultra.
+
 ### 0.1.56
 
 - removida a abertura antecipada da atividade principal durante o aceite;

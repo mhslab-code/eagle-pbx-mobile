@@ -177,6 +177,11 @@ o atendimento. A ação segue pelo serviço; a `MainActivity` só volta ao prime
 plano depois que o motor SIP confirma `CONNECTED`, já no estado de chamada em
 andamento.
 
+Na versão 0.1.57, a solicitação entre atividade dedicada e controlador SIP tem
+retorno síncrono. O estado visual `Conectando...` depende de aceite efetivo ou
+fila confirmada; ausência do handler mantém as ações disponíveis em vez de
+simular atendimento.
+
 O estado de presença já utiliza a API existente do Eagle PBX. Temporariamente,
 o DND continua sendo aplicado ao ramal inteiro no Asterisk. A separação do DND
 por instalação — Android, PWA, desktop e softphones — fica prevista para a

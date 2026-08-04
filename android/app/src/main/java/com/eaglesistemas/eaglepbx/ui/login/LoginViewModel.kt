@@ -472,24 +472,26 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
         return true
     }
 
-    fun answerIncomingFromNotification(call: IncomingSipCall?) {
-        if (!presentIncomingFromNotification(call)) return
+    fun answerIncomingFromNotification(call: IncomingSipCall?): Boolean {
+        if (!presentIncomingFromNotification(call)) return false
         if (linphoneEngine?.acceptIncomingCall() == true) {
             answerIncomingWhenReady = false
             SipForegroundService.prepareForAnswer(getApplication())
             mutableState.value = mutableState.value.copy(incomingSipCall = null)
+            return true
         } else if (
             SipForegroundService.currentIncomingCall() != null &&
             mutableState.value.sipCallStatus == SipCallStatus.INCOMING
         ) {
             answerIncomingWhenReady = true
             mutableState.value = mutableState.value.copy(incomingSipCall = null)
+            return true
         }
+        return false
     }
 
-    private fun answerIncomingFromLockScreen() {
+    private fun answerIncomingFromLockScreen(): Boolean =
         answerIncomingFromNotification(SipForegroundService.currentIncomingCall())
-    }
 
     private fun onIncomingNotificationChanged(call: IncomingSipCall?) {
         if (call != null) {
