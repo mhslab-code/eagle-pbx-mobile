@@ -1,15 +1,16 @@
 # Estado atual — Eagle PBX Mobile
 
-Atualizado em: 2026-08-04 09:24 -03
+Atualizado em: 2026-08-04 10:55 -03
 
 ## Código e versão
 
 - Branch: `codex/ringtone-corporativo`.
-- Base confirmada antes do ajuste: `c4df0a3`.
-- Commit da correção: `7fd6335`.
-- Versão candidata: `0.1.57` (`versionCode 58`).
-- Motivo: permitir explicitamente a abertura da tela de chamada em segundo
-  plano no Android 15/16, inclusive no Galaxy S25 Ultra bloqueado.
+- Base confirmada antes do ajuste: `461e160`.
+- Commit da correção: `bdf5576`.
+- Versão candidata: `0.1.58` (`versionCode 59`).
+- Motivo: retirar o controle SIP do ciclo de vida da `MainActivity`, integrar
+  as chamadas ao Android Telecom e impedir que a atividade de bloqueio encerre
+  o serviço de telefonia.
 
 ## Homologação
 
@@ -37,28 +38,43 @@ Atualizado em: 2026-08-04 09:24 -03
   a chamada seguiu para a caixa postal e a atividade fechou.
 - A revisão `0.1.57` só confirma `Conectando...` quando o controlador SIP aceita
   ou enfileira efetivamente o comando.
+- A validação física da `0.1.57` mostrou que o modal podia aparecer somente na
+  primeira chamada e que **Atender** podia não responder.
+- Causa confirmada em código e log: o handler de atendimento dependia da
+  `MainActivity`; FCM e SIP podiam reapresentar a mesma chamada; e
+  `finishAndRemoveTask()` disparava `onTaskRemoved`, encerrando explicitamente
+  o serviço SIP após fechar a tela dedicada.
+- A revisão `0.1.58` mantém o controlador no processo, registra a chamada com
+  Core-Telecom, consolida FCM/SIP, usa um `PendingIntent` por ciclo e não encerra
+  mais o serviço ao atender ou recusar.
 
-## Testes da 0.1.57
+## Testes da 0.1.58
 
-- `testDebugUnitTest`: aprovado.
-- `assembleDebug`: aprovado.
-- Gradle: 45 tarefas concluídas; build bem-sucedido.
-- Pacote conferido: `versionName 0.1.57`, `versionCode 58`.
+- `clean testDebugUnitTest assembleDebug assembleDebugAndroidTest`: aprovado.
+- Gradle: 78 tarefas concluídas; build limpo bem-sucedido.
+- Teste instrumentado com Android 16/API 36 e bloqueio por PIN: aprovado.
+- Cada bateria confirma atendimento na primeira chamada, três chamadas
+  bloqueadas consecutivas e atualização da mesma notificação `CallStyle` para
+  “Chamada em andamento”.
+- Três processos novos: 12 telas cheias, 12 registros reconhecidos pelo Android
+  Telecom, zero encerramentos do serviço pela tarefa, zero timeout de
+  `CallStyle`, zero crash e zero ANR.
+- Pacote conferido: `versionName 0.1.58`, `versionCode 59`.
 - Assinatura: compatível com o APK de depuração anterior disponível na VM.
-- APK: `Eagle-PBX-Mobile-0.1.57-debug.apk`.
-- SHA-256: `8f0b56b3b0a13a6d4414145b9f62a1900f9c12ae1fc0b48d5ff2a4206bfa9d27`.
-- Correção: commit `f5b4a20`.
-- Publicação: `https://eaglesistemas.com/pbx/download/Eagle-PBX-Mobile-0.1.57-debug.apk`.
+- APK: `Eagle-PBX-Mobile-0.1.58-debug.apk`.
+- SHA-256: `455e1aa164e9a02187f7036a1a66e4a892b3788c145a670c2b06bba2b895b029`.
+- Correção: commit `bdf5576`.
+- Publicação: `https://eaglesistemas.com/pbx/download/Eagle-PBX-Mobile-0.1.58-debug.apk`.
 - Portal: contador cadastrado, redirecionamento `302`, arquivo visível e Nginx
   validados.
 
 ## Próximos passos
 
-1. Instalar a `0.1.57` sobre a versão existente, sem desinstalar.
+1. Instalar a `0.1.58` sobre a versão existente, sem desinstalar.
 2. Bloquear o S25 Ultra e ligar para o ramal 101.
-3. Confirmar que a tela acende e mostra a atividade personalizada sem
-   duplicação.
-4. Validar atendimento, recusa e chamada perdida.
+3. Fazer três chamadas completas consecutivas, confirmando tela cheia em todas.
+4. Na primeira, atender e confirmar áudio bidirecional e estado “Chamada em
+   andamento”; na segunda, recusar; na terceira, deixar virar chamada perdida.
 5. Somente após homologação completa, criar a tag final e avançar para Chamadas
    ativas do Painel.
 
@@ -72,8 +88,8 @@ Atualizado em: 2026-08-04 09:24 -03
 
 - Dependências: PBX `10.20.20.140`, API/App `10.20.20.147`, ambiente Android
   `10.20.20.148` e portal de downloads `10.20.20.116`.
-- Defeito conhecido: o aceite SIP confirmado pela tela cheia ainda depende da
-  validação física da revisão `0.1.57` no S25 Ultra.
-- Rollback lógico: branch anterior em `c4df0a3`, versão `0.1.52`.
+- Defeito conhecido: o estabelecimento SIP e o áudio após **Atender** ainda
+  dependem da validação física da revisão `0.1.58` no S25 Ultra.
+- Rollback operacional: `checkpoint/mobile-0.1.54-fullscreen`.
 - Ponto estratégico de infraestrutura preservado:
   `_backup_pre_restruturacao_cores`.

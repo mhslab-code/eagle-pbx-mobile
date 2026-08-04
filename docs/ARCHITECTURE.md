@@ -182,6 +182,20 @@ retorno síncrono. O estado visual `Conectando...` depende de aceite efetivo ou
 fila confirmada; ausência do handler mantém as ações disponíveis em vez de
 simular atendimento.
 
+Na versão 0.1.58, `EaglePbxApplication` passa a possuir o `LoginViewModel` e o
+controlador de telefonia durante todo o processo. Assim, FCM, serviço foreground
+e `IncomingCallActivity` acessam o mesmo motor SIP mesmo quando a
+`MainActivity` nunca foi criada. `EagleTelecomController` registra cada chamada
+no Android Telecom por `CallsManager.addCall`, serializa as transições de
+atendimento, ativação e desligamento e mantém o fluxo personalizado como
+contingência caso uma implementação OEM recuse a integração.
+
+A notificação recebida e a notificação em andamento usam o mesmo identificador
+foreground. A atividade de chamada usa somente `finish()`: remover sua tela não
+remove a tarefa nem encerra `SipForegroundService`. Eventos FCM e SIP com o
+mesmo identificador ou número são idempotentes, enquanto chamadas posteriores
+com novos identificadores permanecem independentes.
+
 O estado de presença já utiliza a API existente do Eagle PBX. Temporariamente,
 o DND continua sendo aplicado ao ramal inteiro no Asterisk. A separação do DND
 por instalação — Android, PWA, desktop e softphones — fica prevista para a

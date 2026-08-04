@@ -45,6 +45,24 @@ definitiva de assinatura e suas senhas não pertencem ao repositório.
 
 ## Marcos validados
 
+### 0.1.58
+
+- controlador SIP movido da `MainActivity` para o ciclo de vida do processo;
+- chamadas VoIP integradas ao `androidx.core:core-telecom` e registradas no
+  Android Telecom;
+- mesma chamada sinalizada por FCM e SIP processada uma única vez;
+- `PendingIntent` exclusivo por ciclo de chamada e remoção do despertar manual
+  anterior à intenção de tela cheia;
+- atividade de bloqueio usa `finish()` e não encerra mais o serviço SIP ao
+  atender ou recusar;
+- notificação `CallStyle` usada como foreground durante toque e chamada ativa;
+- teste instrumentado em Android 16 com PIN validou atendimento na primeira
+  chamada, três chamadas bloqueadas consecutivas e atualização da notificação;
+- bateria final: três processos novos, doze telas cheias, doze registros Telecom,
+  nenhum timeout de `CallStyle`, crash ou ANR;
+- estabelecimento SIP real permanece como validação física obrigatória no S25
+  Ultra.
+
 ### 0.1.57
 
 - comando **Atender** confirmado diretamente pelo controlador SIP;

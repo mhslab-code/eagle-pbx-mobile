@@ -9,7 +9,7 @@ com homologação operacional nos Samsung Galaxy A25 5G e validação complement
 no Samsung Galaxy S25 Ultra. O iOS será desenvolvido depois da homologação do
 fluxo Android.
 
-Versão de desenvolvimento atual: `0.1.57`. A identidade visual, o login nativo,
+Versão de desenvolvimento atual: `0.1.58`. A identidade visual, o login nativo,
 a restauração segura da sessão, o logoff, a navegação principal e a integração
 inicial de presença foram validados no emulador equivalente ao Galaxy A25 5G.
 A agenda corporativa, o histórico e o player autenticado de gravações também
@@ -68,9 +68,16 @@ somente após `CONNECTED`, eliminando a etapa visual “Chamada recebida”.
 Na revisão `0.1.57`, a tela dedicada somente entra em `Conectando...` depois
 que o controlador SIP confirma que o aceite foi executado ou enfileirado,
 eliminando a confirmação visual falsa observada na revisão anterior.
-Com o aplicativo visível, somente o modal interno e esse toque são apresentados;
-o aviso nativo fica reservado ao segundo plano. O canal de chamadas do Android
-é silencioso e não disputa a reprodução controlada pelo serviço de telefonia.
+Na revisão `0.1.58`, o controlador SIP passa a existir durante todo o processo,
+independentemente da `MainActivity`, e cada chamada é registrada no Android
+Telecom. Eventos duplicados do push e do SIP são consolidados, cada chamada
+recebe um `PendingIntent` próprio e fechar a atividade de bloqueio não encerra
+mais o serviço de telefonia. A notificação `CallStyle` permanece foreground
+durante o atendimento e a chamada conectada, conforme o contrato do Android.
+Com o aplicativo visível, o modal interno continua sendo a interface principal;
+a notificação nativa permanece ativa para o Telecom, mas não força a tela cheia.
+O canal de chamadas é silencioso e não disputa a reprodução controlada pelo
+serviço de telefonia.
 A transferência direta utiliza um modal com visor e teclado, entrega a chamada
 ao destino escolhido e remove o Android da sessão depois da aceitação pelo
 PBX. O fluxo completo foi homologado entre os ramais 104 e 105.
@@ -106,9 +113,10 @@ registro SIP ocorre em segundo plano; se o usuário escolher atender antes de o
 telefone SIP ficar pronto, a ação permanece aguardando e é executada assim que
 o registro for concluído.
 Ao encerrar uma chamada que despertou a tela, o aplicativo retorna ao segundo
-plano sem interromper o serviço SIP. Em aparelho sem bloqueio seguro, como o
-emulador atual, a tela permanece desbloqueada; o retorno ao PIN ou à biometria
-será confirmado no Galaxy A25 físico.
+plano sem interromper o serviço SIP. Esse ciclo foi automatizado no emulador
+Android 16 com bloqueio por PIN: três reinicializações do processo executaram
+doze apresentações em tela cheia, sem perda do serviço, crash ou ANR. O retorno
+à tela de bloqueio e o áudio SIP real ainda serão confirmados no S25 Ultra.
 
 A revisão `0.1.38` acrescenta cache local cifrado para contatos e histórico,
 identificação do contato no Discador e notificação persistente para chamadas
