@@ -45,6 +45,13 @@ definitiva de assinatura e suas senhas não pertencem ao repositório.
 
 ## Marcos validados
 
+### 0.1.56
+
+- removida a abertura antecipada da atividade principal durante o aceite;
+- atendimento da tela cheia encaminhado pelo serviço e transição visual
+  condicionada à confirmação `CONNECTED`;
+- fluxo completo permanece pendente de homologação física no S25 Ultra.
+
 ### 0.1.55
 
 - atendimento pela tela cheia não reapresenta as ações de chamada recebida na

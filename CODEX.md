@@ -1,5 +1,17 @@
 # CODEX — Eagle PBX Mobile
 
+## Revisão 0.1.56
+
+- A atividade de tela cheia envia **Atender** diretamente ao serviço, sem
+  trazer a `MainActivity` para frente enquanto o SIP ainda está em
+  `INCOMING`.
+- A tela dedicada permanece visível em `Conectando...`; somente após a
+  confirmação `CONNECTED` a interface principal é apresentada já como
+  **Chamada em andamento**.
+- Recusa e término antes da confirmação continuam fechando a atividade e
+  retornando ao bloqueio.
+- O pacote passa a usar `versionCode 57` e `versionName 0.1.56`.
+
 ## Revisão 0.1.55
 
 - Atender pela atividade de tela cheia oculta imediatamente as ações de

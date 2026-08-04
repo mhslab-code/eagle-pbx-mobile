@@ -139,6 +139,7 @@ class SipForegroundService : Service() {
     ): Int {
         startForeground(NOTIFICATION_ID, notification())
         when (intent?.action) {
+            ACTION_ANSWER -> onAnswerIncoming?.invoke()
             ACTION_REJECT -> {
                 onRejectIncoming?.invoke()
                 markRejected(this)
@@ -196,6 +197,9 @@ class SipForegroundService : Service() {
             "com.eaglesistemas.eaglepbx.action.REJECT_INCOMING_CALL"
 
         @Volatile
+        private var onAnswerIncoming: (() -> Unit)? = null
+
+        @Volatile
         private var onRejectIncoming: (() -> Unit)? = null
 
         @Volatile
@@ -209,6 +213,9 @@ class SipForegroundService : Service() {
 
         @Volatile
         private var incomingCallActivityVisible = false
+
+        @Volatile
+        private var incomingAnswerConfirmed = false
 
         private val incomingRingtoneLock = Any()
         private var incomingRingtone: MediaPlayer? = null
@@ -229,6 +236,10 @@ class SipForegroundService : Service() {
             REJECTED
         }
 
+        fun setAnswerCallHandler(onAnswer: (() -> Unit)?) {
+            onAnswerIncoming = onAnswer
+        }
+
         fun setRejectCallHandler(onReject: (() -> Unit)?) {
             onRejectIncoming = onReject
         }
@@ -241,6 +252,8 @@ class SipForegroundService : Service() {
         }
 
         fun currentIncomingCall(): IncomingSipCall? = activeIncomingCall
+
+        fun wasIncomingAnswerConfirmed(): Boolean = incomingAnswerConfirmed
 
         fun setIncomingCallActivityVisible(visible: Boolean) {
             incomingCallActivityVisible = visible
@@ -293,6 +306,7 @@ class SipForegroundService : Service() {
                 displayName = caller
             )
             activeIncomingCall = effectiveCall
+            incomingAnswerConfirmed = false
             incomingDisposition = IncomingDisposition.RINGING
             onIncomingNotificationChanged?.invoke(effectiveCall)
             val generation = ++incomingGeneration
@@ -563,6 +577,7 @@ class SipForegroundService : Service() {
 
         fun markAnswered(context: Context) {
             incomingDisposition = IncomingDisposition.ANSWERED
+            incomingAnswerConfirmed = true
             cancelIncoming(context, showMissed = false)
         }
 
@@ -579,6 +594,7 @@ class SipForegroundService : Service() {
 
         fun markRejected(context: Context) {
             incomingDisposition = IncomingDisposition.REJECTED
+            incomingAnswerConfirmed = false
             cancelIncoming(context, showMissed = false)
         }
 

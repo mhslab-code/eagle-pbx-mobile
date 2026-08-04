@@ -97,6 +97,7 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
     val state: StateFlow<LoginUiState> = mutableState.asStateFlow()
 
     init {
+        SipForegroundService.setAnswerCallHandler(::answerIncomingFromLockScreen)
         SipForegroundService.setRejectCallHandler(::rejectIncomingCall)
         SipForegroundService.setIncomingNotificationHandler(
             ::onIncomingNotificationChanged
@@ -486,6 +487,10 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    private fun answerIncomingFromLockScreen() {
+        answerIncomingFromNotification(SipForegroundService.currentIncomingCall())
+    }
+
     private fun onIncomingNotificationChanged(call: IncomingSipCall?) {
         if (call != null) {
             presentIncomingFromNotification(call)
@@ -844,6 +849,7 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     override fun onCleared() {
+        SipForegroundService.setAnswerCallHandler(null)
         SipForegroundService.setRejectCallHandler(null)
         SipForegroundService.setIncomingNotificationHandler(null)
         releasePlayer()

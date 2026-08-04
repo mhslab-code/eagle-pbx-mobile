@@ -172,6 +172,11 @@ remove imediatamente as ações de chamada recebida do estado da interface
 principal. A atividade dedicada acompanha `Conectando...` até a confirmação
 SIP, evitando um segundo modal antes da tela de chamada ativa.
 
+Na versão 0.1.56, a atividade dedicada não abre a `MainActivity` para solicitar
+o atendimento. A ação segue pelo serviço; a `MainActivity` só volta ao primeiro
+plano depois que o motor SIP confirma `CONNECTED`, já no estado de chamada em
+andamento.
+
 O estado de presença já utiliza a API existente do Eagle PBX. Temporariamente,
 o DND continua sendo aplicado ao ramal inteiro no Asterisk. A separação do DND
 por instalação — Android, PWA, desktop e softphones — fica prevista para a

@@ -91,13 +91,20 @@ class IncomingCallActivity : ComponentActivity() {
                     finishAndRemoveTask()
                 },
                 onAnswer = {
-                    startActivity(Intent(this, MainActivity::class.java).apply {
+                    startService(Intent(this, SipForegroundService::class.java).apply {
                         action = SipForegroundService.ACTION_ANSWER
-                        putExtras(source)
-                        flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
                     })
                 },
-                onCallEnded = { finishAndRemoveTask() }
+                onCallEnded = { answered ->
+                    if (answered && SipForegroundService.wasIncomingAnswerConfirmed()) {
+                        startActivity(Intent(this, MainActivity::class.java).apply {
+                            flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                                Intent.FLAG_ACTIVITY_SINGLE_TOP
+                        })
+                    } else {
+                        finishAndRemoveTask()
+                    }
+                }
             )
         }
     }
@@ -110,12 +117,12 @@ private fun IncomingCallScreen(
     photo: String?,
     onReject: () -> Unit,
     onAnswer: () -> Unit,
-    onCallEnded: () -> Unit
+    onCallEnded: (Boolean) -> Unit
 ) {
     var answering by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
         while (SipForegroundService.currentIncomingCall() != null) delay(250)
-        onCallEnded()
+        onCallEnded(answering)
     }
     val navy = Color(0xFF031C2E)
     val panel = Color(0xFF0E304A)
