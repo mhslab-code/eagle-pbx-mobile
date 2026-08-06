@@ -1,0 +1,496 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex, nofollow, noarchive">
+    <title>Eagle PBX Mobile — Downloads</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family: Inter, "Segoe UI", system-ui, sans-serif;
+        background: #061b2e;
+        color: #f6f9fc;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background:
+          radial-gradient(circle at 85% 5%, rgba(35, 135, 238, .22), transparent 32rem),
+          linear-gradient(145deg, #041523, #08253d 65%, #061b2e);
+      }
+      main { width: min(980px, calc(100% - 32px)); margin: 0 auto; padding: 34px 0; }
+      header { display: flex; align-items: center; gap: 16px; margin-bottom: 24px; }
+      header img { width: 66px; height: 66px; border-radius: 50%; background: #fff; }
+      h1 { margin: 0; font-size: clamp(1.75rem, 5vw, 2.45rem); letter-spacing: -.035em; }
+      header p, .muted { margin: 5px 0 0; color: #a9bfd2; }
+      .eyebrow { color: #4ba4ff; font-size: .72rem; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; }
+      .intro { display: flex; justify-content: space-between; gap: 20px; align-items: end; margin-bottom: 16px; }
+      .intro h2 { margin: 5px 0 0; font-size: 1.45rem; }
+      .count { color: #8da9bd; font-size: .88rem; white-space: nowrap; }
+      .catalog { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+      .card {
+        padding: 20px;
+        border: 1px solid #2b5d7f;
+        border-radius: 20px;
+        background: rgba(12, 43, 69, .92);
+        box-shadow: 0 18px 45px rgba(0, 0, 0, .2);
+      }
+      .card.current { border-color: #318be2; box-shadow: 0 18px 45px rgba(31, 125, 220, .15); }
+      .card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+      .tag { display: inline-flex; padding: 5px 9px; border: 1px solid #49647a; border-radius: 999px; background: #17364e; color: #b6c7d5; font-size: .7rem; font-weight: 800; }
+      .current .tag { border-color: #258650; background: #123d27; color: #58e59c; }
+      h3 { margin: 5px 0 0; font-size: 1.42rem; }
+      dl { display: grid; grid-template-columns: auto 1fr; gap: 7px 10px; margin: 18px 0; font-size: .84rem; }
+      dt { color: #8fa9bd; }
+      dd { margin: 0; text-align: right; overflow-wrap: anywhere; }
+      .hash { display: block; margin: 0 0 16px; color: #7897ae; font: .7rem/1.45 ui-monospace, "Cascadia Mono", monospace; overflow-wrap: anywhere; }
+      .download { display: block; padding: 12px 14px; border-radius: 12px; border: 1px solid #398bd5; background: #123b5f; color: #9dccff; text-align: center; text-decoration: none; font-weight: 800; }
+      .current .download { border: 0; background: linear-gradient(135deg, #1977df, #329df5); color: #fff; }
+      .download:hover { filter: brightness(1.1); }
+      .help { margin-top: 18px; padding: 16px 18px; border: 1px solid #244e6b; border-radius: 15px; background: rgba(7, 30, 49, .65); color: #a9bfd2; font-size: .88rem; line-height: 1.5; }
+      footer { margin-top: 18px; color: #829caf; font-size: .82rem; text-align: center; }
+      @media (max-width: 780px) { .catalog { grid-template-columns: 1fr; } }
+      @media (max-width: 520px) {
+        main { padding: 24px 0; }
+        header { align-items: flex-start; }
+        header img { width: 58px; height: 58px; }
+        .intro { display: block; }
+        .count { display: block; margin-top: 5px; }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <img src="assets/eagle-pbx.png" alt="Eagle PBX">
+        <div>
+          <span class="eyebrow">Telefonia corporativa</span>
+          <h1>Eagle PBX Mobile</h1>
+          <p>Central segura de distribuição para colaboradores.</p>
+        </div>
+      </header>
+
+      <section class="intro">
+        <div>
+          <span class="eyebrow">Android</span>
+          <h2>Versões disponíveis</h2>
+        </div>
+        <span class="count">26 builds de homologação</span>
+      </section>
+
+      <section class="catalog" aria-label="Versões do Eagle PBX Mobile">
+        <article class="card current">
+          <div class="card-top">
+            <div><span class="eyebrow">Versão</span><h3>0.1.63</h3></div>
+            <span class="tag">Atual</span>
+          </div>
+          <dl>
+            <dt>Android</dt><dd>9 ou superior</dd>
+            <dt>Pacote</dt><dd>Debug interno</dd>
+            <dt>Tamanho</dt><dd>153 MB</dd>
+            <dt>Downloads</dt><dd data-download-count="Eagle-PBX-Mobile-0.1.63-debug.apk">—</dd>
+          </dl>
+          <code class="hash">SHA-256: b96fb1c8657ae5dc22169b7af7ba15336dc0a49cea3466997a9df3bd3c6bcb51</code>
+          <a class="download" href="download/Eagle-PBX-Mobile-0.1.63-debug.apk">Baixar versão 0.1.63</a>
+        </article>
+
+        <article class="card">
+          <div class="card-top">
+            <div><span class="eyebrow">Versão</span><h3>0.1.62</h3></div>
+            <span class="tag">Anterior</span>
+          </div>
+          <dl>
+            <dt>Android</dt><dd>9 ou superior</dd>
+            <dt>Pacote</dt><dd>Debug interno</dd>
+            <dt>Tamanho</dt><dd>153 MB</dd>
+            <dt>Downloads</dt><dd data-download-count="Eagle-PBX-Mobile-0.1.62-debug.apk">—</dd>
+          </dl>
+          <code class="hash">SHA-256: b2c6fbcab2dd673a7b920d1461eac6c6cfa56783d535adcff43602e97b09ddc4</code>
+          <a class="download" href="download/Eagle-PBX-Mobile-0.1.62-debug.apk">Baixar versão 0.1.62</a>
+        </article>
+
+        <article class="card">
+          <div class="card-top">
+            <div><span class="eyebrow">Versão</span><h3>0.1.61</h3></div>
+            <span class="tag">Anterior</span>
+          </div>
+          <dl>
+            <dt>Android</dt><dd>9 ou superior</dd>
+            <dt>Pacote</dt><dd>Debug interno</dd>
+            <dt>Tamanho</dt><dd>153 MB</dd>
+            <dt>Downloads</dt><dd data-download-count="Eagle-PBX-Mobile-0.1.61-debug.apk">—</dd>
+          </dl>
+          <code class="hash">SHA-256: da98e79c4828ea6ea0b58323ae9dc72be1d1766a7e9256ba473bfc279b783088</code>
+          <a class="download" href="download/Eagle-PBX-Mobile-0.1.61-debug.apk">Baixar versão 0.1.61</a>
+        </article>
+
+        <article class="card">
+          <div class="card-top">
+            <div><span class="eyebrow">Versão</span><h3>0.1.60</h3></div>
+            <span class="tag">Anterior</span>
+          </div>
+          <dl>
+            <dt>Android</dt><dd>9 ou superior</dd>
+            <dt>Pacote</dt><dd>Debug interno</dd>
+            <dt>Tamanho</dt><dd>153 MB</dd>
+            <dt>Downloads</dt><dd data-download-count="Eagle-PBX-Mobile-0.1.60-debug.apk">—</dd>
+          </dl>
+          <code class="hash">SHA-256: 73a651627febabafd483241b9b8936b6ff309df05060edca86df107d52ed943a</code>
+          <a class="download" href="download/Eagle-PBX-Mobile-0.1.60-debug.apk">Baixar versão 0.1.60</a>
+        </article>
+
+        <article class="card">
+          <div class="card-top">
+            <div><span class="eyebrow">Versão</span><h3>0.1.59</h3></div>
+            <span class="tag">Anterior</span>
+          </div>
+          <dl>
+            <dt>Android</dt><dd>9 ou superior</dd>
+            <dt>Pacote</dt><dd>Debug interno</dd>
+            <dt>Tamanho</dt><dd>153 MB</dd>
+            <dt>Downloads</dt><dd data-download-count="Eagle-PBX-Mobile-0.1.59-debug.apk">—</dd>
+          </dl>
+          <code class="hash">SHA-256: 224e5784ce129dbeb7aa9354792e87364ed2885c4fe27dc334120aba781e7095</code>
+          <a class="download" href="download/Eagle-PBX-Mobile-0.1.59-debug.apk">Baixar versão 0.1.59</a>
+        </article>
+
+        <article class="card">
+          <div class="card-top">
+            <div><span class="eyebrow">Versão</span><h3>0.1.58</h3></div>
+            <span class="tag">Anterior</span>
+          </div>
+          <dl>
+            <dt>Android</dt><dd>9 ou superior</dd>
+            <dt>Pacote</dt><dd>Debug interno</dd>
+            <dt>Tamanho</dt><dd>153 MB</dd>
+            <dt>Downloads</dt><dd data-download-count="Eagle-PBX-Mobile-0.1.58-debug.apk">—</dd>
+          </dl>
+          <code class="hash">SHA-256: 455e1aa164e9a02187f7036a1a66e4a892b3788c145a670c2b06bba2b895b029</code>
+          <a class="download" href="download/Eagle-PBX-Mobile-0.1.58-debug.apk">Baixar versão 0.1.58</a>
+        </article>
+
+        <article class="card">
+          <div class="card-top">
+            <div><span class="eyebrow">Versão</span><h3>0.1.57</h3></div>
+            <span class="tag">Anterior</span>
+          </div>
+          <dl>
+            <dt>Android</dt><dd>9 ou superior</dd>
+            <dt>Pacote</dt><dd>Debug interno</dd>
+            <dt>Tamanho</dt><dd>153 MB</dd>
+            <dt>Downloads</dt><dd data-download-count="Eagle-PBX-Mobile-0.1.57-debug.apk">—</dd>
+          </dl>
+          <code class="hash">SHA-256: 8f0b56b3b0a13a6d4414145b9f62a1900f9c12ae1fc0b48d5ff2a4206bfa9d27</code>
+          <a class="download" href="download/Eagle-PBX-Mobile-0.1.57-debug.apk">Baixar versão 0.1.57</a>
+        </article>
+
+        <article class="card">
+          <div class="card-top">
+            <div><span class="eyebrow">Versão</span><h3>0.1.56</h3></div>
+            <span class="tag">Anterior</span>
+          </div>
+          <dl>
+            <dt>Android</dt><dd>9 ou superior</dd>
+            <dt>Pacote</dt><dd>Debug interno</dd>
+            <dt>Tamanho</dt><dd>153 MB</dd>
+            <dt>Downloads</dt><dd data-download-count="Eagle-PBX-Mobile-0.1.56-debug.apk">—</dd>
+          </dl>
+          <code class="hash">SHA-256: 4bc52574d5a2fd8ba3913a42c6128772ea012fd2f833bcc1df3f22ac1538a1e3</code>
+          <a class="download" href="download/Eagle-PBX-Mobile-0.1.56-debug.apk">Baixar versão 0.1.56</a>
+        </article>
+
+        <article class="card">
+          <div class="card-top">
+            <div><span class="eyebrow">Versão</span><h3>0.1.55</h3></div>
+            <span class="tag">Anterior</span>
+          </div>
+          <dl>
+            <dt>Android</dt><dd>9 ou superior</dd>
+            <dt>Pacote</dt><dd>Debug interno</dd>
+            <dt>Tamanho</dt><dd>153 MB</dd>
+            <dt>Downloads</dt><dd data-download-count="Eagle-PBX-Mobile-0.1.55-debug.apk">—</dd>
+          </dl>
+          <code class="hash">SHA-256: 23ae4b7525cc83897c1368c023999b08aecd82bb15746e57113d1b55b6cfce96</code>
+          <a class="download" href="download/Eagle-PBX-Mobile-0.1.55-debug.apk">Baixar versão 0.1.55</a>
+        </article>
+
+        <article class="card">
+          <div class="card-top">
+            <div><span class="eyebrow">Versão</span><h3>0.1.54</h3></div>
+            <span class="tag">Anterior</span>
+          </div>
+          <dl>
+            <dt>Android</dt><dd>9 ou superior</dd>
+            <dt>Pacote</dt><dd>Debug interno</dd>
+            <dt>Tamanho</dt><dd>153 MB</dd>
+            <dt>Downloads</dt><dd data-download-count="Eagle-PBX-Mobile-0.1.54-debug.apk">—</dd>
+          </dl>
+          <code class="hash">SHA-256: 97fad47ed2eb51818e3e529e8903e8016f8f96a29d026a5f0ffd1cedddfe1e4c</code>
+          <a class="download" href="download/Eagle-PBX-Mobile-0.1.54-debug.apk">Baixar versão 0.1.54</a>
+        </article>
+
+        <article class="card">
+          <div class="card-top">
+            <div><span class="eyebrow">Versão</span><h3>0.1.53</h3></div>
+            <span class="tag">Anterior</span>
+          </div>
+          <dl>
+            <dt>Android</dt><dd>9 ou superior</dd>
+            <dt>Pacote</dt><dd>Debug interno</dd>
+            <dt>Tamanho</dt><dd>153 MB</dd>
+            <dt>Downloads</dt><dd data-download-count="Eagle-PBX-Mobile-0.1.53-debug.apk">—</dd>
+          </dl>
+          <code class="hash">SHA-256: d2ae8c96fc74b4043359bac986ac15f61df158798fe4cc3c3e693ae02adb8528</code>
+          <a class="download" href="download/Eagle-PBX-Mobile-0.1.53-debug.apk">Baixar versão 0.1.53</a>
+        </article>
+
+        <article class="card">
+          <div class="card-top">
+            <div><span class="eyebrow">Versão</span><h3>0.1.52</h3></div>
+            <span class="tag">Anterior</span>
+          </div>
+          <dl>
+            <dt>Android</dt><dd>9 ou superior</dd>
+            <dt>Pacote</dt><dd>Debug interno</dd>
+            <dt>Tamanho</dt><dd>153 MB</dd>
+            <dt>Downloads</dt><dd data-download-count="Eagle-PBX-Mobile-0.1.52-debug.apk">—</dd>
+          </dl>
+          <code class="hash">SHA-256: ed954bde4cba8aee7836edb02fea803c3487ae22d3dfe994ed0b2aaf24ab3edd</code>
+          <a class="download" href="download/Eagle-PBX-Mobile-0.1.52-debug.apk">Baixar versão 0.1.52</a>
+        </article>
+
+        <article class="card">
+          <div class="card-top">
+            <div><span class="eyebrow">Versão</span><h3>0.1.51</h3></div>
+            <span class="tag">Anterior</span>
+          </div>
+          <dl>
+            <dt>Android</dt><dd>9 ou superior</dd>
+            <dt>Pacote</dt><dd>Debug interno</dd>
+            <dt>Tamanho</dt><dd>153 MB</dd>
+            <dt>Downloads</dt><dd data-download-count="Eagle-PBX-Mobile-0.1.51-debug.apk">—</dd>
+          </dl>
+          <code class="hash">SHA-256: 447f33cfd98feb171121c9580445906934d735374fc959262895136fac12e5fc</code>
+          <a class="download" href="download/Eagle-PBX-Mobile-0.1.51-debug.apk">Baixar versão 0.1.51</a>
+        </article>
+
+        <article class="card">
+          <div class="card-top">
+            <div><span class="eyebrow">Versão</span><h3>0.1.50</h3></div>
+            <span class="tag">Anterior</span>
+          </div>
+          <dl>
+            <dt>Android</dt><dd>9 ou superior</dd>
+            <dt>Pacote</dt><dd>Debug interno</dd>
+            <dt>Tamanho</dt><dd>153 MB</dd>
+            <dt>Downloads</dt><dd data-download-count="Eagle-PBX-Mobile-0.1.50-debug.apk">—</dd>
+          </dl>
+          <code class="hash">SHA-256: e2c04121581caa7b425710d67abaee8d0d2b5585db91e2dbd734dd161075a2d9</code>
+          <a class="download" href="download/Eagle-PBX-Mobile-0.1.50-debug.apk">Baixar versão 0.1.50</a>
+        </article>
+
+        <article class="card">
+          <div class="card-top">
+            <div><span class="eyebrow">Versão</span><h3>0.1.49</h3></div>
+            <span class="tag">Anterior</span>
+          </div>
+          <dl>
+            <dt>Android</dt><dd>9 ou superior</dd>
+            <dt>Pacote</dt><dd>Debug interno</dd>
+            <dt>Tamanho</dt><dd>153 MB</dd>
+            <dt>Downloads</dt><dd data-download-count="Eagle-PBX-Mobile-0.1.49-debug.apk">—</dd>
+          </dl>
+          <code class="hash">SHA-256: be1ecec57bc1d4226842720bf3dc548f6f31fec5234b8f1780ae2dd65454ad81</code>
+          <a class="download" href="download/Eagle-PBX-Mobile-0.1.49-debug.apk">Baixar versão 0.1.49</a>
+        </article>
+
+        <article class="card">
+          <div class="card-top">
+            <div><span class="eyebrow">Versão</span><h3>0.1.48</h3></div>
+            <span class="tag">Anterior</span>
+          </div>
+          <dl>
+            <dt>Android</dt><dd>9 ou superior</dd>
+            <dt>Pacote</dt><dd>Debug interno</dd>
+            <dt>Tamanho</dt><dd>154 MB</dd>
+            <dt>Downloads</dt><dd data-download-count="Eagle-PBX-Mobile-0.1.48-debug.apk">—</dd>
+          </dl>
+          <code class="hash">SHA-256: 3fa2ab9900aa399d0629074135efadf6abe571da054ba2fd85398f6ba45106a9</code>
+          <a class="download" href="download/Eagle-PBX-Mobile-0.1.48-debug.apk">Baixar versão 0.1.48</a>
+        </article>
+
+        <article class="card">
+          <div class="card-top">
+            <div><span class="eyebrow">Versão</span><h3>0.1.47</h3></div>
+            <span class="tag">Anterior</span>
+          </div>
+          <dl>
+            <dt>Android</dt><dd>9 ou superior</dd>
+            <dt>Pacote</dt><dd>Debug interno</dd>
+            <dt>Tamanho</dt><dd>153 MB</dd>
+            <dt>Downloads</dt><dd data-download-count="Eagle-PBX-Mobile-0.1.47-debug.apk">—</dd>
+          </dl>
+          <code class="hash">SHA-256: 29946a3eeab4a91e9a7f5c8034dcf2cdf616612551104f0970a085d3dcedd18b</code>
+          <a class="download" href="download/Eagle-PBX-Mobile-0.1.47-debug.apk">Baixar versão 0.1.47</a>
+        </article>
+
+        <article class="card">
+          <div class="card-top">
+            <div><span class="eyebrow">Versão</span><h3>0.1.46</h3></div>
+            <span class="tag">Anterior</span>
+          </div>
+          <dl>
+            <dt>Android</dt><dd>9 ou superior</dd>
+            <dt>Pacote</dt><dd>Debug interno</dd>
+            <dt>Tamanho</dt><dd>153 MB</dd>
+            <dt>Downloads</dt><dd data-download-count="Eagle-PBX-Mobile-0.1.46-debug.apk">—</dd>
+          </dl>
+          <code class="hash">SHA-256: b2c18106f8f3fda853fb2ee75dbc78db83e9ff303d51d4fb5c5869dca0fe7622</code>
+          <a class="download" href="download/Eagle-PBX-Mobile-0.1.46-debug.apk">Baixar versão 0.1.46</a>
+        </article>
+
+        <article class="card">
+          <div class="card-top">
+            <div><span class="eyebrow">Versão</span><h3>0.1.45</h3></div>
+            <span class="tag">Anterior</span>
+          </div>
+          <dl>
+            <dt>Android</dt><dd>9 ou superior</dd>
+            <dt>Pacote</dt><dd>Debug interno</dd>
+            <dt>Tamanho</dt><dd>153 MB</dd>
+            <dt>Downloads</dt><dd data-download-count="Eagle-PBX-Mobile-0.1.45-debug.apk">—</dd>
+          </dl>
+          <code class="hash">SHA-256: 77fbb58c23f4f50e3b493054553799631782421db484fc697f3442d434c59299</code>
+          <a class="download" href="download/Eagle-PBX-Mobile-0.1.45-debug.apk">Baixar versão 0.1.45</a>
+        </article>
+
+        <article class="card">
+          <div class="card-top">
+            <div><span class="eyebrow">Versão</span><h3>0.1.44</h3></div>
+            <span class="tag">Anterior</span>
+          </div>
+          <dl>
+            <dt>Android</dt><dd>9 ou superior</dd>
+            <dt>Pacote</dt><dd>Debug interno</dd>
+            <dt>Tamanho</dt><dd>153 MB</dd>
+            <dt>Downloads</dt><dd data-download-count="Eagle-PBX-Mobile-0.1.44-debug.apk">—</dd>
+          </dl>
+          <code class="hash">SHA-256: 6ee060dbb62f2fc09fc33a165d097cf9ecb9a350b8d7d81c8fc7d3c237092ece</code>
+          <a class="download" href="download/Eagle-PBX-Mobile-0.1.44-debug.apk">Baixar versão 0.1.44</a>
+        </article>
+
+        <article class="card">
+          <div class="card-top">
+            <div><span class="eyebrow">Versão</span><h3>0.1.43</h3></div>
+            <span class="tag">Anterior</span>
+          </div>
+          <dl>
+            <dt>Android</dt><dd>9 ou superior</dd>
+            <dt>Pacote</dt><dd>Debug interno</dd>
+            <dt>Tamanho</dt><dd>153 MB</dd>
+            <dt>Downloads</dt><dd data-download-count="Eagle-PBX-Mobile-0.1.43-debug.apk">—</dd>
+          </dl>
+          <code class="hash">SHA-256: 7061ffa76e58bd59d0345f9eed70f6e57682ad426194e3f058c7a7143315e408</code>
+          <a class="download" href="download/Eagle-PBX-Mobile-0.1.43-debug.apk">Baixar versão 0.1.43</a>
+        </article>
+
+        <article class="card">
+          <div class="card-top">
+            <div><span class="eyebrow">Versão</span><h3>0.1.42</h3></div>
+            <span class="tag">Anterior</span>
+          </div>
+          <dl>
+            <dt>Android</dt><dd>9 ou superior</dd>
+            <dt>Pacote</dt><dd>Debug interno</dd>
+            <dt>Tamanho</dt><dd>153 MB</dd>
+            <dt>Downloads</dt><dd data-download-count="Eagle-PBX-Mobile-0.1.42-debug.apk">—</dd>
+          </dl>
+          <code class="hash">SHA-256: 261c994b487c0985f94f1fd2dd984a26c8a151e07a23ef2b5539f0d7b312ca73</code>
+          <a class="download" href="download/Eagle-PBX-Mobile-0.1.42-debug.apk">Baixar versão 0.1.42</a>
+        </article>
+
+        <article class="card">
+          <div class="card-top">
+            <div><span class="eyebrow">Versão</span><h3>0.1.41</h3></div>
+            <span class="tag">Anterior</span>
+          </div>
+          <dl>
+            <dt>Android</dt><dd>9 ou superior</dd>
+            <dt>Pacote</dt><dd>Debug interno</dd>
+            <dt>Tamanho</dt><dd>152 MB</dd>
+            <dt>Downloads</dt><dd data-download-count="Eagle-PBX-Mobile-0.1.41-debug.apk">—</dd>
+          </dl>
+          <code class="hash">SHA-256: 2fea1ee9c4c931fd927daeed211d34d80488a66ae626a348dbcf98f5a6cff4ff</code>
+          <a class="download" href="download/Eagle-PBX-Mobile-0.1.41-debug.apk">Baixar versão 0.1.41</a>
+        </article>
+
+        <article class="card">
+          <div class="card-top">
+            <div><span class="eyebrow">Versão</span><h3>0.1.40</h3></div>
+            <span class="tag">Anterior</span>
+          </div>
+          <dl>
+            <dt>Android</dt><dd>9 ou superior</dd>
+            <dt>Pacote</dt><dd>Debug interno</dd>
+            <dt>Tamanho</dt><dd>152 MB</dd>
+            <dt>Downloads</dt><dd data-download-count="Eagle-PBX-Mobile-0.1.40-debug.apk">—</dd>
+          </dl>
+          <code class="hash">SHA-256: 67a11b3b892ed6eb9a895e7d0116d94efb77fcd69d57fd5667da0f64e9894865</code>
+          <a class="download" href="download/Eagle-PBX-Mobile-0.1.40-debug.apk">Baixar versão 0.1.40</a>
+        </article>
+
+        <article class="card">
+          <div class="card-top">
+            <div><span class="eyebrow">Versão</span><h3>0.1.39</h3></div>
+            <span class="tag">Anterior</span>
+          </div>
+          <dl>
+            <dt>Android</dt><dd>9 ou superior</dd>
+            <dt>Pacote</dt><dd>Homologação</dd>
+            <dt>Tamanho</dt><dd>152 MB</dd>
+            <dt>Downloads</dt><dd data-download-count="Eagle-PBX-Mobile-0.1.39-homologacao.apk">—</dd>
+          </dl>
+          <code class="hash">SHA-256: 68b609fe4a6b23a58b23ddbf3dfc1e5dfc0b885974f2ecefbfead655686cad87</code>
+          <a class="download" href="download/Eagle-PBX-Mobile-0.1.39-homologacao.apk">Baixar versão 0.1.39</a>
+        </article>
+
+        <article class="card">
+          <div class="card-top">
+            <div><span class="eyebrow">Versão</span><h3>0.1.38</h3></div>
+            <span class="tag">Anterior</span>
+          </div>
+          <dl>
+            <dt>Android</dt><dd>9 ou superior</dd>
+            <dt>Pacote</dt><dd>Homologação</dd>
+            <dt>Tamanho</dt><dd>152 MB</dd>
+            <dt>Downloads</dt><dd data-download-count="Eagle-PBX-Mobile-0.1.38-homologacao.apk">—</dd>
+          </dl>
+          <code class="hash">SHA-256: 72be5d6a8510b750c94f45acdc21b6833314ec595e85c19afd2a601fb559c31e</code>
+          <a class="download" href="download/Eagle-PBX-Mobile-0.1.38-homologacao.apk">Baixar versão 0.1.38</a>
+        </article>
+      </section>
+
+      <div class="help">
+        Recomendamos instalar a versão marcada como <strong>Atual</strong>. Depois do login, um novo aparelho permanecerá aguardando a liberação do gestor antes de registrar a telefonia.
+      </div>
+
+      <footer>Área restrita aos colaboradores da Eagle Sistemas.</footer>
+    </main>
+    <script>
+      fetch("api/download-counts", { cache: "no-store", credentials: "same-origin" })
+        .then((response) => {
+          if (!response.ok) throw new Error("Não foi possível consultar os downloads.");
+          return response.json();
+        })
+        .then((counts) => {
+          document.querySelectorAll("[data-download-count]").forEach((element) => {
+            const total = counts[element.dataset.downloadCount];
+            if (Number.isInteger(total)) element.textContent = total.toLocaleString("pt-BR");
+          });
+        })
+        .catch(() => {});
+    </script>
+  </body>
+</html>

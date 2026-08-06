@@ -24,3 +24,6 @@ secrets/
 Thumbs.db
 *.swp
 *.swo
+__pycache__/
+*.pyc
+ops/web-portal/counter-data/

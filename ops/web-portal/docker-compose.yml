@@ -1,0 +1,22 @@
+services:
+  download-counter:
+    image: python:3.12-alpine
+    container_name: eagle-pbx-download-counter
+    restart: always
+    command: ["python", "/app/server.py"]
+    volumes:
+      - ./counter/server.py:/app/server.py:ro
+      - ./counter-data:/data
+
+  static-sites:
+    image: nginx:alpine
+    container_name: web-files-server
+    restart: always
+    depends_on:
+      - download-counter
+    ports:
+      - "8081:80"
+    volumes:
+      - ./html:/usr/share/nginx/html
+      - ./vhost.conf:/etc/nginx/conf.d/default.conf
+      - ./auth/eagle-pbx.htpasswd:/etc/nginx/auth/eagle-pbx.htpasswd:ro
